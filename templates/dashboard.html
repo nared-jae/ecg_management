@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - SMD ECG Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 data-i18n="page_title">Dashboard</h1>
+    <p data-i18n="page_subtitle">ECG Management System Overview</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="total_patients">Total Patients</div>
+                <div class="card-value">{{ stats.total_patients }}</div>
+            </div>
+            <div class="card-icon blue"><i class="bi bi-people"></i></div>
+        </div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="today_worklist">Today's Worklist</div>
+                <div class="card-value">{{ stats.today_worklist }}</div>
+            </div>
+            <div class="card-icon purple"><i class="bi bi-list-check"></i></div>
+        </div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="pending">Pending</div>
+                <div class="card-value">{{ stats.pending_worklist }}</div>
+            </div>
+            <div class="card-icon orange"><i class="bi bi-clock"></i></div>
+        </div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="completed_today">Completed Today</div>
+                <div class="card-value">{{ stats.completed_today }}</div>
+            </div>
+            <div class="card-icon green"><i class="bi bi-check-circle"></i></div>
+        </div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="total_results">Total Results</div>
+                <div class="card-value">{{ stats.total_results }}</div>
+            </div>
+            <div class="card-icon teal"><i class="bi bi-file-earmark-medical"></i></div>
+        </div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="pending_review">Pending Review</div>
+                <div class="card-value">{{ stats.pending_review }}</div>
+            </div>
+            <div class="card-icon red"><i class="bi bi-exclamation-circle"></i></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Recent Worklist -->
+    <div class="col-lg-6">
+        <div class="apple-table-wrapper">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 style="font-weight: 500; margin: 0;" data-i18n="recent_worklist">Recent Worklist</h5>
+                <a href="{{ url_for('ecg_tests.index') }}" class="btn btn-apple-secondary btn-apple-sm" data-i18n="view_all">View All</a>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>HN</th>
+                        <th data-i18n="th_patient_name">Patient Name</th>
+                        <th data-i18n="th_procedure">Procedure</th>
+                        <th data-i18n="th_status">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in recent_worklist %}
+                    <tr>
+                        <td>{{ item.patient.patient_id }}</td>
+                        <td>{{ item.patient.patient_name }}</td>
+                        <td>{{ item.requested_procedure_desc }}</td>
+                        <td>
+                            <span class="badge badge-apple badge-{{ item.status|lower|replace('_', '-') }}">
+                                {{ item.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center" style="color: var(--apple-text-secondary);" data-i18n="no_data">No data available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Results -->
+    <div class="col-lg-6">
+        <div class="apple-table-wrapper">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 style="font-weight: 500; margin: 0;" data-i18n="recent_results">Recent Results</h5>
+                <a href="{{ url_for('results.index') }}" class="btn btn-apple-secondary btn-apple-sm" data-i18n="view_all">View All</a>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Accession</th>
+                        <th data-i18n="th_patient">Patient</th>
+                        <th data-i18n="th_received_date">Received Date</th>
+                        <th data-i18n="th_status">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in recent_results %}
+                    <tr>
+                        <td>{{ result.accession_number or '-' }}</td>
+                        <td>{{ result.patient.patient_name if result.patient else '-' }}</td>
+                        <td>{{ result.received_at.strftime('%d/%m/%Y %H:%M') if result.received_at else '-' }}</td>
+                        <td>
+                            <span class="badge badge-apple badge-{{ result.status|lower }}">
+                                {{ result.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center" style="color: var(--apple-text-secondary);" data-i18n="no_results">No results available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- DICOM Server Status -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="apple-card">
+            <h5 style="font-weight: 500; margin-bottom: 1rem;" data-i18n="dicom_server_status">DICOM Server Status</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="status-dot online"></span>
+                        <span style="font-size: 0.9rem;">
+                            <strong>MWL Server</strong> &mdash; AE: {{ config.MWL_AE_TITLE }}, Port: {{ config.MWL_PORT }}
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="status-dot online"></span>
+                        <span style="font-size: 0.9rem;">
+                            <strong>Store SCP</strong> &mdash; AE: {{ config.STORE_AE_TITLE }}, Port: {{ config.STORE_PORT }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var DASH_I18N = {
+    en: {
+        page_title: 'Dashboard',
+        page_subtitle: 'ECG Management System Overview',
+        total_patients: 'Total Patients',
+        today_worklist: "Today's Worklist",
+        pending: 'Pending',
+        completed_today: 'Completed Today',
+        total_results: 'Total Results',
+        pending_review: 'Pending Review',
+        recent_worklist: 'Recent Worklist',
+        recent_results: 'Recent Results',
+        view_all: 'View All',
+        th_patient_name: 'Patient Name',
+        th_procedure: 'Procedure',
+        th_status: 'Status',
+        th_patient: 'Patient',
+        th_received_date: 'Received Date',
+        no_data: 'No data available',
+        no_results: 'No results available',
+        dicom_server_status: 'DICOM Server Status'
+    },
+    th: {
+        page_title: 'แดชบอร์ด',
+        page_subtitle: 'ภาพรวมระบบจัดการคลื่นไฟฟ้าหัวใจ',
+        total_patients: 'ผู้ป่วยทั้งหมด',
+        today_worklist: 'Worklist วันนี้',
+        pending: 'รอดำเนินการ',
+        completed_today: 'เสร็จสิ้นวันนี้',
+        total_results: 'ผลตรวจทั้งหมด',
+        pending_review: 'รอตรวจสอบ',
+        recent_worklist: 'Worklist ล่าสุด',
+        recent_results: 'ผลตรวจล่าสุด',
+        view_all: 'ดูทั้งหมด',
+        th_patient_name: 'ชื่อผู้ป่วย',
+        th_procedure: 'รายการ',
+        th_status: 'สถานะ',
+        th_patient: 'ผู้ป่วย',
+        th_received_date: 'วันที่รับ',
+        no_data: 'ยังไม่มีข้อมูล',
+        no_results: 'ยังไม่มีผลตรวจ',
+        dicom_server_status: 'สถานะเซิร์ฟเวอร์ DICOM'
+    }
+};
+
+function setLanguage(lang) {
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (DASH_I18N[lang] && DASH_I18N[lang][key]) {
+            el.textContent = DASH_I18N[lang][key];
+        }
+    });
+}
+</script>
+{% endblock %}

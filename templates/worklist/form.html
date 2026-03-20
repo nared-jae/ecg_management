@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if item else 'Add' }} Item - SMD ECG Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 data-i18n="{{ 'wlf_edit_title' if item else 'wlf_add_title' }}">{{ 'Edit Item' if item else 'Add New Item' }}</h1>
+    <p data-i18n="{{ 'wlf_edit_subtitle' if item else 'wlf_add_subtitle' }}">{{ 'Edit ECG examination worklist item' if item else 'Add a new ECG examination worklist item' }}</p>
+</div>
+
+<form method="POST" class="apple-form" style="max-width: 900px;">
+    <!-- Patient Information -->
+    <div class="form-section">
+        <div class="form-section-title"><i class="bi bi-person me-2"></i><span data-i18n="wlf_patient_info">Patient Information</span></div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label" data-i18n="wlf_hn">HN (Patient ID) *</label>
+                <input type="text" class="form-control" name="patient_id"
+                       value="{{ item.patient.patient_id if item else '' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" data-i18n="wlf_name">Patient Name (LAST^FIRST) *</label>
+                <input type="text" class="form-control" name="patient_name"
+                       value="{{ item.patient.patient_name if item else '' }}" required
+                       placeholder="e.g. SOMCHAI^KAEWDEE">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" data-i18n="wlf_sex">Sex</label>
+                <select class="form-select" name="sex">
+                    <option value="M" {{ 'selected' if item and item.patient.sex == 'M' }}>Male</option>
+                    <option value="F" {{ 'selected' if item and item.patient.sex == 'F' }}>Female</option>
+                    <option value="O" {{ 'selected' if item and item.patient.sex == 'O' }}>Other</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" data-i18n="wlf_dob">Date of Birth</label>
+                {% set bd = '' %}
+                {% if item and item.patient.birth_date and item.patient.birth_date|length == 8 %}
+                    {% set bd = item.patient.birth_date[0:4] + '-' + item.patient.birth_date[4:6] + '-' + item.patient.birth_date[6:8] %}
+                {% endif %}
+                <input type="date" class="form-control" name="birth_date" value="{{ bd }}">
+            </div>
+        </div>
+    </div>
+
+    <!-- Procedure Information -->
+    <div class="form-section">
+        <div class="form-section-title"><i class="bi bi-clipboard2-pulse me-2"></i><span data-i18n="wlf_procedure_info">Procedure Information</span></div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Accession Number *</label>
+                <input type="text" class="form-control" name="accession_number"
+                       value="{{ item.accession_number if item else '' }}" required
+                       placeholder="e.g. ACC20260010">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Procedure ID</label>
+                <input type="text" class="form-control" name="procedure_id"
+                       value="{{ item.requested_procedure_id if item else '' }}"
+                       placeholder="e.g. RP1009">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" data-i18n="wlf_procedure_desc">Procedure Description *</label>
+                <input type="text" class="form-control" name="procedure_desc"
+                       value="{{ item.requested_procedure_desc if item else '' }}" required
+                       placeholder="e.g. ECG Pre-op">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Admission ID</label>
+                <input type="text" class="form-control" name="admission_id"
+                       value="{{ item.admission_id if item else '' }}"
+                       placeholder="e.g. ADM20260010">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">SPS ID</label>
+                <input type="text" class="form-control" name="sps_id"
+                       value="{{ item.sps_id if item else '' }}"
+                       placeholder="e.g. SPS1009">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">SPS Description</label>
+                <input type="text" class="form-control" name="sps_desc"
+                       value="{{ item.sps_desc if item else '' }}"
+                       placeholder="e.g. ECG Pre-operation">
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Information -->
+    <div class="form-section">
+        <div class="form-section-title"><i class="bi bi-calendar-event me-2"></i><span data-i18n="wlf_schedule_info">Schedule Information</span></div>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label" data-i18n="wlf_sched_date">Scheduled Date *</label>
+                {% set sd = '' %}
+                {% if item and item.scheduled_date and item.scheduled_date|length == 8 %}
+                    {% set sd = item.scheduled_date[0:4] + '-' + item.scheduled_date[4:6] + '-' + item.scheduled_date[6:8] %}
+                {% endif %}
+                <input type="date" class="form-control" name="scheduled_date"
+                       value="{{ sd or today.strftime('%Y-%m-%d') if today is defined else sd }}" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" data-i18n="wlf_sched_time">Scheduled Time</label>
+                {% set st = '' %}
+                {% if item and item.scheduled_time and item.scheduled_time|length >= 4 %}
+                    {% set st = item.scheduled_time[0:2] + ':' + item.scheduled_time[2:4] %}
+                {% endif %}
+                <input type="time" class="form-control" name="scheduled_time" value="{{ st }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Priority</label>
+                <select class="form-select" name="priority">
+                    <option value="ROUTINE" {{ 'selected' if not item or item.requested_procedure_priority == 'ROUTINE' }}>ROUTINE</option>
+                    <option value="URGENT" {{ 'selected' if item and item.requested_procedure_priority == 'URGENT' }}>URGENT</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" data-i18n="wlf_status">Status</label>
+                <select class="form-select" name="status">
+                    <option value="SCHEDULED" {{ 'selected' if not item or item.status == 'SCHEDULED' }}>SCHEDULED</option>
+                    <option value="IN_PROGRESS" {{ 'selected' if item and item.status == 'IN_PROGRESS' }}>IN_PROGRESS</option>
+                    <option value="COMPLETED" {{ 'selected' if item and item.status == 'COMPLETED' }}>COMPLETED</option>
+                    <option value="CANCELLED" {{ 'selected' if item and item.status == 'CANCELLED' }}>CANCELLED</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Station Information -->
+    <div class="form-section">
+        <div class="form-section-title"><i class="bi bi-building me-2"></i><span data-i18n="wlf_station_info">Station Information</span></div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Station AE Title</label>
+                <input type="text" class="form-control" name="station_ae"
+                       value="{{ item.scheduled_station_ae if item else 'CP150' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Station Name</label>
+                <input type="text" class="form-control" name="station_name"
+                       value="{{ item.scheduled_station_name if item else 'ECG-ROOM1' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Modality</label>
+                <input type="text" class="form-control" name="modality"
+                       value="{{ item.modality if item else 'ECG' }}">
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex gap-2 justify-content-end mt-2 mb-4">
+        <a href="{{ url_for('worklist.index') }}" class="btn btn-apple-secondary">
+            <i class="bi bi-x-lg me-1"></i><span data-i18n="wlf_cancel">Cancel</span>
+        </a>
+        <button type="submit" class="btn btn-apple">
+            <i class="bi bi-check-lg me-1"></i><span data-i18n="wlf_save">Save</span>
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var WLF_I18N = {
+    en: {
+        wlf_add_title: 'Add New Item',
+        wlf_edit_title: 'Edit Item',
+        wlf_add_subtitle: 'Add a new ECG examination worklist item',
+        wlf_edit_subtitle: 'Edit ECG examination worklist item',
+        wlf_patient_info: 'Patient Information',
+        wlf_hn: 'HN (Patient ID) *',
+        wlf_name: 'Patient Name (LAST^FIRST) *',
+        wlf_sex: 'Sex',
+        wlf_dob: 'Date of Birth',
+        wlf_procedure_info: 'Procedure Information',
+        wlf_procedure_desc: 'Procedure Description *',
+        wlf_schedule_info: 'Schedule Information',
+        wlf_sched_date: 'Scheduled Date *',
+        wlf_sched_time: 'Scheduled Time',
+        wlf_status: 'Status',
+        wlf_station_info: 'Station Information',
+        wlf_cancel: 'Cancel',
+        wlf_save: 'Save'
+    },
+    th: {
+        wlf_add_title: 'เพิ่มรายการใหม่',
+        wlf_edit_title: 'แก้ไขรายการ',
+        wlf_add_subtitle: 'เพิ่มรายการตรวจคลื่นไฟฟ้าหัวใจใหม่',
+        wlf_edit_subtitle: 'แก้ไขข้อมูลรายการตรวจคลื่นไฟฟ้าหัวใจ',
+        wlf_patient_info: 'ข้อมูลผู้ป่วย',
+        wlf_hn: 'HN (รหัสผู้ป่วย) *',
+        wlf_name: 'ชื่อผู้ป่วย (LAST^FIRST) *',
+        wlf_sex: 'เพศ',
+        wlf_dob: 'วันเกิด',
+        wlf_procedure_info: 'ข้อมูลการตรวจ',
+        wlf_procedure_desc: 'รายละเอียดการตรวจ *',
+        wlf_schedule_info: 'ข้อมูลการนัดหมาย',
+        wlf_sched_date: 'วันที่นัด *',
+        wlf_sched_time: 'เวลานัด',
+        wlf_status: 'สถานะ',
+        wlf_station_info: 'ข้อมูลสถานี',
+        wlf_cancel: 'ยกเลิก',
+        wlf_save: 'บันทึก'
+    }
+};
+
+function setLanguage(lang) {
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (WLF_I18N[lang] && WLF_I18N[lang][key]) {
+            el.textContent = WLF_I18N[lang][key];
+        }
+    });
+}
+</script>
+{% endblock %}

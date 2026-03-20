@@ -1,0 +1,2252 @@
+{% extends "base.html" %}
+{% block title %}ECG Result #{{ result.id }} - ECG Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== ECG Viewer Wrapper ===== */
+    .ecg-viewer-wrapper {
+        background: var(--apple-bg);
+        border-radius: var(--apple-radius);
+        box-shadow: var(--apple-card-shadow);
+        overflow: hidden;
+        position: relative;
+    }
+    .ecg-viewer-wrapper.fullscreen-mode {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        z-index: 9999;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .ecg-viewer-wrapper.fullscreen-mode .ecg-canvas-container {
+        flex: 1;
+        overflow: auto;
+    }
+
+    /* ===== Toolbar ===== */
+    .ecg-toolbar {
+        padding: 0.75rem 1.5rem;
+        border-bottom: 1px solid var(--apple-bg-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        background: var(--apple-bg);
+        z-index: 1;
+    }
+    .ecg-toolbar .toolbar-group {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .ecg-toolbar label {
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--apple-text-secondary);
+        white-space: nowrap;
+    }
+    .ecg-toolbar select {
+        font-size: 0.82rem;
+        border: 1px solid var(--apple-border);
+        border-radius: 8px;
+        padding: 0.25rem 0.4rem;
+        background: var(--apple-bg);
+    }
+    .ecg-toolbar .toolbar-btn {
+        border: 1px solid var(--apple-border);
+        border-radius: 8px;
+        background: var(--apple-bg);
+        padding: 0.25rem 0.6rem;
+        font-size: 0.82rem;
+        cursor: pointer;
+        color: var(--apple-text);
+        transition: var(--apple-transition);
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .ecg-toolbar .toolbar-btn:hover {
+        background: var(--apple-bg-secondary);
+        border-color: var(--apple-blue);
+        color: var(--apple-blue);
+    }
+    .ecg-toolbar .toolbar-btn.active {
+        background: var(--apple-blue);
+        color: #fff;
+        border-color: var(--apple-blue);
+    }
+    .ecg-toolbar .zoom-display {
+        font-size: 0.82rem;
+        font-weight: 500;
+        min-width: 48px;
+        text-align: center;
+        color: var(--apple-text);
+        font-variant-numeric: tabular-nums;
+    }
+    .ecg-toolbar .toolbar-separator {
+        width: 1px;
+        height: 20px;
+        background: var(--apple-border);
+        margin: 0 0.2rem;
+    }
+    .ecg-canvas-container {
+        padding: 1rem;
+        overflow: auto;
+        background: #fff;
+    }
+    .ecg-canvas-container canvas {
+        display: block;
+    }
+
+    /* ===== Measurement Strip (above ECG) ===== */
+    .ecg-measurements-strip {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        padding: 0.5rem 1.5rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid var(--apple-bg-secondary);
+        overflow-x: auto;
+    }
+    .meas-strip-item {
+        display: flex;
+        align-items: baseline;
+        gap: 0.35rem;
+        padding: 0.25rem 1rem;
+        border-right: 1px solid var(--apple-border);
+        white-space: nowrap;
+    }
+    .meas-strip-item:last-child { border-right: none; }
+    .meas-strip-item .meas-strip-label {
+        font-size: 0.72rem;
+        font-weight: 500;
+        color: var(--apple-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .meas-strip-item .meas-strip-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--apple-text);
+    }
+    .meas-strip-item .meas-strip-value.hr-value { color: var(--apple-red); }
+    .meas-strip-item .meas-strip-unit {
+        font-size: 0.72rem;
+        color: var(--apple-text-secondary);
+        font-weight: 300;
+    }
+
+    /* ===== Print styles ===== */
+    @media print {
+        body * { visibility: hidden; }
+        .ecg-viewer-wrapper,
+        .ecg-viewer-wrapper * { visibility: visible; }
+        .ecg-viewer-wrapper {
+            position: absolute;
+            left: 0; top: 0;
+            width: 100%;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        .ecg-toolbar { display: none !important; }
+        .ecg-measurements-strip { display: none !important; }
+        .ecg-canvas-container { padding: 0; overflow: visible; }
+        canvas { width: 100% !important; height: auto !important; }
+    }
+
+    /* ===== Diagnosis Panel ===== */
+    .diagnosis-panel {
+        background: var(--apple-bg);
+        border-radius: var(--apple-radius);
+        box-shadow: var(--apple-card-shadow);
+        overflow: hidden;
+    }
+    .diagnosis-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--apple-bg-secondary);
+        background: #f8f9fa;
+    }
+    .diagnosis-panel-header h6 {
+        margin: 0;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+    .diagnosis-panel-body {
+        padding: 1.25rem 1.5rem;
+    }
+    .diagnosis-textarea {
+        width: 100%;
+        min-height: 120px;
+        border: 1px solid var(--apple-border);
+        border-radius: var(--apple-radius-sm);
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        font-family: 'Kanit', sans-serif;
+        resize: vertical;
+        transition: var(--apple-transition);
+        line-height: 1.6;
+    }
+    .diagnosis-textarea:focus {
+        outline: none;
+        border-color: var(--apple-blue);
+        box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+    }
+    .diagnosis-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border-top: 1px solid var(--apple-bg-secondary);
+        background: #f8f9fa;
+    }
+    .diagnosis-actions .btn-save-draft {
+        background: var(--apple-bg-secondary);
+        color: var(--apple-text);
+        border: 1px solid var(--apple-border);
+        border-radius: 980px;
+        padding: 0.4rem 1.2rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: var(--apple-transition);
+    }
+    .diagnosis-actions .btn-save-draft:hover {
+        background: #e8e8ed;
+    }
+    .diagnosis-actions .btn-submit {
+        background: var(--apple-green);
+        color: #fff;
+        border: none;
+        border-radius: 980px;
+        padding: 0.4rem 1.2rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: var(--apple-transition);
+        font-weight: 500;
+    }
+    .diagnosis-actions .btn-submit:hover {
+        background: #2db84e;
+        transform: scale(1.02);
+    }
+    .diagnosis-actions .btn-submit-next {
+        background: var(--apple-blue);
+        color: #fff;
+        border: none;
+        border-radius: 980px;
+        padding: 0.4rem 1.2rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: var(--apple-transition);
+        font-weight: 500;
+    }
+    .diagnosis-actions .btn-submit-next:hover {
+        background: var(--apple-blue-hover);
+        transform: scale(1.02);
+    }
+    .diagnosis-doctor {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    .diagnosis-doctor label {
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: var(--apple-text-secondary);
+        white-space: nowrap;
+    }
+    .diagnosis-doctor input {
+        flex: 1;
+        border: 1px solid var(--apple-border);
+        border-radius: 8px;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.88rem;
+    }
+    .diagnosis-doctor input:focus {
+        outline: none;
+        border-color: var(--apple-blue);
+        box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+    }
+    .diagnosis-status-badge {
+        font-size: 0.75rem;
+        padding: 0.2em 0.6em;
+        border-radius: 980px;
+        font-weight: 500;
+    }
+    .diagnosis-status-badge.draft { background: #fff3e0; color: #e65100; }
+    .diagnosis-status-badge.submitted { background: #e8f5e9; color: #2e7d32; }
+
+    /* ===== Statement Library ===== */
+    .statement-library {
+        background: var(--apple-bg);
+        border-radius: var(--apple-radius);
+        box-shadow: var(--apple-card-shadow);
+        overflow: hidden;
+    }
+    .statement-library-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--apple-bg-secondary);
+        background: #f8f9fa;
+    }
+    .statement-library-header h6 {
+        margin: 0;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+    .stmt-search {
+        width: 100%;
+        border: 1px solid var(--apple-border);
+        border-radius: 980px;
+        padding: 0.45rem 1rem 0.45rem 2.2rem;
+        font-size: 0.85rem;
+        background: var(--apple-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%2386868b' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 0.75rem center;
+        margin: 0.75rem 1rem;
+        transition: var(--apple-transition);
+    }
+    .stmt-search:focus {
+        outline: none;
+        border-color: var(--apple-blue);
+        box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+    }
+    .stmt-categories {
+        max-height: 480px;
+        overflow-y: auto;
+        padding: 0 0.5rem 0.5rem;
+    }
+    .stmt-category {
+        margin-bottom: 0.25rem;
+    }
+    .stmt-category-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: var(--apple-transition);
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--apple-text);
+    }
+    .stmt-category-header:hover {
+        background: var(--apple-bg-secondary);
+    }
+    .stmt-category-header .bi { transition: transform 0.2s; }
+    .stmt-category.open .stmt-category-header .bi { transform: rotate(90deg); }
+    .stmt-category-items {
+        display: none;
+        padding: 0 0.5rem 0.25rem 1.5rem;
+    }
+    .stmt-category.open .stmt-category-items { display: block; }
+    .stmt-item {
+        padding: 0.35rem 0.75rem;
+        font-size: 0.82rem;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: var(--apple-transition);
+        color: var(--apple-text);
+        line-height: 1.4;
+    }
+    .stmt-item:hover {
+        background: #e3f2fd;
+        color: var(--apple-blue);
+    }
+    .stmt-item.selected {
+        background: var(--apple-blue);
+        color: #fff;
+    }
+
+    /* ===== Diagnostic Info Below ECG ===== */
+    .diag-panel {
+        background: var(--apple-bg);
+        border-radius: var(--apple-radius);
+        box-shadow: var(--apple-card-shadow);
+        padding: 1.75rem;
+    }
+    .diag-item {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--apple-bg-secondary);
+    }
+    .diag-item:last-child { border-bottom: none; }
+    .diag-item .diag-label {
+        font-size: 0.8rem;
+        color: var(--apple-text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .diag-item .diag-value {
+        font-size: 1rem;
+        font-weight: 400;
+        margin-top: 0.15rem;
+    }
+
+    /* ===== Measurement cards ===== */
+    .meas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 0.75rem;
+    }
+    .meas-card {
+        background: var(--apple-bg-secondary);
+        border-radius: var(--apple-radius-sm);
+        padding: 0.75rem;
+        text-align: center;
+    }
+    .meas-card .meas-label {
+        font-size: 0.72rem;
+        color: var(--apple-text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .meas-card .meas-value {
+        font-size: 1.3rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin-top: 0.1rem;
+    }
+    .meas-card .meas-unit {
+        font-size: 0.75rem;
+        color: var(--apple-text-secondary);
+        font-weight: 300;
+    }
+
+    /* ===== Toast Notification ===== */
+    .toast-container {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 10000;
+    }
+
+    /* ===== Caliper Tool ===== */
+    .ecg-canvas-container {
+        position: relative;
+    }
+    #caliperOverlay {
+        position: absolute;
+        top: 0; left: 0;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .ecg-canvas-container.caliper-active #caliperOverlay {
+        pointer-events: auto;
+    }
+    .ecg-canvas-container.caliper-h { cursor: col-resize; }
+    .ecg-canvas-container.caliper-v { cursor: row-resize; }
+    .toolbar-btn.caliper-mode-active {
+        background: #ff9500 !important;
+        color: #fff !important;
+        border-color: #ff9500 !important;
+        box-shadow: 0 0 0 2px rgba(255, 149, 0, 0.25);
+    }
+    .caliper-info-bar {
+        display: none;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.4rem 1.5rem;
+        background: linear-gradient(135deg, #fff8e1, #fff3e0);
+        border-bottom: 1px solid #ffe0b2;
+        font-size: 0.82rem;
+        color: #e65100;
+    }
+    .caliper-info-bar.visible { display: flex; }
+    .caliper-info-bar .caliper-hint {
+        font-weight: 400;
+    }
+    .caliper-info-bar .caliper-reading {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #bf360c;
+        font-variant-numeric: tabular-nums;
+    }
+    .caliper-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: #e65100;
+        color: #fff;
+        padding: 0.15rem 0.5rem;
+        border-radius: 980px;
+        font-size: 0.72rem;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Toast notifications -->
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 data-i18n="ecg_result_title">ECG Result #{{ result.id }}</h1>
+        <p data-i18n="ecg_result_subtitle">Electrocardiogram examination result details</p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if result.file_path %}
+        <a href="{{ url_for('results.download', result_id=result.id) }}" class="btn btn-apple-secondary">
+            <i class="bi bi-download me-1"></i><span data-i18n="download_dicom">Download DICOM</span>
+        </a>
+        {% endif %}
+        <a href="{{ url_for('results.index') }}" class="btn btn-apple-secondary">
+            <i class="bi bi-arrow-left me-1"></i><span data-i18n="back">Back</span>
+        </a>
+    </div>
+</div>
+
+<!-- Patient & Study Info Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="apple-card h-100">
+            <div class="card-label"><i class="bi bi-person me-1"></i><span data-i18n="patient">Patient</span></div>
+            <div style="font-weight:500;font-size:1.05rem;">{{ result.patient.patient_name if result.patient else '-' }}</div>
+            <div style="font-size:0.85rem;color:var(--apple-text-secondary);margin-top:0.25rem;">
+                HN: {{ result.patient.patient_id if result.patient else '-' }}
+                {% if result.patient and result.patient.sex %}
+                &nbsp;|&nbsp;{{ result.patient.sex }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="apple-card h-100">
+            <div class="card-label"><i class="bi bi-calendar me-1"></i><span data-i18n="exam_date">Exam Date</span></div>
+            <div style="font-weight:500;font-size:1.05rem;">{{ result.received_at.strftime('%d/%m/%Y') if result.received_at else '-' }}</div>
+            <div style="font-size:0.85rem;color:var(--apple-text-secondary);margin-top:0.25rem;">
+                {{ result.received_at.strftime('%H:%M:%S') if result.received_at else '' }}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="apple-card h-100">
+            <div class="card-label"><i class="bi bi-upc-scan me-1"></i>Accession</div>
+            <div style="font-weight:500;font-size:1.05rem;">{{ result.accession_number or '-' }}</div>
+            <div style="font-size:0.85rem;color:var(--apple-text-secondary);margin-top:0.25rem;">
+                <span class="badge badge-apple badge-{{ result.status|lower }}">{{ result.status }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="apple-card h-100">
+            <div class="card-label"><i class="bi bi-cpu me-1"></i><span data-i18n="device">Device</span></div>
+            {% if ecg_json %}
+            <div style="font-weight:500;font-size:1.05rem;">{{ ecg_json.device.manufacturer }} {{ ecg_json.device.model }}</div>
+            <div style="font-size:0.85rem;color:var(--apple-text-secondary);margin-top:0.25rem;">
+                S/N: {{ ecg_json.device.serial }}
+            </div>
+            {% else %}
+            <div style="font-weight:500;font-size:1.05rem;">-</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Tab Navigation -->
+<ul class="nav ecg-tab-nav mb-4" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-btn-waveform" data-bs-toggle="tab" data-bs-target="#tab-waveform"
+                type="button" role="tab" aria-selected="true">
+            <i class="bi bi-activity me-1"></i><span data-i18n="tab_waveform">Waveform</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-btn-comparison" data-bs-toggle="tab" data-bs-target="#tab-comparison"
+                type="button" role="tab" aria-selected="false">
+            <i class="bi bi-layout-three-columns me-1"></i><span data-i18n="tab_report_comparison">Report Comparison</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+<!-- Tab 1: Waveform (existing content) -->
+<div class="tab-pane fade show active" id="tab-waveform" role="tabpanel">
+
+{% if ecg_json %}
+<!-- ECG Waveform Viewer -->
+<div class="ecg-viewer-wrapper mb-4" id="ecgViewerWrapper">
+    <div class="ecg-toolbar">
+        <div class="toolbar-group">
+            <h5 style="font-weight:500;margin:0;font-size:1rem;">
+                <i class="bi bi-activity me-1"></i>12-Lead ECG Waveform
+            </h5>
+        </div>
+        <div class="toolbar-group">
+            <label data-i18n="layout">Layout:</label>
+            <select id="ecgLayout" onchange="redrawECG()">
+                <option value="3x4" selected>3x4 + Rhythm</option>
+                <option value="6x2">6x2</option>
+                <option value="12x1">12x1</option>
+            </select>
+
+            <label class="ms-2">Speed:</label>
+            <select id="ecgSpeed" onchange="redrawECG()">
+                <option value="25" selected>25 mm/s</option>
+                <option value="50">50 mm/s</option>
+            </select>
+
+            <label class="ms-2">Gain:</label>
+            <select id="ecgGain" onchange="redrawECG()">
+                <option value="5">5 mm/mV</option>
+                <option value="10" selected>10 mm/mV</option>
+                <option value="20">20 mm/mV</option>
+            </select>
+        </div>
+        <div class="toolbar-group">
+            <div class="toolbar-separator"></div>
+            <button class="toolbar-btn" onclick="zoomOut()" title="Zoom Out (Ctrl+-)">
+                <i class="bi bi-zoom-out"></i>
+            </button>
+            <span class="zoom-display" id="zoomDisplay">100%</span>
+            <button class="toolbar-btn" onclick="zoomIn()" title="Zoom In (Ctrl++)">
+                <i class="bi bi-zoom-in"></i>
+            </button>
+            <button class="toolbar-btn" onclick="zoomReset()" title="Actual Size">
+                <i class="bi bi-arrows-angle-contract"></i> 1:1
+            </button>
+            <button class="toolbar-btn" onclick="zoomFitA4()" title="Fit A4">
+                <i class="bi bi-file-earmark"></i> A4
+            </button>
+            <div class="toolbar-separator"></div>
+            <button class="toolbar-btn" onclick="toggleCaliperMode('h')" id="btnCaliperH" title="Horizontal Caliper - Time (C)">
+                <i class="bi bi-arrows-expand"></i> Time
+            </button>
+            <button class="toolbar-btn" onclick="toggleCaliperMode('v')" id="btnCaliperV" title="Vertical Caliper - Amplitude (V)">
+                <i class="bi bi-arrows-collapse"></i> Amp
+            </button>
+            <button class="toolbar-btn" onclick="clearCalipers()" title="Clear All Calipers (X)">
+                <i class="bi bi-x-circle"></i>
+            </button>
+            <div class="toolbar-separator"></div>
+            <button class="toolbar-btn" onclick="toggleFullscreen()" id="btnFullscreen" title="Fullscreen (F11)">
+                <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+            <button class="toolbar-btn" onclick="printECG()" title="Print (Ctrl+P)">
+                <i class="bi bi-printer"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Caliper Info Bar -->
+    <div class="caliper-info-bar" id="caliperInfoBar">
+        <span class="caliper-badge" id="caliperModeBadge"><i class="bi bi-arrows-expand"></i> TIME</span>
+        <span class="caliper-hint" id="caliperHint">Click on ECG to place first marker</span>
+        <span class="caliper-reading" id="caliperLiveReading"></span>
+    </div>
+
+    <!-- Measurement Strip -->
+    <div class="ecg-measurements-strip" id="ecgMeasStrip">
+        <div class="meas-strip-item">
+            <span class="meas-strip-label">HR</span>
+            <span class="meas-strip-value hr-value" id="measHR">--</span>
+            <span class="meas-strip-unit">bpm</span>
+        </div>
+        <div class="meas-strip-item">
+            <span class="meas-strip-label">PR</span>
+            <span class="meas-strip-value" id="measPR">--</span>
+            <span class="meas-strip-unit">ms</span>
+        </div>
+        <div class="meas-strip-item">
+            <span class="meas-strip-label">QRS</span>
+            <span class="meas-strip-value" id="measQRS">--</span>
+            <span class="meas-strip-unit">ms</span>
+        </div>
+        <div class="meas-strip-item">
+            <span class="meas-strip-label">QT</span>
+            <span class="meas-strip-value" id="measQT">--</span>
+            <span class="meas-strip-unit">ms</span>
+        </div>
+        <div class="meas-strip-item">
+            <span class="meas-strip-label">QTc</span>
+            <span class="meas-strip-value" id="measQTc">--</span>
+            <span class="meas-strip-unit">ms</span>
+        </div>
+        <div class="meas-strip-item">
+            <span class="meas-strip-label">P Axis</span>
+            <span class="meas-strip-value" id="measPAxis">--</span>
+            <span class="meas-strip-unit">°</span>
+        </div>
+        <div class="meas-strip-item">
+            <span class="meas-strip-label">QRS Axis</span>
+            <span class="meas-strip-value" id="measQRSAxis">--</span>
+            <span class="meas-strip-unit">°</span>
+        </div>
+        <div class="meas-strip-item">
+            <span class="meas-strip-label">T Axis</span>
+            <span class="meas-strip-value" id="measTAxis">--</span>
+            <span class="meas-strip-unit">°</span>
+        </div>
+        <div class="meas-strip-item">
+            <span class="meas-strip-label">R-R</span>
+            <span class="meas-strip-value" id="measRR">--</span>
+            <span class="meas-strip-unit">ms</span>
+        </div>
+    </div>
+
+    <div class="ecg-canvas-container" id="ecgCanvasContainer">
+        <canvas id="ecgCanvas"></canvas>
+        <canvas id="caliperOverlay"></canvas>
+    </div>
+</div>
+
+<!-- Diagnosis & Statement Library -->
+<div class="row g-4 mb-4">
+    <!-- Diagnosis Panel -->
+    <div class="col-lg-7">
+        <div class="diagnosis-panel">
+            <div class="diagnosis-panel-header">
+                <h6><i class="bi bi-clipboard2-pulse me-2"></i><span data-i18n="diagnosis">Diagnosis</span></h6>
+                <div>
+                    {% if result.status == 'APPROVED' %}
+                    <span class="diagnosis-status-badge submitted"><i class="bi bi-check-circle me-1"></i><span data-i18n="submitted">Submitted</span></span>
+                    {% elif result.diagnosis %}
+                    <span class="diagnosis-status-badge draft"><i class="bi bi-pencil me-1"></i><span data-i18n="draft">Draft</span></span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="diagnosis-panel-body">
+                <!-- Diagnosed by -->
+                <div class="diagnosis-doctor">
+                    <label data-i18n="diagnosed_by">Diagnosed by:</label>
+                    <input type="text" id="diagnosedBy" value="{{ result.diagnosed_by or '' }}"
+                           placeholder="Enter physician name">
+                </div>
+
+                <!-- Diagnosis text -->
+                <textarea class="diagnosis-textarea" id="diagnosisText"
+                          placeholder="Enter diagnosis results here. You can also click statements from the library on the right to add them.">{{ result.diagnosis or '' }}</textarea>
+
+                <!-- DICOM Auto Interpretation - Tag (0070,0006) UnformattedTextValue only -->
+                {% if ecg_json.interpretation_texts %}
+                <div class="mt-3">
+                    <div style="font-size:0.78rem;font-weight:500;color:var(--apple-text-secondary);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:0.5rem;">
+                        <i class="bi bi-robot me-1"></i><span data-i18n="auto_interpretation">Auto Interpretation (from device)</span>
+                    </div>
+                    <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:0.75rem 1rem;font-size:0.88rem;line-height:1.6;">
+                        {% for text in ecg_json.interpretation_texts %}
+                            <div>{{ text }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="diagnosis-actions">
+                <button class="btn-save-draft" onclick="saveDiagnosis('save')">
+                    <i class="bi bi-save me-1"></i><span data-i18n="save_draft">Save Draft</span>
+                </button>
+                <button class="btn-submit" onclick="saveDiagnosis('submit')">
+                    <i class="bi bi-check-circle me-1"></i><span data-i18n="submit">Submit</span>
+                </button>
+                <button class="btn-submit-next" onclick="saveDiagnosis('submit_next')">
+                    <i class="bi bi-arrow-right-circle me-1"></i><span data-i18n="submit_go_next">Submit & Go Next</span>
+                </button>
+                <div class="ms-auto" style="font-size:0.78rem;color:var(--apple-text-secondary);">
+                    {% if result.diagnosed_at %}
+                    <i class="bi bi-clock me-1"></i>{{ result.diagnosed_at.strftime('%d/%m/%Y %H:%M') }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statement Library -->
+    <div class="col-lg-5">
+        <div class="statement-library">
+            <div class="statement-library-header">
+                <h6><i class="bi bi-journal-medical me-2"></i><span data-i18n="statement_library">Statement Library</span></h6>
+            </div>
+            <input type="text" class="stmt-search" id="stmtSearch"
+                   placeholder="Search statements..." oninput="filterStatements()">
+            <div class="stmt-categories" id="stmtCategories">
+                <!-- Categories populated by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Measurements & DICOM Details -->
+<div class="row g-4 mb-4">
+    <!-- All Measurements -->
+    <div class="col-lg-5">
+        <div class="diag-panel">
+            <div class="card-label mb-3"><i class="bi bi-rulers me-1"></i><span data-i18n="measurements">Measurements</span></div>
+            <div class="meas-grid" id="measurementsGrid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- DICOM Details - All Tags -->
+    <div class="col-lg-7">
+        <div class="diag-panel">
+            <div class="d-flex justify-content-between align-items-center"
+                 id="dicomDetailsToggle" style="cursor:pointer;"
+                 onclick="toggleDicomTags()">
+                <div class="card-label mb-0"><i class="bi bi-hdd-network me-1"></i><span data-i18n="dicom_details">DICOM Details</span>
+                    <span id="dicomTagCount" class="badge bg-secondary ms-2" style="font-size:0.7rem;font-weight:400;"></span>
+                </div>
+                <i class="bi bi-chevron-down" id="dicomChevron"></i>
+            </div>
+            <div id="dicomDetailsPanel" style="display:none;margin-top:1rem;">
+                <!-- Search box -->
+                <div style="position:relative;margin-bottom:0.75rem;">
+                    <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--apple-text-secondary);font-size:0.85rem;"></i>
+                    <input type="text" id="dicomTagSearch" class="form-control"
+                           placeholder="Search tags... (e.g. PatientName, 0010,0010)"
+                           style="padding-left:36px;border-radius:980px;font-size:0.85rem;border:1px solid var(--apple-border);"
+                           oninput="filterDicomTags()">
+                </div>
+                <!-- Tag table -->
+                <div style="max-height:500px;overflow-y:auto;border:1px solid var(--apple-border);border-radius:var(--apple-radius-sm);">
+                    <table class="table table-hover mb-0" id="dicomTagTable" style="font-size:0.78rem;">
+                        <thead style="position:sticky;top:0;background:var(--apple-bg);z-index:1;">
+                            <tr>
+                                <th style="width:120px;padding:0.5rem 0.75rem;font-weight:600;color:var(--apple-text-secondary);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.03em;border-bottom:2px solid var(--apple-bg-secondary);">Tag ID</th>
+                                <th style="width:40px;padding:0.5rem 0.4rem;font-weight:600;color:var(--apple-text-secondary);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.03em;border-bottom:2px solid var(--apple-bg-secondary);">VR</th>
+                                <th style="width:180px;padding:0.5rem 0.75rem;font-weight:600;color:var(--apple-text-secondary);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.03em;border-bottom:2px solid var(--apple-bg-secondary);">Tag Name</th>
+                                <th style="padding:0.5rem 0.75rem;font-weight:600;color:var(--apple-text-secondary);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.03em;border-bottom:2px solid var(--apple-bg-secondary);">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dicomTagBody">
+                            <tr><td colspan="4" class="text-center" style="padding:2rem;color:var(--apple-text-secondary);">
+                                <i class="bi bi-arrow-clockwise spin me-1"></i>Loading DICOM tags...
+                            </td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="dicomFilterInfo" style="font-size:0.75rem;color:var(--apple-text-secondary);margin-top:0.5rem;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- No waveform data -->
+<div class="apple-card text-center py-5 mb-4">
+    <i class="bi bi-activity" style="font-size:3rem;color:var(--apple-text-secondary);"></i>
+    <h5 style="font-weight:500;margin-top:1rem;" data-i18n="no_ecg_data">No ECG waveform data found</h5>
+    <p style="color:var(--apple-text-secondary);font-size:0.9rem;" data-i18n="no_ecg_data_desc">
+        Unable to read waveform data from DICOM file, or file not yet available.
+    </p>
+</div>
+{% endif %}
+
+</div><!-- end tab-waveform -->
+
+<!-- Tab 2: Report Comparison (AJAX loaded) -->
+<div class="tab-pane fade" id="tab-comparison" role="tabpanel">
+    <div id="comparisonContent" class="text-center py-5">
+        <i class="bi bi-arrow-clockwise spin" style="font-size:2rem;color:var(--apple-text-secondary);"></i>
+        <p style="color:var(--apple-text-secondary);margin-top:1rem;" data-i18n="loading_comparison">Loading comparison data...</p>
+    </div>
+</div>
+
+</div><!-- end tab-content -->
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ecg-compare-renderer.js') }}"></script>
+{% if ecg_json %}
+<script>
+// ECG Data from server
+var ECG_DATA = {{ ecg_json | tojson }};
+var RESULT_ID = {{ result.id }};
+
+// ===== Statement Library Data =====
+var STATEMENT_LIBRARY = {
+    "Normal": [
+        "Normal sinus rhythm",
+        "Normal ECG",
+        "Sinus rhythm, normal axis",
+        "Normal sinus rhythm, rate and rhythm regular",
+        "Normal PR, QRS, and QT intervals"
+    ],
+    "Sinus Rhythm Variants": [
+        "Sinus tachycardia",
+        "Sinus bradycardia",
+        "Sinus arrhythmia",
+        "Wandering atrial pacemaker"
+    ],
+    "QRS Axis Deviation": [
+        "Left axis deviation",
+        "Right axis deviation",
+        "Extreme axis deviation (Northwest axis)",
+        "Left anterior fascicular block",
+        "Left posterior fascicular block"
+    ],
+    "Ventricular Hypertrophy": [
+        "Left ventricular hypertrophy (LVH)",
+        "Left ventricular hypertrophy with strain pattern",
+        "Right ventricular hypertrophy (RVH)",
+        "Biventricular hypertrophy",
+        "Left atrial enlargement (LAE)",
+        "Right atrial enlargement (RAE)",
+        "Biatrial enlargement"
+    ],
+    "Atrioventricular Block": [
+        "First degree AV block",
+        "Second degree AV block, Mobitz type I (Wenckebach)",
+        "Second degree AV block, Mobitz type II",
+        "2:1 AV block",
+        "Third degree (complete) AV block",
+        "High-grade AV block"
+    ],
+    "Intraventricular Conduction": [
+        "Right bundle branch block (RBBB)",
+        "Incomplete right bundle branch block",
+        "Left bundle branch block (LBBB)",
+        "Incomplete left bundle branch block",
+        "Bifascicular block (RBBB + LAFB)",
+        "Trifascicular block",
+        "Nonspecific intraventricular conduction delay"
+    ],
+    "Myocardial Ischemia": [
+        "ST depression in lateral leads",
+        "ST depression in inferior leads",
+        "ST depression in anterior leads",
+        "ST depression, diffuse",
+        "T wave inversion in lateral leads",
+        "T wave inversion in inferior leads",
+        "T wave inversion in anterior leads",
+        "Nonspecific ST-T changes",
+        "ST elevation — consider acute injury/infarction"
+    ],
+    "Myocardial Infarction": [
+        "Acute ST elevation myocardial infarction (STEMI), anterior",
+        "Acute ST elevation myocardial infarction (STEMI), inferior",
+        "Acute ST elevation myocardial infarction (STEMI), lateral",
+        "Q waves — old inferior myocardial infarction",
+        "Q waves — old anterior myocardial infarction",
+        "Q waves — old lateral myocardial infarction",
+        "Non-ST elevation myocardial infarction (NSTEMI)"
+    ],
+    "Arrhythmia": [
+        "Atrial fibrillation",
+        "Atrial fibrillation with rapid ventricular response",
+        "Atrial fibrillation with slow ventricular response",
+        "Atrial flutter",
+        "Supraventricular tachycardia (SVT)",
+        "Premature atrial complexes (PACs)",
+        "Premature ventricular complexes (PVCs)",
+        "Ventricular tachycardia",
+        "Ventricular fibrillation",
+        "Junctional rhythm",
+        "Accelerated junctional rhythm",
+        "Multifocal atrial tachycardia"
+    ],
+    "Repolarization / QT": [
+        "Prolonged QT interval",
+        "Short QT interval",
+        "Early repolarization pattern",
+        "Brugada pattern",
+        "U waves present",
+        "T wave abnormality"
+    ],
+    "Pacemaker / Device": [
+        "Atrial paced rhythm",
+        "Ventricular paced rhythm",
+        "Dual-chamber paced rhythm (AV sequential pacing)",
+        "Pacemaker malfunction — failure to capture",
+        "Pacemaker malfunction — failure to sense"
+    ],
+    "Other Findings": [
+        "Low voltage QRS complexes",
+        "Poor R wave progression",
+        "Electrical alternans",
+        "Dextrocardia",
+        "Limb lead reversal suspected",
+        "Artifact — repeat ECG recommended",
+        "Digitalis effect",
+        "Hyperkalemia pattern",
+        "Hypokalemia pattern",
+        "Pericarditis pattern (diffuse ST elevation with PR depression)"
+    ]
+};
+
+// ===== i18n Translations =====
+var I18N = {
+    en: {
+        ecg_result_title: 'ECG Result #' + RESULT_ID,
+        ecg_result_subtitle: 'Electrocardiogram examination result details',
+        download_dicom: 'Download DICOM',
+        back: 'Back',
+        patient: 'Patient',
+        exam_date: 'Exam Date',
+        device: 'Device',
+        layout: 'Layout:',
+        diagnosis: 'Diagnosis',
+        diagnosed_by: 'Diagnosed by:',
+        auto_interpretation: 'Auto Interpretation (from device)',
+        save_draft: 'Save Draft',
+        submit: 'Submit',
+        submit_go_next: 'Submit & Go Next',
+        submitted: 'Submitted',
+        draft: 'Draft',
+        statement_library: 'Statement Library',
+        measurements: 'Measurements',
+        dicom_details: 'DICOM Details',
+        file_path: 'File Path',
+        no_ecg_data: 'No ECG waveform data found',
+        no_ecg_data_desc: 'Unable to read waveform data from DICOM file, or file not yet available.',
+        saved_success: 'Diagnosis saved successfully',
+        submitted_success: 'Diagnosis submitted successfully',
+        save_error: 'Error saving diagnosis',
+        tab_waveform: 'Waveform',
+        tab_report_comparison: 'Report Comparison',
+        loading_comparison: 'Loading comparison data...'
+    },
+    th: {
+        ecg_result_title: 'ผลตรวจ ECG #' + RESULT_ID,
+        ecg_result_subtitle: 'รายละเอียดผลตรวจคลื่นไฟฟ้าหัวใจ',
+        download_dicom: 'ดาวน์โหลด DICOM',
+        back: 'กลับ',
+        patient: 'ผู้ป่วย',
+        exam_date: 'วันที่ตรวจ',
+        device: 'เครื่อง',
+        layout: 'รูปแบบ:',
+        diagnosis: 'การวินิจฉัย',
+        diagnosed_by: 'แพทย์ผู้วินิจฉัย:',
+        auto_interpretation: 'การวินิจฉัยอัตโนมัติ (จากเครื่อง)',
+        save_draft: 'บันทึกร่าง',
+        submit: 'ยืนยัน',
+        submit_go_next: 'ยืนยัน & ถัดไป',
+        submitted: 'ยืนยันแล้ว',
+        draft: 'ร่าง',
+        statement_library: 'คลังข้อความวินิจฉัย',
+        measurements: 'ค่าการวัด',
+        dicom_details: 'ข้อมูล DICOM',
+        file_path: 'ที่เก็บไฟล์',
+        no_ecg_data: 'ไม่พบข้อมูลคลื่นไฟฟ้าหัวใจ',
+        no_ecg_data_desc: 'ไม่สามารถอ่านข้อมูล waveform จากไฟล์ DICOM ได้ หรือยังไม่มีไฟล์',
+        saved_success: 'บันทึกผลวินิจฉัยสำเร็จ',
+        submitted_success: 'ยืนยันผลวินิจฉัยสำเร็จ',
+        save_error: 'เกิดข้อผิดพลาดในการบันทึก',
+        tab_waveform: 'คลื่นไฟฟ้าหัวใจ',
+        tab_report_comparison: 'เปรียบเทียบผลตรวจ',
+        loading_comparison: 'กำลังโหลดข้อมูลเปรียบเทียบ...'
+    }
+};
+
+var currentLang = localStorage.getItem('ecg_lang') || 'en';
+
+function setLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('ecg_lang', lang);
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (I18N[lang] && I18N[lang][key]) {
+            el.textContent = I18N[lang][key];
+        }
+    });
+    // Update active button
+    document.querySelectorAll('.lang-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+}
+
+// Standard lead groups for 3x4 layout
+var LEAD_GROUPS_3x4 = [
+    ['I', 'aVR', 'V1', 'V4'],
+    ['II', 'aVL', 'V2', 'V5'],
+    ['III', 'aVF', 'V3', 'V6'],
+];
+var LEAD_ORDER_6x2 = [
+    ['I', 'V1'], ['II', 'V2'], ['III', 'V3'],
+    ['aVR', 'V4'], ['aVL', 'V5'], ['aVF', 'V6']
+];
+var LEAD_ORDER_12x1 = ['I','II','III','aVR','aVL','aVF','V1','V2','V3','V4','V5','V6'];
+
+/*  ===== Standard ECG Paper Constants =====
+ *  Small box  = 1 mm x 1 mm
+ *  Big   box  = 5 mm x 5 mm  (5 small boxes)
+ *
+ *  Horizontal (time):
+ *    25 mm/s  ->  1 small box = 0.04 s (40 ms)
+ *                 1 big   box = 0.20 s (200 ms)
+ *                 5 big boxes = 1.00 s
+ *    50 mm/s  ->  1 small box = 0.02 s (20 ms)
+ *
+ *  Vertical (voltage):
+ *    10 mm/mV ->  1 small box = 0.1 mV
+ *                 1 big   box = 0.5 mV
+ *                 2 big boxes = 1.0 mV
+ *  ========================================= */
+
+// Zoom state
+var BASE_PX_PER_MM = 4;
+var zoomLevel = 1.0;
+var ZOOM_STEPS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0];
+var zoomIndex = 2;
+
+// Derived from zoom
+var PX_PER_MM = BASE_PX_PER_MM;
+var SMALL_BOX = PX_PER_MM;
+var BIG_BOX   = PX_PER_MM * 5;
+
+// Colors – authentic ECG paper pink
+var BG_COLOR         = '#fff5f5';
+var GRID_COLOR_MINOR = '#f0c8c8';
+var GRID_COLOR_MAJOR = '#d4a0a0';
+var WAVE_COLOR       = '#1d1d1f';
+var LABEL_COLOR      = '#86868b';
+var SEPARATOR_COLOR  = '#a08080';
+
+function redrawECG() {
+    var layout = document.getElementById('ecgLayout').value;
+    var speed  = parseInt(document.getElementById('ecgSpeed').value);
+    var gain   = parseInt(document.getElementById('ecgGain').value);
+
+    if (!ECG_DATA.waveforms || ECG_DATA.waveforms.length === 0) return;
+    var wf       = ECG_DATA.waveforms[0];
+    var leads    = wf.leads;
+    var fs       = wf.samplingFrequency;
+    var duration = wf.durationSeconds;
+
+    // Recalculate pixel constants based on zoom
+    zoomLevel = ZOOM_STEPS[zoomIndex];
+    PX_PER_MM = Math.round(BASE_PX_PER_MM * zoomLevel);
+    SMALL_BOX = PX_PER_MM;
+    BIG_BOX   = PX_PER_MM * 5;
+
+    // Update zoom display
+    var zoomPct = Math.round(zoomLevel * 100);
+    document.getElementById('zoomDisplay').textContent = zoomPct + '%';
+
+    var canvas = document.getElementById('ecgCanvas');
+    var ctx    = canvas.getContext('2d');
+
+    // Derived pixel constants
+    var pxPerSecond = speed * PX_PER_MM;
+    var pxPerMv     = gain  * PX_PER_MM;
+
+    // Layout dimensions
+    var numRows, numCols, colDuration, rowBigBoxes;
+
+    if (layout === '3x4') {
+        numRows = 4;
+        numCols = 4;
+        colDuration = 2.5;
+        rowBigBoxes = 6;
+    } else if (layout === '6x2') {
+        numRows = 6;
+        numCols = 2;
+        colDuration = 5.0;
+        rowBigBoxes = 5;
+    } else {
+        numRows = 12;
+        numCols = 1;
+        colDuration = 10.0;
+        rowBigBoxes = 4;
+    }
+
+    var rowHeight = rowBigBoxes * BIG_BOX;
+    var colWidth  = colDuration * pxPerSecond;
+    // NOTE: Do NOT snap colWidth to BIG_BOX — it shifts timing vs rhythm strip
+
+    var marginLeft = 60;
+    var marginTop  = 28;
+
+    var gridW = colWidth * numCols;
+    var gridH = rowHeight * numRows;
+
+    canvas.width  = marginLeft + gridW + 20;
+    canvas.height = marginTop  + gridH + 30;
+
+    // ---------- Draw ----------
+
+    // 1. Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. Grid area background (ECG paper pink)
+    ctx.fillStyle = BG_COLOR;
+    ctx.fillRect(marginLeft, marginTop, gridW, gridH);
+
+    // 3. ECG Grid
+    drawGrid(ctx, marginLeft, marginTop, gridW, gridH);
+
+    // 4. Row separators
+    ctx.strokeStyle = SEPARATOR_COLOR;
+    ctx.lineWidth = 1.5;
+    for (var r = 0; r <= numRows; r++) {
+        var sy = marginTop + r * rowHeight;
+        ctx.beginPath(); ctx.moveTo(marginLeft, sy); ctx.lineTo(marginLeft + gridW, sy); ctx.stroke();
+    }
+
+    // 5. Column separators
+    if (numCols > 1) {
+        for (var c = 0; c <= numCols; c++) {
+            var sx = marginLeft + c * colWidth;
+            ctx.beginPath(); ctx.moveTo(sx, marginTop); ctx.lineTo(sx, marginTop + gridH); ctx.stroke();
+        }
+    }
+
+    // 6. Time markers
+    ctx.fillStyle = LABEL_COLOR;
+    ctx.font = '10px Kanit';
+    ctx.textAlign = 'center';
+    for (var sec = 0; sec <= duration; sec++) {
+        var tx = marginLeft + sec * pxPerSecond;
+        if (tx > marginLeft + gridW + 1) break;
+        ctx.fillText(sec + 's', tx, marginTop - 6);
+        ctx.strokeStyle = LABEL_COLOR;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(tx, marginTop - 3); ctx.lineTo(tx, marginTop); ctx.stroke();
+    }
+    ctx.textAlign = 'left';
+
+    // 7. Calibration marks
+    for (var r = 0; r < numRows; r++) {
+        var calY = marginTop + r * rowHeight + rowHeight / 2;
+        drawCalibrationMark(ctx, marginLeft - 45, calY, pxPerMv);
+    }
+
+    // 8. Paper-speed & gain info
+    ctx.fillStyle = LABEL_COLOR;
+    ctx.font = '10px Kanit';
+    ctx.fillText(speed + ' mm/s    ' + gain + ' mm/mV    ' + PX_PER_MM + ' px/mm', marginLeft, marginTop + gridH + 18);
+    ctx.fillText('Small box: 1mm = ' + SMALL_BOX + 'px (' + (1000/speed).toFixed(0) + 'ms)    Big box: 5mm = ' + BIG_BOX + 'px (' + (5000/speed).toFixed(0) + 'ms)',
+                  marginLeft + 250, marginTop + gridH + 18);
+
+    // 9. Draw waveforms
+    if (layout === '3x4') {
+        drawLayout3x4(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration);
+    } else if (layout === '6x2') {
+        drawLayout6x2(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration);
+    } else {
+        drawLayout12x1(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration);
+    }
+
+    // 10. Populate measurements
+    populateMeasurements(wf);
+
+    // 11. Store current params for caliper calculations
+    _lastPxPerSecond = pxPerSecond;
+    _lastPxPerMv = pxPerMv;
+    _lastSpeed = speed;
+    _lastGain = gain;
+
+    // 12. Redraw caliper overlay (preserves existing calipers)
+    drawCaliperOverlay();
+}
+
+function drawGrid(ctx, x0, y0, w, h) {
+    ctx.strokeStyle = GRID_COLOR_MINOR;
+    ctx.lineWidth = 0.4;
+    ctx.beginPath();
+    for (var x = x0; x <= x0 + w + 0.5; x += SMALL_BOX) {
+        ctx.moveTo(Math.round(x) + 0.5, y0);
+        ctx.lineTo(Math.round(x) + 0.5, y0 + h);
+    }
+    for (var y = y0; y <= y0 + h + 0.5; y += SMALL_BOX) {
+        ctx.moveTo(x0, Math.round(y) + 0.5);
+        ctx.lineTo(x0 + w, Math.round(y) + 0.5);
+    }
+    ctx.stroke();
+
+    ctx.strokeStyle = GRID_COLOR_MAJOR;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    for (var x = x0; x <= x0 + w + 0.5; x += BIG_BOX) {
+        ctx.moveTo(Math.round(x) + 0.5, y0);
+        ctx.lineTo(Math.round(x) + 0.5, y0 + h);
+    }
+    for (var y = y0; y <= y0 + h + 0.5; y += BIG_BOX) {
+        ctx.moveTo(x0, Math.round(y) + 0.5);
+        ctx.lineTo(x0 + w, Math.round(y) + 0.5);
+    }
+    ctx.stroke();
+}
+
+function drawCalibrationMark(ctx, x, baselineY, pxPerMv) {
+    var pulseH = pxPerMv;
+    var pulseW = BIG_BOX;
+    ctx.strokeStyle = WAVE_COLOR;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, baselineY);
+    ctx.lineTo(x, baselineY - pulseH);
+    ctx.lineTo(x + pulseW, baselineY - pulseH);
+    ctx.lineTo(x + pulseW, baselineY);
+    ctx.stroke();
+
+    ctx.fillStyle = LABEL_COLOR;
+    ctx.font = '9px Kanit';
+    ctx.textAlign = 'center';
+    ctx.fillText('1mV', x + pulseW / 2, baselineY + 12);
+    ctx.textAlign = 'left';
+}
+
+function drawLeadWaveform(ctx, data, fs, startSample, endSample, x0, y0, pxPerSecond, pxPerMv) {
+    if (!data || data.length === 0) return;
+    var actualStart = Math.max(0, Math.floor(startSample));
+    var actualEnd   = Math.min(data.length, Math.ceil(endSample));
+
+    ctx.strokeStyle = WAVE_COLOR;
+    ctx.lineWidth = 1.0;
+    ctx.beginPath();
+
+    var firstPoint = true;
+    var totalPoints = actualEnd - actualStart;
+    var step = Math.max(1, Math.floor(totalPoints / 3000));
+
+    for (var i = actualStart; i < actualEnd; i += step) {
+        var t  = (i - startSample) / fs;
+        var px = x0 + t * pxPerSecond;
+        var py = y0 - data[i] * pxPerMv;
+        if (firstPoint) { ctx.moveTo(px, py); firstPoint = false; }
+        else { ctx.lineTo(px, py); }
+    }
+    ctx.stroke();
+}
+
+function drawLeadLabel(ctx, name, x, y) {
+    ctx.fillStyle = WAVE_COLOR;
+    ctx.font = 'bold 11px Kanit';
+    ctx.fillText(name, x, y);
+}
+
+function drawLayout3x4(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration) {
+    var colDuration = duration / 4;
+    var samplesPerCol = Math.floor(colDuration * fs);
+
+    for (var row = 0; row < 3; row++) {
+        for (var col = 0; col < 4; col++) {
+            var leadName = LEAD_GROUPS_3x4[row][col];
+            var data = leads[leadName];
+            if (!data) continue;
+            var x0 = marginLeft + col * colWidth;
+            var y0 = marginTop + row * rowHeight + rowHeight / 2;
+            var startSample = col * samplesPerCol;
+            var endSample   = startSample + samplesPerCol;
+            drawLeadLabel(ctx, leadName, x0 + 3, marginTop + row * rowHeight + 13);
+            drawLeadWaveform(ctx, data, fs, startSample, endSample, x0, y0, pxPerSecond, pxPerMv);
+        }
+    }
+
+    // Rhythm strip (Lead II, full 10s)
+    var rY = marginTop + 3 * rowHeight + rowHeight / 2;
+    drawLeadLabel(ctx, 'II (Rhythm)', marginLeft + 3, marginTop + 3 * rowHeight + 13);
+    if (leads['II']) {
+        drawLeadWaveform(ctx, leads['II'], fs, 0, leads['II'].length, marginLeft, rY, pxPerSecond, pxPerMv);
+    }
+}
+
+function drawLayout6x2(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration) {
+    var colDuration = duration / 2;
+    var samplesPerCol = Math.floor(colDuration * fs);
+
+    for (var row = 0; row < 6; row++) {
+        for (var col = 0; col < 2; col++) {
+            var leadName = LEAD_ORDER_6x2[row][col];
+            var data = leads[leadName];
+            if (!data) continue;
+            var x0 = marginLeft + col * colWidth;
+            var y0 = marginTop + row * rowHeight + rowHeight / 2;
+            drawLeadLabel(ctx, leadName, x0 + 3, marginTop + row * rowHeight + 13);
+            drawLeadWaveform(ctx, data, fs, col * samplesPerCol, (col + 1) * samplesPerCol, x0, y0, pxPerSecond, pxPerMv);
+        }
+    }
+}
+
+function drawLayout12x1(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration) {
+    for (var row = 0; row < 12; row++) {
+        var leadName = LEAD_ORDER_12x1[row];
+        var data = leads[leadName];
+        if (!data) continue;
+        var y0 = marginTop + row * rowHeight + rowHeight / 2;
+        drawLeadLabel(ctx, leadName, marginLeft + 3, marginTop + row * rowHeight + 13);
+        drawLeadWaveform(ctx, data, fs, 0, data.length, marginLeft, y0, pxPerSecond, pxPerMv);
+    }
+}
+
+function populateMeasurements(wf) {
+    var grid = document.getElementById('measurementsGrid');
+    if (!grid) return;
+
+    var leads = wf.leads;
+    var fs = wf.samplingFrequency;
+    var data = leads['II'] || leads['I'];
+    if (!data) return;
+
+    var peaks = findRPeaks(data, fs);
+    var hr = '--', rrInterval = '--';
+
+    if (peaks.length >= 2) {
+        var rrArr = [];
+        for (var i = 1; i < peaks.length; i++) {
+            rrArr.push((peaks[i] - peaks[i-1]) / fs * 1000);
+        }
+        var avgRR = rrArr.reduce(function(a,b){return a+b;}, 0) / rrArr.length;
+        hr = Math.round(60000 / avgRR);
+        rrInterval = Math.round(avgRR);
+    }
+
+    var annotations = ECG_DATA.annotations || [];
+    var measMap = {};
+    for (var i = 0; i < annotations.length; i++) {
+        var ann = annotations[i];
+        if (ann.value && ann.concept) {
+            measMap[ann.concept] = {value: ann.value, unit: ann.unit || ''};
+        }
+    }
+
+    // Update measurement strip
+    var hrVal = measMap['Heart Rate'] ? measMap['Heart Rate'].value : hr;
+    var prVal = measMap['PR Interval'] ? measMap['PR Interval'].value : '--';
+    var qrsVal = measMap['QRS Duration'] ? measMap['QRS Duration'].value : '--';
+    var qtVal = measMap['QT Interval'] ? measMap['QT Interval'].value : '--';
+    var qtcVal = measMap['QTc Interval'] ? measMap['QTc Interval'].value : '--';
+    var pAxisVal = measMap['P Axis'] ? measMap['P Axis'].value : '--';
+    var qrsAxisVal = measMap['QRS Axis'] ? measMap['QRS Axis'].value : '--';
+    var tAxisVal = measMap['T Axis'] ? measMap['T Axis'].value : '--';
+    var rrVal = measMap['RR Interval'] ? measMap['RR Interval'].value : rrInterval;
+
+    document.getElementById('measHR').textContent = hrVal;
+    document.getElementById('measPR').textContent = prVal;
+    document.getElementById('measQRS').textContent = qrsVal;
+    document.getElementById('measQT').textContent = qtVal;
+    document.getElementById('measQTc').textContent = qtcVal;
+    document.getElementById('measPAxis').textContent = pAxisVal;
+    document.getElementById('measQRSAxis').textContent = qrsAxisVal;
+    document.getElementById('measTAxis').textContent = tAxisVal;
+    document.getElementById('measRR').textContent = rrVal;
+
+    // Measurement grid cards
+    var items = [
+        {label:'Heart Rate', val: hrVal, unit:'bpm', color:'var(--apple-red)'},
+        {label:'R-R Interval', val: rrVal, unit:'ms'},
+        {label:'PR Interval', val: prVal, unit:'ms'},
+        {label:'QRS Duration', val: qrsVal, unit:'ms'},
+        {label:'QT Interval', val: qtVal, unit:'ms'},
+        {label:'QTc', val: qtcVal, unit:'ms'},
+        {label:'P Axis', val: pAxisVal, unit:'°'},
+        {label:'QRS Axis', val: qrsAxisVal, unit:'°'},
+        {label:'T Axis', val: tAxisVal, unit:'°'},
+        {label:'Sampling', val: wf.samplingFrequency, unit:'Hz'},
+        {label:'Duration', val: wf.durationSeconds.toFixed(1), unit:'sec'},
+    ];
+
+    var html = '';
+    for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        var style = it.color ? ' style="color:' + it.color + ';"' : '';
+        html += '<div class="meas-card"><div class="meas-label">' + it.label + '</div>';
+        html += '<div class="meas-value"' + style + '>' + it.val + '</div>';
+        html += '<div class="meas-unit">' + it.unit + '</div></div>';
+    }
+    grid.innerHTML = html;
+}
+
+function findRPeaks(data, fs) {
+    var peaks = [];
+    var windowSize = Math.floor(fs * 0.2);
+    var maxVal = 0;
+    for (var i = 0; i < data.length; i++) {
+        if (Math.abs(data[i]) > maxVal) maxVal = Math.abs(data[i]);
+    }
+    var threshold = maxVal * 0.4;
+    var i = windowSize;
+    while (i < data.length - windowSize) {
+        if (data[i] > threshold) {
+            var peakIdx = i, peakVal = data[i];
+            for (var j = i; j < Math.min(i + windowSize, data.length); j++) {
+                if (data[j] > peakVal) { peakVal = data[j]; peakIdx = j; }
+            }
+            peaks.push(peakIdx);
+            i = peakIdx + Math.floor(fs * 0.3);
+        } else { i++; }
+    }
+    return peaks;
+}
+
+// ===== Zoom functions =====
+function zoomIn() {
+    if (zoomIndex < ZOOM_STEPS.length - 1) { zoomIndex++; redrawECG(); }
+}
+function zoomOut() {
+    if (zoomIndex > 0) { zoomIndex--; redrawECG(); }
+}
+function zoomReset() {
+    zoomIndex = 2;
+    redrawECG();
+}
+function zoomFitA4() {
+    var container = document.getElementById('ecgCanvasContainer');
+    var containerW = container.clientWidth - 32;
+    var baseCanvasW = 250 * BASE_PX_PER_MM + 80;
+    var targetZoom = containerW / baseCanvasW;
+    var bestIdx = 0, bestDiff = 999;
+    for (var i = 0; i < ZOOM_STEPS.length; i++) {
+        var diff = Math.abs(ZOOM_STEPS[i] - targetZoom);
+        if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+    }
+    zoomIndex = bestIdx;
+    redrawECG();
+}
+
+// ===== Fullscreen =====
+var isFullscreen = false;
+function toggleFullscreen() {
+    var wrapper = document.getElementById('ecgViewerWrapper');
+    var btn = document.getElementById('btnFullscreen');
+    isFullscreen = !isFullscreen;
+    if (isFullscreen) {
+        wrapper.classList.add('fullscreen-mode');
+        btn.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
+        document.body.style.overflow = 'hidden';
+    } else {
+        wrapper.classList.remove('fullscreen-mode');
+        btn.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
+        document.body.style.overflow = '';
+    }
+    setTimeout(redrawECG, 50);
+}
+
+// ===== Print =====
+function printECG() { window.print(); }
+
+// ===== Keyboard shortcuts =====
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoomIn(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); zoomOut(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); zoomReset(); }
+    if (e.key === 'Escape') {
+        if (caliperMode) { toggleCaliperMode(null); }
+        else if (isFullscreen) { toggleFullscreen(); }
+    }
+    if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); }
+    // Caliper shortcuts
+    if (e.key === 'c' || e.key === 'C') { if (!e.ctrlKey && !e.metaKey) toggleCaliperMode('h'); }
+    if (e.key === 'v' || e.key === 'V') { if (!e.ctrlKey && !e.metaKey) toggleCaliperMode('v'); }
+    if (e.key === 'x' || e.key === 'X') { if (!e.ctrlKey && !e.metaKey) clearCalipers(); }
+});
+
+// ============================================================
+// ===== CALIPER TOOL =========================================
+// ============================================================
+//
+// Modes:
+//   'h' = horizontal caliper → measures time (ms) + calculates HR (bpm)
+//   'v' = vertical caliper   → measures amplitude (mV)
+//   null = caliper off
+//
+// Each caliper stores: { mode, x1, y1, x2, y2 }
+//   h-caliper: two vertical lines at x1,x2 spanning full grid height
+//   v-caliper: two horizontal lines at y1,y2 spanning full grid width
+
+var caliperMode = null;       // null | 'h' | 'v'
+var caliperState = 'idle';    // 'idle' | 'placing'  (first click done)
+var caliperStart = null;      // {x, y} canvas coords of first click
+var calipers = [];             // completed calipers
+var caliperPreview = null;     // {x, y} current mouse pos during placement
+
+// Current ECG layout params (updated in redrawECG)
+var _lastPxPerSecond = 100;
+var _lastPxPerMv = 40;
+var _lastSpeed = 25;
+var _lastGain = 10;
+
+function toggleCaliperMode(mode) {
+    var container = document.getElementById('ecgCanvasContainer');
+    var btnH = document.getElementById('btnCaliperH');
+    var btnV = document.getElementById('btnCaliperV');
+    var infoBar = document.getElementById('caliperInfoBar');
+
+    if (caliperMode === mode || mode === null) {
+        // Turn off
+        caliperMode = null;
+        caliperState = 'idle';
+        caliperStart = null;
+        caliperPreview = null;
+        container.classList.remove('caliper-active', 'caliper-h', 'caliper-v');
+        btnH.classList.remove('caliper-mode-active');
+        btnV.classList.remove('caliper-mode-active');
+        infoBar.classList.remove('visible');
+        drawCaliperOverlay();
+        return;
+    }
+
+    caliperMode = mode;
+    caliperState = 'idle';
+    caliperStart = null;
+    caliperPreview = null;
+
+    container.classList.add('caliper-active');
+    container.classList.remove('caliper-h', 'caliper-v');
+    container.classList.add(mode === 'h' ? 'caliper-h' : 'caliper-v');
+
+    btnH.classList.toggle('caliper-mode-active', mode === 'h');
+    btnV.classList.toggle('caliper-mode-active', mode === 'v');
+
+    // Info bar
+    infoBar.classList.add('visible');
+    var badge = document.getElementById('caliperModeBadge');
+    if (mode === 'h') {
+        badge.innerHTML = '<i class="bi bi-arrows-expand"></i> TIME';
+    } else {
+        badge.innerHTML = '<i class="bi bi-arrows-collapse"></i> AMP';
+    }
+    document.getElementById('caliperHint').textContent = 'Click on ECG to place first marker';
+    document.getElementById('caliperLiveReading').textContent = '';
+
+    drawCaliperOverlay();
+}
+
+function clearCalipers() {
+    calipers = [];
+    caliperState = 'idle';
+    caliperStart = null;
+    caliperPreview = null;
+    document.getElementById('caliperLiveReading').textContent = '';
+    document.getElementById('caliperHint').textContent = caliperMode ?
+        'Click on ECG to place first marker' : '';
+    drawCaliperOverlay();
+}
+
+function getCanvasCoords(e) {
+    var overlay = document.getElementById('caliperOverlay');
+    var rect = overlay.getBoundingClientRect();
+    return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+    };
+}
+
+function initCaliperEvents() {
+    var overlay = document.getElementById('caliperOverlay');
+
+    overlay.addEventListener('mousedown', function(e) {
+        if (!caliperMode) return;
+        e.preventDefault();
+        var pos = getCanvasCoords(e);
+
+        if (caliperState === 'idle') {
+            // Place first marker
+            caliperStart = pos;
+            caliperState = 'placing';
+            document.getElementById('caliperHint').textContent =
+                'Click again to place second marker';
+        } else if (caliperState === 'placing') {
+            // Place second marker → create caliper
+            var cal = {
+                mode: caliperMode,
+                x1: caliperStart.x, y1: caliperStart.y,
+                x2: pos.x, y2: pos.y
+            };
+            calipers.push(cal);
+            caliperState = 'idle';
+            caliperStart = null;
+            caliperPreview = null;
+            document.getElementById('caliperHint').textContent =
+                'Click on ECG to place first marker';
+            // Keep live reading of last placed caliper
+            var reading = calcCaliperReading(cal);
+            document.getElementById('caliperLiveReading').textContent = reading;
+            drawCaliperOverlay();
+        }
+    });
+
+    overlay.addEventListener('mousemove', function(e) {
+        if (!caliperMode) return;
+        caliperPreview = getCanvasCoords(e);
+
+        if (caliperState === 'placing') {
+            // Live reading while dragging
+            var tempCal = {
+                mode: caliperMode,
+                x1: caliperStart.x, y1: caliperStart.y,
+                x2: caliperPreview.x, y2: caliperPreview.y
+            };
+            var reading = calcCaliperReading(tempCal);
+            document.getElementById('caliperLiveReading').textContent = reading;
+        }
+
+        drawCaliperOverlay();
+    });
+
+    overlay.addEventListener('mouseleave', function(e) {
+        caliperPreview = null;
+        drawCaliperOverlay();
+    });
+
+    // Right-click to remove last caliper
+    overlay.addEventListener('contextmenu', function(e) {
+        if (!caliperMode) return;
+        e.preventDefault();
+        if (caliperState === 'placing') {
+            // Cancel current placement
+            caliperState = 'idle';
+            caliperStart = null;
+            caliperPreview = null;
+            document.getElementById('caliperHint').textContent =
+                'Click on ECG to place first marker';
+            document.getElementById('caliperLiveReading').textContent = '';
+        } else if (calipers.length > 0) {
+            // Remove last caliper
+            calipers.pop();
+        }
+        drawCaliperOverlay();
+    });
+}
+
+function calcCaliperReading(cal) {
+    if (cal.mode === 'h') {
+        // Horizontal = time measurement
+        var deltaPx = Math.abs(cal.x2 - cal.x1);
+        var deltaMs = (deltaPx / _lastPxPerSecond) * 1000;
+        var text = deltaMs.toFixed(0) + ' ms';
+        if (deltaMs > 0) {
+            var bpm = Math.round(60000 / deltaMs);
+            text += '  |  ' + bpm + ' bpm';
+        }
+        // Also show in seconds if > 1000ms
+        if (deltaMs >= 1000) {
+            text += '  (' + (deltaMs / 1000).toFixed(2) + ' s)';
+        }
+        return text;
+    } else {
+        // Vertical = voltage measurement
+        var deltaPx = Math.abs(cal.y2 - cal.y1);
+        var deltaMv = deltaPx / _lastPxPerMv;
+        var text = deltaMv.toFixed(2) + ' mV';
+        if (deltaMv < 1) {
+            text += '  (' + (deltaMv * 1000).toFixed(0) + ' \u00B5V)';
+        }
+        return text;
+    }
+}
+
+function drawCaliperOverlay() {
+    var ecgCanvas = document.getElementById('ecgCanvas');
+    var overlay = document.getElementById('caliperOverlay');
+    var ctx = overlay.getContext('2d');
+
+    // Match overlay size to ECG canvas
+    overlay.width = ecgCanvas.width;
+    overlay.height = ecgCanvas.height;
+    overlay.style.top = ecgCanvas.offsetTop + 'px';
+    overlay.style.left = ecgCanvas.offsetLeft + 'px';
+
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+    // Draw all completed calipers
+    for (var i = 0; i < calipers.length; i++) {
+        drawSingleCaliper(ctx, calipers[i], false, i);
+    }
+
+    // Draw current placement preview
+    if (caliperMode && caliperState === 'placing' && caliperStart && caliperPreview) {
+        var tempCal = {
+            mode: caliperMode,
+            x1: caliperStart.x, y1: caliperStart.y,
+            x2: caliperPreview.x, y2: caliperPreview.y
+        };
+        drawSingleCaliper(ctx, tempCal, true, -1);
+    }
+
+    // Draw single marker if first click placed but no mouse move yet
+    if (caliperMode && caliperState === 'placing' && caliperStart && !caliperPreview) {
+        drawFirstMarker(ctx, caliperStart);
+    }
+
+    // Draw crosshair at current mouse position in idle mode
+    if (caliperMode && caliperState === 'idle' && caliperPreview) {
+        drawCrosshair(ctx, caliperPreview);
+    }
+}
+
+function drawCrosshair(ctx, pos) {
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(255, 149, 0, 0.5)';
+    ctx.lineWidth = 1;
+
+    if (caliperMode === 'h') {
+        // Vertical line
+        ctx.beginPath();
+        ctx.moveTo(pos.x, 0);
+        ctx.lineTo(pos.x, ctx.canvas.height);
+        ctx.stroke();
+    } else {
+        // Horizontal line
+        ctx.beginPath();
+        ctx.moveTo(0, pos.y);
+        ctx.lineTo(ctx.canvas.width, pos.y);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawFirstMarker(ctx, pos) {
+    var COLOR = '#ff9500';
+    ctx.save();
+    ctx.strokeStyle = COLOR;
+    ctx.lineWidth = 2;
+
+    if (caliperMode === 'h') {
+        ctx.beginPath();
+        ctx.moveTo(pos.x, 0);
+        ctx.lineTo(pos.x, ctx.canvas.height);
+        ctx.stroke();
+    } else {
+        ctx.beginPath();
+        ctx.moveTo(0, pos.y);
+        ctx.lineTo(ctx.canvas.width, pos.y);
+        ctx.stroke();
+    }
+
+    // Dot at click point
+    ctx.fillStyle = COLOR;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawSingleCaliper(ctx, cal, isPreview, index) {
+    var COLORS = ['#ff9500', '#0071e3', '#af52de', '#34c759', '#ff3b30', '#5ac8fa'];
+    var color = isPreview ? 'rgba(255, 149, 0, 0.8)' : COLORS[index % COLORS.length];
+    var alpha = isPreview ? 0.6 : 0.85;
+
+    ctx.save();
+
+    if (cal.mode === 'h') {
+        // === Horizontal caliper: two vertical lines with horizontal connector ===
+
+        // Vertical lines (full height)
+        ctx.strokeStyle = color;
+        ctx.lineWidth = isPreview ? 1.5 : 2;
+        if (isPreview) ctx.setLineDash([6, 4]);
+
+        ctx.beginPath();
+        ctx.moveTo(cal.x1, 0);
+        ctx.lineTo(cal.x1, ctx.canvas.height);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(cal.x2, 0);
+        ctx.lineTo(cal.x2, ctx.canvas.height);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+
+        // Horizontal connector with arrows
+        var midY = (cal.y1 + cal.y2) / 2;
+        var leftX = Math.min(cal.x1, cal.x2);
+        var rightX = Math.max(cal.x1, cal.x2);
+
+        // Connector line
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(leftX, midY);
+        ctx.lineTo(rightX, midY);
+        ctx.stroke();
+
+        // Arrow heads
+        var arrowSize = 6;
+        ctx.fillStyle = color;
+        // Left arrow
+        ctx.beginPath();
+        ctx.moveTo(leftX, midY);
+        ctx.lineTo(leftX + arrowSize, midY - arrowSize / 2);
+        ctx.lineTo(leftX + arrowSize, midY + arrowSize / 2);
+        ctx.closePath();
+        ctx.fill();
+        // Right arrow
+        ctx.beginPath();
+        ctx.moveTo(rightX, midY);
+        ctx.lineTo(rightX - arrowSize, midY - arrowSize / 2);
+        ctx.lineTo(rightX - arrowSize, midY + arrowSize / 2);
+        ctx.closePath();
+        ctx.fill();
+
+        // Measurement label
+        var reading = calcCaliperReading(cal);
+        var labelX = (leftX + rightX) / 2;
+        var labelY = midY - 8;
+
+        // Background for text
+        ctx.font = 'bold 12px Kanit';
+        var textW = ctx.measureText(reading).width;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.fillRect(labelX - textW / 2 - 4, labelY - 12, textW + 8, 16);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(labelX - textW / 2 - 4, labelY - 12, textW + 8, 16);
+
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.fillText(reading, labelX, labelY);
+        ctx.textAlign = 'left';
+
+    } else {
+        // === Vertical caliper: two horizontal lines with vertical connector ===
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = isPreview ? 1.5 : 2;
+        if (isPreview) ctx.setLineDash([6, 4]);
+
+        ctx.beginPath();
+        ctx.moveTo(0, cal.y1);
+        ctx.lineTo(ctx.canvas.width, cal.y1);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, cal.y2);
+        ctx.lineTo(ctx.canvas.width, cal.y2);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+
+        // Vertical connector with arrows
+        var midX = (cal.x1 + cal.x2) / 2;
+        var topY = Math.min(cal.y1, cal.y2);
+        var botY = Math.max(cal.y1, cal.y2);
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(midX, topY);
+        ctx.lineTo(midX, botY);
+        ctx.stroke();
+
+        // Arrow heads
+        var arrowSize = 6;
+        ctx.fillStyle = color;
+        // Top arrow
+        ctx.beginPath();
+        ctx.moveTo(midX, topY);
+        ctx.lineTo(midX - arrowSize / 2, topY + arrowSize);
+        ctx.lineTo(midX + arrowSize / 2, topY + arrowSize);
+        ctx.closePath();
+        ctx.fill();
+        // Bottom arrow
+        ctx.beginPath();
+        ctx.moveTo(midX, botY);
+        ctx.lineTo(midX - arrowSize / 2, botY - arrowSize);
+        ctx.lineTo(midX + arrowSize / 2, botY - arrowSize);
+        ctx.closePath();
+        ctx.fill();
+
+        // Measurement label
+        var reading = calcCaliperReading(cal);
+        var labelX = midX + 10;
+        var labelY = (topY + botY) / 2;
+
+        ctx.font = 'bold 12px Kanit';
+        var textW = ctx.measureText(reading).width;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.fillRect(labelX - 2, labelY - 8, textW + 6, 16);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(labelX - 2, labelY - 8, textW + 6, 16);
+
+        ctx.fillStyle = color;
+        ctx.textAlign = 'left';
+        ctx.fillText(reading, labelX + 1, labelY + 4);
+    }
+
+    // Dots at anchor points
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(cal.x1, cal.y1, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cal.x2, cal.y2, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+// ===== Statement Library =====
+function initStatementLibrary() {
+    var container = document.getElementById('stmtCategories');
+    if (!container) return;
+
+    var html = '';
+    var categories = Object.keys(STATEMENT_LIBRARY);
+    for (var c = 0; c < categories.length; c++) {
+        var cat = categories[c];
+        var items = STATEMENT_LIBRARY[cat];
+        html += '<div class="stmt-category" data-category="' + cat + '">';
+        html += '<div class="stmt-category-header" onclick="toggleCategory(this)">';
+        html += '<span><i class="bi bi-chevron-right me-2"></i>' + cat + '</span>';
+        html += '<span style="font-size:0.75rem;color:var(--apple-text-secondary);">' + items.length + '</span>';
+        html += '</div>';
+        html += '<div class="stmt-category-items">';
+        for (var i = 0; i < items.length; i++) {
+            html += '<div class="stmt-item" onclick="addStatement(this)" data-stmt="' + escapeAttr(items[i]) + '">' + items[i] + '</div>';
+        }
+        html += '</div></div>';
+    }
+    container.innerHTML = html;
+}
+
+function escapeAttr(str) {
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function toggleCategory(header) {
+    var category = header.parentElement;
+    category.classList.toggle('open');
+}
+
+function addStatement(el) {
+    var stmt = el.dataset.stmt;
+    var textarea = document.getElementById('diagnosisText');
+    var current = textarea.value.trim();
+
+    // Toggle selected
+    el.classList.toggle('selected');
+
+    if (el.classList.contains('selected')) {
+        // Add statement
+        if (current) {
+            textarea.value = current + '\n' + stmt;
+        } else {
+            textarea.value = stmt;
+        }
+    } else {
+        // Remove statement
+        var lines = current.split('\n');
+        var filtered = lines.filter(function(line) { return line.trim() !== stmt; });
+        textarea.value = filtered.join('\n');
+    }
+}
+
+function filterStatements() {
+    var query = document.getElementById('stmtSearch').value.toLowerCase().trim();
+    var categories = document.querySelectorAll('.stmt-category');
+
+    categories.forEach(function(cat) {
+        var items = cat.querySelectorAll('.stmt-item');
+        var anyVisible = false;
+
+        items.forEach(function(item) {
+            var text = item.textContent.toLowerCase();
+            if (!query || text.indexOf(query) !== -1) {
+                item.style.display = '';
+                anyVisible = true;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        cat.style.display = anyVisible ? '' : 'none';
+        if (query && anyVisible) {
+            cat.classList.add('open');
+        }
+    });
+}
+
+// ===== Diagnosis Save/Submit =====
+function saveDiagnosis(action) {
+    var diagnosis = document.getElementById('diagnosisText').value.trim();
+    var diagnosedBy = document.getElementById('diagnosedBy').value.trim();
+
+    var data = {
+        diagnosis: diagnosis,
+        diagnosed_by: diagnosedBy,
+        action: action
+    };
+
+    fetch('{{ url_for("results.save_diagnosis", result_id=result.id) }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(json) {
+        if (json.success) {
+            var msg = action === 'save' ?
+                I18N[currentLang].saved_success :
+                I18N[currentLang].submitted_success;
+            showToast(msg, 'success');
+
+            if (action === 'submit_next' && json.next_id) {
+                window.location.href = '/results/' + json.next_id;
+            } else if (action === 'submit' || action === 'submit_next') {
+                // Reload to update status badge
+                setTimeout(function() { location.reload(); }, 800);
+            }
+        } else {
+            showToast(json.error || I18N[currentLang].save_error, 'error');
+        }
+    })
+    .catch(function(err) {
+        showToast(I18N[currentLang].save_error, 'error');
+    });
+}
+
+function showToast(message, type) {
+    var container = document.getElementById('toastContainer');
+    var icon = type === 'success' ? 'bi-check-circle' : 'bi-exclamation-circle';
+    var bgColor = type === 'success' ? 'var(--apple-green)' : 'var(--apple-red)';
+
+    var toast = document.createElement('div');
+    toast.style.cssText = 'background:' + bgColor + ';color:#fff;padding:0.75rem 1.25rem;border-radius:var(--apple-radius-sm);margin-bottom:0.5rem;font-size:0.9rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:flex;align-items:center;gap:0.5rem;animation:slideIn 0.3s ease;';
+    toast.innerHTML = '<i class="bi ' + icon + '"></i>' + message;
+    container.appendChild(toast);
+
+    setTimeout(function() {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(function() { toast.remove(); }, 300);
+    }, 3000);
+}
+
+// ===== Init =====
+// ===== DICOM Tag Viewer =====
+var dicomTagsLoaded = false;
+var allDicomTags = [];
+
+function toggleDicomTags() {
+    var panel = document.getElementById('dicomDetailsPanel');
+    var chevron = document.getElementById('dicomChevron');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        chevron.className = 'bi bi-chevron-up';
+        if (!dicomTagsLoaded) {
+            loadDicomTags();
+        }
+    } else {
+        panel.style.display = 'none';
+        chevron.className = 'bi bi-chevron-down';
+    }
+}
+
+function loadDicomTags() {
+    fetch('/results/dicom-tags/{{ result.id }}')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) {
+                document.getElementById('dicomTagBody').innerHTML =
+                    '<tr><td colspan="4" class="text-center" style="padding:2rem;color:var(--apple-red);">' + data.error + '</td></tr>';
+                return;
+            }
+            allDicomTags = data.tags;
+            dicomTagsLoaded = true;
+            document.getElementById('dicomTagCount').textContent = allDicomTags.length + ' tags';
+            renderDicomTags(allDicomTags);
+        })
+        .catch(function(err) {
+            document.getElementById('dicomTagBody').innerHTML =
+                '<tr><td colspan="4" class="text-center" style="padding:2rem;color:var(--apple-red);">Error loading tags</td></tr>';
+        });
+}
+
+function renderDicomTags(tags) {
+    var tbody = document.getElementById('dicomTagBody');
+    if (tags.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding:2rem;color:var(--apple-text-secondary);">No matching tags</td></tr>';
+        return;
+    }
+    var html = '';
+    for (var i = 0; i < tags.length; i++) {
+        var t = tags[i];
+        var isSeqItem = t.tag === '';
+        var depth = t.depth || 0;
+        var rowBg = depth > 0 ? 'background:rgba(0,113,227,' + (0.02 * Math.min(depth, 3)) + ');' : '';
+        var tagStyle = 'font-family:monospace;color:var(--apple-blue);font-weight:500;white-space:nowrap;';
+        var vrStyle = 'font-family:monospace;color:var(--apple-purple);text-align:center;';
+        var nameStyle = 'color:var(--apple-text);' + (isSeqItem ? 'font-weight:500;color:var(--apple-text-secondary);font-style:italic;' : '');
+        var valStyle = 'font-family:monospace;word-break:break-all;color:var(--apple-text);';
+
+        html += '<tr style="' + rowBg + '">';
+        html += '<td style="padding:0.35rem 0.75rem;border-bottom:1px solid var(--apple-bg-secondary);' + tagStyle + '">' + escHtml(t.tag) + '</td>';
+        html += '<td style="padding:0.35rem 0.4rem;border-bottom:1px solid var(--apple-bg-secondary);' + vrStyle + '">' + escHtml(t.vr) + '</td>';
+        html += '<td style="padding:0.35rem 0.75rem;border-bottom:1px solid var(--apple-bg-secondary);' + nameStyle + '">' + escHtml(t.name) + '</td>';
+        html += '<td style="padding:0.35rem 0.75rem;border-bottom:1px solid var(--apple-bg-secondary);' + valStyle + '">' + escHtml(t.value) + '</td>';
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
+function filterDicomTags() {
+    var query = document.getElementById('dicomTagSearch').value.trim().toLowerCase();
+    if (!query) {
+        renderDicomTags(allDicomTags);
+        document.getElementById('dicomFilterInfo').textContent = '';
+        return;
+    }
+    var filtered = [];
+    for (var i = 0; i < allDicomTags.length; i++) {
+        var t = allDicomTags[i];
+        var searchStr = (t.tag + ' ' + t.vr + ' ' + t.name + ' ' + t.value).toLowerCase();
+        if (searchStr.indexOf(query) !== -1) {
+            filtered.push(t);
+        }
+    }
+    renderDicomTags(filtered);
+    document.getElementById('dicomFilterInfo').textContent =
+        'Showing ' + filtered.length + ' of ' + allDicomTags.length + ' tags';
+}
+
+function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===== Report Comparison Tab =====
+var comparisonLoaded = false;
+
+function initComparisonTab() {
+    var tabBtn = document.getElementById('tab-btn-comparison');
+    var waveformBtn = document.getElementById('tab-btn-waveform');
+    if (!tabBtn) return;
+
+    tabBtn.addEventListener('shown.bs.tab', function() {
+        if (!comparisonLoaded) {
+            loadComparison();
+        }
+    });
+
+    // Re-render ECG canvas when switching back to Waveform tab
+    waveformBtn.addEventListener('shown.bs.tab', function() {
+        setTimeout(redrawECG, 100);
+    });
+}
+
+function loadComparison() {
+    fetch('/results/' + RESULT_ID + '/compare')
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+            var container = document.getElementById('comparisonContent');
+            container.innerHTML = html;
+            comparisonLoaded = true;
+
+            // innerHTML does NOT execute <script> tags, so we must do it manually
+            var scripts = container.querySelectorAll('script:not([type])');
+            scripts.forEach(function(oldScript) {
+                var newScript = document.createElement('script');
+                newScript.textContent = oldScript.textContent;
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+        })
+        .catch(function(err) {
+            document.getElementById('comparisonContent').innerHTML =
+                '<div class="text-center py-5"><i class="bi bi-exclamation-circle" style="font-size:2rem;color:var(--apple-red);"></i>' +
+                '<p style="color:var(--apple-text-secondary);margin-top:1rem;">Error loading comparison data</p></div>';
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    redrawECG();
+    initStatementLibrary();
+    initCaliperEvents();
+    initComparisonTab();
+    setLanguage(currentLang);
+});
+</script>
+{% endif %}
+{% endblock %}

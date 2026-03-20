@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}ECG Results - SMD ECG Management{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 data-i18n="rs_title">ECG Results</h1>
+        <p data-i18n="rs_subtitle">ECG results received from R700 device</p>
+    </div>
+    <a href="{{ url_for('results.import_dicom') }}" class="btn btn-apple">
+        <i class="bi bi-download me-1"></i><span data-i18n="rs_import">Import DICOM</span>
+    </a>
+</div>
+
+<div class="apple-table-wrapper">
+    <table id="resultsTable" class="table" style="width: 100%;">
+        <thead>
+            <tr>
+                <th>HN</th>
+                <th data-i18n="rs_th_patient">Patient Name</th>
+                <th style="width:45px;" data-i18n="rs_th_sex">Sex</th>
+                <th style="width:50px;" data-i18n="rs_th_age">Age</th>
+                <th data-i18n="rs_th_procedure">Procedure</th>
+                <th data-i18n="rs_th_received">Received Date</th>
+                <th data-i18n="rs_th_physician">Physician</th>
+                <th data-i18n="rs_th_status">Status</th>
+                <th>Accession No.</th>
+                <th style="width:60px;" data-i18n="rs_th_actions">Actions</th>
+            </tr>
+        </thead>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dataTables_length select { padding-right: 2rem !important; }
+    #resultsTable { white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var RS_I18N = {
+    en: {
+        rs_title: 'ECG Results',
+        rs_subtitle: 'ECG results received from R700 device',
+        rs_import: 'Import DICOM',
+        rs_th_patient: 'Patient Name',
+        rs_th_sex: 'Sex',
+        rs_th_age: 'Age',
+        rs_th_procedure: 'Procedure',
+        rs_th_received: 'Received Date',
+        rs_th_physician: 'Physician',
+        rs_th_status: 'Status',
+        rs_th_actions: 'Actions',
+        rs_view: 'View Details',
+        dt_search: 'Search:',
+        dt_lengthMenu: 'Show _MENU_ entries',
+        dt_info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+        dt_infoEmpty: 'No results available',
+        dt_infoFiltered: '(filtered from _MAX_ entries)',
+        dt_zeroRecords: 'No matching records found',
+        dt_first: 'First', dt_last: 'Last', dt_next: 'Next', dt_previous: 'Previous',
+        dt_processing: 'Loading...'
+    },
+    th: {
+        rs_title: 'ผลตรวจ ECG',
+        rs_subtitle: 'รายการผลตรวจคลื่นไฟฟ้าหัวใจที่ได้รับจากเครื่อง R700',
+        rs_import: 'นำเข้าไฟล์ DICOM',
+        rs_th_patient: 'ชื่อผู้ป่วย',
+        rs_th_sex: 'เพศ',
+        rs_th_age: 'อายุ',
+        rs_th_procedure: 'รายการตรวจ',
+        rs_th_received: 'วันที่รับ',
+        rs_th_physician: 'แพทย์ผู้ตรวจ',
+        rs_th_status: 'สถานะ',
+        rs_th_actions: 'จัดการ',
+        rs_view: 'ดูรายละเอียด',
+        dt_search: 'ค้นหา:',
+        dt_lengthMenu: 'แสดง _MENU_ รายการ',
+        dt_info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ',
+        dt_infoEmpty: 'ไม่มีผลตรวจ',
+        dt_infoFiltered: '(กรองจาก _MAX_ รายการ)',
+        dt_zeroRecords: 'ไม่พบข้อมูลที่ค้นหา',
+        dt_first: 'หน้าแรก', dt_last: 'หน้าสุดท้าย', dt_next: 'ถัดไป', dt_previous: 'ก่อนหน้า',
+        dt_processing: 'กำลังโหลด...'
+    }
+};
+
+var currentLang = localStorage.getItem('ecg_lang') || 'en';
+
+function getLang(key) {
+    return (RS_I18N[currentLang] && RS_I18N[currentLang][key]) || (RS_I18N.en[key]) || key;
+}
+
+function setLanguage(lang) {
+    currentLang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (RS_I18N[lang] && RS_I18N[lang][key]) {
+            el.textContent = RS_I18N[lang][key];
+        }
+    });
+    // Reinitialize DataTable
+    if (typeof resultsTable !== 'undefined' && resultsTable) {
+        resultsTable.destroy();
+        initResultsTable();
+    }
+}
+
+var resultsTable = null;
+
+function initResultsTable() {
+    resultsTable = $('#resultsTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: '{{ url_for("results.api_data") }}',
+        columns: [
+            { data: 'patient_id' },
+            { data: 'patient_name' },
+            {
+                data: 'sex',
+                width: '45px',
+                className: 'text-center',
+                render: function(data) {
+                    if (data === 'M') return '<i class="bi bi-gender-male" style="color:var(--apple-blue);"></i>';
+                    if (data === 'F') return '<i class="bi bi-gender-female" style="color:var(--apple-red);"></i>';
+                    return data;
+                }
+            },
+            { data: 'age', width: '50px', className: 'text-center' },
+            { data: 'procedure' },
+            { data: 'received_at' },
+            { data: 'physician' },
+            {
+                data: 'status',
+                render: function(data) {
+                    var cls = 'badge-' + data.toLowerCase();
+                    return '<span class="badge badge-apple ' + cls + '">' + data + '</span>';
+                }
+            },
+            { data: 'accession_number' },
+            {
+                data: 'id',
+                orderable: false,
+                width: '60px',
+                className: 'text-center',
+                render: function(data) {
+                    return '<a href="/results/' + data + '" class="btn btn-apple-secondary btn-apple-sm" title="' + getLang('rs_view') + '"><i class="bi bi-eye"></i></a>';
+                }
+            }
+        ],
+        order: [[5, 'desc']],
+        language: {
+            search: getLang('dt_search'),
+            lengthMenu: getLang('dt_lengthMenu'),
+            info: getLang('dt_info'),
+            infoEmpty: getLang('dt_infoEmpty'),
+            infoFiltered: getLang('dt_infoFiltered'),
+            zeroRecords: getLang('dt_zeroRecords'),
+            paginate: { first: getLang('dt_first'), last: getLang('dt_last'), next: getLang('dt_next'), previous: getLang('dt_previous') },
+            processing: getLang('dt_processing')
+        },
+        pageLength: 25,
+        dom: '<"d-flex justify-content-between align-items-center mb-3"lf>rtip'
+    });
+}
+
+$(document).ready(function() {
+    initResultsTable();
+});
+</script>
+{% endblock %}

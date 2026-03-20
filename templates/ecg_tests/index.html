@@ -1,0 +1,1215 @@
+{% extends "base.html" %}
+{% block title %}ECG Tests - SMD ECG Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ecg-test-layout {
+        display: flex;
+        gap: 1.25rem;
+        min-height: calc(100vh - 160px);
+    }
+
+    /* ---- Filter Toggle Button ---- */
+    .filter-toggle-btn {
+        background: var(--apple-bg);
+        border: 1px solid var(--apple-border);
+        border-radius: var(--apple-radius-sm);
+        padding: 0.4rem 0.75rem;
+        font-size: 0.82rem;
+        font-weight: 400;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        transition: var(--apple-transition);
+        color: var(--apple-text-secondary);
+    }
+    .filter-toggle-btn:hover {
+        background: var(--apple-bg-secondary);
+        color: var(--apple-text);
+    }
+    .filter-toggle-btn.active {
+        background: var(--apple-blue);
+        color: #fff;
+        border-color: var(--apple-blue);
+    }
+
+    /* ---- Filter Sidebar ---- */
+    .filter-sidebar {
+        width: 240px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        transition: width 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
+        overflow: hidden;
+    }
+    .filter-sidebar.collapsed {
+        width: 0;
+        opacity: 0;
+        margin-left: -1.25rem;
+        pointer-events: none;
+    }
+    .filter-card {
+        background: var(--apple-bg);
+        border-radius: var(--apple-radius);
+        box-shadow: var(--apple-card-shadow);
+        padding: 1.25rem;
+    }
+    .filter-title {
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--apple-text-secondary);
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .filter-check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.3rem 0;
+        cursor: pointer;
+        font-size: 0.88rem;
+    }
+    .filter-check input[type="checkbox"] {
+        accent-color: var(--apple-blue);
+        width: 16px;
+        height: 16px;
+    }
+
+    /* ---- Main Panel ---- */
+    .main-panel {
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* ---- Stat Badges ---- */
+    .stat-pills {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .stat-pill {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: var(--apple-bg);
+        border-radius: 980px;
+        padding: 0.35rem 1rem;
+        box-shadow: var(--apple-card-shadow);
+        font-size: 0.85rem;
+    }
+    .stat-pill .stat-count {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .stat-pill.awaiting { border-left: 4px solid var(--apple-orange); }
+    .stat-pill.in-progress { border-left: 4px solid var(--apple-blue); }
+    .stat-pill.completed { border-left: 4px solid var(--apple-green); }
+    .stat-pill.total { border-left: 4px solid var(--apple-purple); }
+
+    /* ---- Action Toolbar ---- */
+    .action-toolbar {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        padding: 0.75rem 0;
+    }
+
+    /* ---- Column Visibility Dropdown ---- */
+    .col-vis-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    .col-vis-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        z-index: 1050;
+        min-width: 200px;
+        background: var(--apple-bg);
+        border: 1px solid var(--apple-border);
+        border-radius: var(--apple-radius-sm);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        padding: 0.5rem 0;
+        margin-top: 0.25rem;
+    }
+    .col-vis-dropdown.show { display: block; }
+    .col-vis-dropdown label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 1rem;
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: background 0.15s;
+        white-space: nowrap;
+    }
+    .col-vis-dropdown label:hover { background: var(--apple-bg-secondary); }
+    .col-vis-dropdown input[type="checkbox"] { accent-color: var(--apple-blue); }
+
+    /* ---- Table horizontal scroll & no-wrap ---- */
+    .apple-table-wrapper {
+        overflow-x: auto;
+    }
+    #testsTable {
+        white-space: nowrap;
+    }
+
+    /* ---- Table row selection ---- */
+    #testsTable tbody tr {
+        cursor: pointer;
+        transition: var(--apple-transition);
+    }
+    #testsTable tbody tr.selected {
+        background: rgba(0, 113, 227, 0.15) !important;
+        box-shadow: inset 3px 0 0 var(--apple-blue);
+    }
+    #testsTable tbody tr:hover {
+        background: var(--apple-bg-secondary);
+    }
+
+    /* ---- Modal form sections ---- */
+    .modal-section {
+        border: 1px solid var(--apple-bg-secondary);
+        border-radius: var(--apple-radius-sm);
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+    .modal-section-title {
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--apple-text-secondary);
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--apple-bg-secondary);
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .modal-content {
+        border-radius: var(--apple-radius) !important;
+        border: none;
+    }
+    .modal-header {
+        border-bottom: 1px solid var(--apple-bg-secondary);
+        padding: 0.75rem 1.25rem;
+    }
+    .modal-header .modal-title {
+        font-size: 0.95rem;
+    }
+    .modal-body {
+        padding: 1rem 1.25rem;
+        font-size: 0.82rem;
+    }
+    .modal-body .form-label {
+        font-size: 0.78rem;
+        margin-bottom: 0.25rem;
+    }
+    .modal-body .form-control,
+    .modal-body .form-select {
+        font-size: 0.82rem;
+        padding: 0.3rem 0.6rem;
+    }
+    /* Fix DataTable length select spacing */
+    .dataTables_length select {
+        padding-right: 2rem !important;
+    }
+    .modal-body textarea.form-control {
+        padding: 0.4rem 0.6rem;
+    }
+    .modal-body .row.g-3 {
+        --bs-gutter-y: 0.6rem;
+        --bs-gutter-x: 0.75rem;
+    }
+    .modal-section {
+        padding: 0.85rem 1rem !important;
+        margin-bottom: 0.6rem !important;
+    }
+    .modal-section-title {
+        font-size: 0.75rem !important;
+        margin-bottom: 0.6rem !important;
+        padding-bottom: 0.35rem !important;
+    }
+    .modal-footer {
+        border-top: 1px solid var(--apple-bg-secondary);
+        padding: 0.6rem 1.25rem;
+    }
+    .modal-footer .btn {
+        font-size: 0.82rem;
+        padding: 0.35rem 1rem;
+    }
+
+    /* ---- Patient lookup indicator ---- */
+    .hn-status {
+        font-size: 0.78rem;
+        margin-top: 0.25rem;
+    }
+    .hn-status.found { color: var(--apple-green); }
+    .hn-status.not-found { color: var(--apple-text-secondary); }
+
+    @media (max-width: 992px) {
+        .ecg-test-layout { flex-direction: column; }
+        .filter-sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; }
+        .filter-sidebar.collapsed { width: 0; height: 0; margin: 0; }
+        .filter-card { flex: 1; min-width: 200px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 data-i18n="et_title">ECG Tests</h1>
+        <p data-i18n="et_subtitle">ECG Examination Test Management</p>
+    </div>
+    <div class="stat-pills">
+        <div class="stat-pill awaiting">
+            <i class="bi bi-clock"></i>
+            <span data-i18n="et_awaiting">Awaiting</span>
+            <span class="stat-count" id="statAwaiting">{{ stats.awaiting }}</span>
+        </div>
+        <div class="stat-pill in-progress">
+            <i class="bi bi-arrow-repeat"></i>
+            <span data-i18n="et_in_progress">In Progress</span>
+            <span class="stat-count" id="statInProgress">{{ stats.in_progress }}</span>
+        </div>
+        <div class="stat-pill completed">
+            <i class="bi bi-check-circle"></i>
+            <span data-i18n="et_completed">Completed</span>
+            <span class="stat-count" id="statCompleted">{{ stats.completed }}</span>
+        </div>
+        <div class="stat-pill total">
+            <i class="bi bi-calendar-check"></i>
+            <span data-i18n="et_today">Today</span>
+            <span class="stat-count" id="statTotal">{{ stats.total_today }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="ecg-test-layout">
+    <!-- Filter Sidebar -->
+    <div class="filter-sidebar">
+        <!-- Date Filter -->
+        <div class="filter-card">
+            <div class="filter-title"><i class="bi bi-calendar3"></i> <span data-i18n="et_filter_date">Test Date</span></div>
+            <input type="date" class="form-control" id="filterDate"
+                   onchange="applyFilters()" style="font-size:0.88rem;">
+            <button class="btn btn-apple-secondary btn-apple-sm w-100 mt-2" onclick="clearDateFilter()">
+                <i class="bi bi-x-lg me-1"></i><span data-i18n="et_show_all">Show All</span>
+            </button>
+        </div>
+
+        <!-- Patient Source -->
+        <div class="filter-card">
+            <div class="filter-title"><i class="bi bi-people"></i> <span data-i18n="et_patient_type">Patient Type</span></div>
+            <label class="filter-check">
+                <input type="checkbox" value="Outpatient" class="source-filter" onchange="applyFilters()"> <span data-i18n="et_outpatient">Outpatient</span>
+            </label>
+            <label class="filter-check">
+                <input type="checkbox" value="Inpatient" class="source-filter" onchange="applyFilters()"> <span data-i18n="et_inpatient">Inpatient</span>
+            </label>
+            <label class="filter-check">
+                <input type="checkbox" value="Emergency" class="source-filter" onchange="applyFilters()"> <span data-i18n="et_emergency">Emergency</span>
+            </label>
+            <label class="filter-check">
+                <input type="checkbox" value="Health Check" class="source-filter" onchange="applyFilters()"> <span data-i18n="et_health_check">Health Check</span>
+            </label>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="filter-card">
+            <div class="filter-title"><i class="bi bi-funnel"></i> <span data-i18n="et_filter_status">Status</span></div>
+            <label class="filter-check">
+                <input type="checkbox" value="SCHEDULED" class="status-filter" onchange="applyFilters()"> <span data-i18n="et_scheduled">Scheduled</span>
+            </label>
+            <label class="filter-check">
+                <input type="checkbox" value="IN_PROGRESS" class="status-filter" onchange="applyFilters()"> <span data-i18n="et_status_in_progress">In Progress</span>
+            </label>
+            <label class="filter-check">
+                <input type="checkbox" value="COMPLETED" class="status-filter" onchange="applyFilters()"> <span data-i18n="et_status_completed">Completed</span>
+            </label>
+            <label class="filter-check">
+                <input type="checkbox" value="CANCELLED" class="status-filter" onchange="applyFilters()"> <span data-i18n="et_cancelled">Cancelled</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Main Panel -->
+    <div class="main-panel">
+        <!-- Action Toolbar -->
+        <div class="action-toolbar">
+            <button class="filter-toggle-btn active" id="btnToggleFilters" onclick="toggleFilters()" title="Toggle Filters">
+                <i class="bi bi-funnel" id="filterToggleIcon"></i>
+                <span data-i18n="et_filters">Filters</span>
+            </button>
+            <button class="btn btn-apple" onclick="openNewTestModal()">
+                <i class="bi bi-plus-lg me-1"></i>New Test
+            </button>
+            <button class="btn btn-apple-secondary" id="btnViewReport" onclick="viewReport()" disabled>
+                <i class="bi bi-file-earmark-medical me-1"></i>View Report
+            </button>
+            <button class="btn btn-apple-secondary" id="btnMarkUrgent" onclick="markUrgent()" disabled>
+                <i class="bi bi-exclamation-triangle me-1"></i>Urgent
+            </button>
+            <button class="btn btn-apple-secondary" id="btnUpdateStatus" disabled>
+                <i class="bi bi-arrow-repeat me-1"></i><span data-i18n="et_status_label">Status</span>
+                <select id="statusSelect" class="ms-1" style="border:none;background:transparent;font-size:0.85rem;outline:none;" onchange="updateSelectedStatus()">
+                    <option value="" data-i18n-opt="et_select_status">-- Select --</option>
+                    <option value="SCHEDULED">Scheduled</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                </select>
+            </button>
+            <div class="col-vis-wrapper ms-auto">
+                <button class="btn btn-apple-secondary" onclick="toggleColVisDropdown()" type="button">
+                    <i class="bi bi-layout-three-columns me-1"></i><span data-i18n="et_columns">Columns</span>
+                </button>
+                <div class="col-vis-dropdown" id="colVisDropdown" style="right:0;left:auto;"></div>
+            </div>
+        </div>
+
+        <!-- DataTable -->
+        <div class="apple-table-wrapper">
+            <table id="testsTable" class="table" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>HN</th>
+                        <th data-i18n="et_th_patient">Patient Name</th>
+                        <th style="width:45px;" data-i18n="et_th_sex">Sex</th>
+                        <th style="width:50px;" data-i18n="et_th_age">Age</th>
+                        <th data-i18n="et_th_procedure">Procedure</th>
+                        <th data-i18n="et_th_status">Status</th>
+                        <th style="width:60px;">URGENT</th>
+                        <th data-i18n="et_th_type">Type</th>
+                        <th data-i18n="et_th_physician">Physician</th>
+                        <th>Accession No.</th>
+                        <th style="width:80px;" data-i18n="et_th_actions">Actions</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- New Test Modal -->
+<div class="modal fade" id="newTestModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" style="font-weight:500;">
+                    <i class="bi bi-plus-circle me-2" style="color:var(--apple-blue);"></i><span id="modalTitleText" data-i18n="et_modal_title">Create New Test</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="newTestForm" onsubmit="submitNewTest(event)">
+                <div class="modal-body">
+                    <!-- Patient Info Section -->
+                    <div class="modal-section">
+                        <div class="modal-section-title">
+                            <i class="bi bi-person"></i> <span data-i18n="et_sec_patient">Patient Information</span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">HN <span style="color:var(--apple-red);">*</span></label>
+                                <input type="text" class="form-control" name="patient_id" id="inputHN"
+                                       required data-i18n-placeholder="et_ph_hn" placeholder="HN Number" onblur="lookupPatient()">
+                                <div class="hn-status" id="hnStatus"></div>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label" data-i18n="et_lbl_name">Full Name <span style="color:var(--apple-red);">*</span></label>
+                                <input type="text" class="form-control" name="patient_name" id="inputName"
+                                       required placeholder="LASTNAME^FIRSTNAME">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" data-i18n="et_lbl_sex">Sex</label>
+                                <select class="form-select" name="sex" id="inputSex">
+                                    <option value="M" data-i18n-opt="male">Male</option>
+                                    <option value="F" data-i18n-opt="female">Female</option>
+                                    <option value="O" data-i18n-opt="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" data-i18n="et_lbl_dob">Date of Birth</label>
+                                <input type="date" class="form-control" name="birth_date" id="inputBirthDate">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" data-i18n="et_lbl_phone">Phone</label>
+                                <input type="text" class="form-control" name="phone" placeholder="0xx-xxx-xxxx">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" data-i18n="et_lbl_bed">Bed/Room</label>
+                                <input type="text" class="form-control" name="bed_number" data-i18n-placeholder="et_ph_bed" placeholder="Bed number">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" data-i18n="et_lbl_patient_type">Patient Type</label>
+                                <select class="form-select" name="patient_source">
+                                    <option value="Outpatient">Outpatient</option>
+                                    <option value="Inpatient">Inpatient</option>
+                                    <option value="Emergency">Emergency</option>
+                                    <option value="Health Check">Health Check</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Info Section -->
+                    <div class="modal-section">
+                        <div class="modal-section-title">
+                            <i class="bi bi-clipboard2-pulse"></i> <span data-i18n="et_sec_order">Order Information</span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Accession Number</label>
+                                <input type="text" class="form-control" name="accession_number"
+                                       data-i18n-placeholder="et_ph_accession" placeholder="Auto-generated (leave blank)">
+                                <div class="form-text" style="color:var(--apple-text-secondary);font-size:0.75rem;" data-i18n="et_accession_hint">
+                                    Leave blank to auto-generate
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" data-i18n="et_lbl_procedure">Procedure</label>
+                                <input type="text" class="form-control" name="procedure_desc" list="procedureList"
+                                       value="Standard 12-lead ECG" placeholder="Procedure description">
+                                <datalist id="procedureList">
+                                    <option value="Standard 12-lead ECG">
+                                    <option value="Resting ECG">
+                                    <option value="ECG Pre-op">
+                                    <option value="ECG Screening">
+                                    <option value="ECG Chest Pain">
+                                    <option value="ECG Pre-operation">
+                                    <option value="ECG Annual Checkup">
+                                    <option value="ECG Pregnancy Screening">
+                                    <option value="ECG Post MI Follow-up">
+                                    <option value="ECG Hypertension Follow-up">
+                                </datalist>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" data-i18n="et_lbl_dept">Ordering Department</label>
+                                <select class="form-select" name="ordering_department">
+                                    <option value="" data-i18n-opt="et_select_dept">-- Select Department --</option>
+                                    <option value="OPD">OPD</option>
+                                    <option value="IPD">IPD</option>
+                                    <option value="ER">ER</option>
+                                    <option value="ICU">ICU</option>
+                                    <option value="CCU">CCU</option>
+                                    <option value="OR">OR</option>
+                                    <option value="Cardiology">Cardiology</option>
+                                    <option value="Internal Medicine">Internal Medicine</option>
+                                    <option value="Surgery">Surgery</option>
+                                    <option value="Health Check">Health Check Center</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" data-i18n="et_lbl_physician">Ordering Physician</label>
+                                <input type="text" class="form-control" name="ordering_physician"
+                                       data-i18n-placeholder="et_ph_physician" placeholder="Physician name">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Priority</label>
+                                <select class="form-select" name="priority">
+                                    <option value="ROUTINE" selected>Routine</option>
+                                    <option value="URGENT">Urgent</option>
+                                </select>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label" data-i18n="et_lbl_clinical">Clinical Information</label>
+                                <textarea class="form-control" name="clinical_info" rows="2"
+                                          data-i18n-placeholder="et_ph_clinical" placeholder="Symptoms, history, reason for examination"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Station Info Section -->
+                    <div class="modal-section">
+                        <div class="modal-section-title">
+                            <i class="bi bi-cpu"></i> <span data-i18n="et_sec_station">Station Information</span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Station AE</label>
+                                <input type="text" class="form-control" name="station_ae" value="CP150">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Station Name</label>
+                                <input type="text" class="form-control" name="station_name" value="ECG-ROOM1">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" data-i18n="et_lbl_sched_date">Scheduled Date</label>
+                                <input type="date" class="form-control" name="scheduled_date" id="inputSchedDate">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" data-i18n="et_lbl_sched_time">Scheduled Time</label>
+                                <input type="time" class="form-control" name="scheduled_time" id="inputSchedTime">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-apple-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg me-1"></i><span data-i18n="et_btn_cancel">Cancel</span>
+                    </button>
+                    <button type="submit" class="btn btn-apple" id="btnSubmitTest">
+                        <i class="bi bi-check-lg me-1"></i><span data-i18n="et_btn_create">Create Test</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--apple-radius); border: none;">
+            <div class="modal-body text-center p-4">
+                <div style="width:56px;height:56px;border-radius:50%;background:#fff0f0;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                    <i class="bi bi-trash3" style="font-size:1.5rem;color:var(--apple-red);"></i>
+                </div>
+                <h5 style="font-weight:500;" data-i18n="et_confirm_delete">Confirm Delete</h5>
+                <p style="color:var(--apple-text-secondary);font-size:0.9rem;" data-i18n="et_delete_msg">Are you sure you want to delete this test? This action cannot be undone.</p>
+                <div class="d-flex gap-2 justify-content-center mt-3">
+                    <button type="button" class="btn btn-apple-secondary" data-bs-dismiss="modal" data-i18n="et_btn_cancel">Cancel</button>
+                    <button type="button" class="btn btn-apple-danger" id="confirmDeleteBtn" data-i18n="et_btn_delete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var ET_I18N = {
+    en: {
+        et_title: 'ECG Tests',
+        et_subtitle: 'ECG Examination Test Management',
+        et_awaiting: 'Awaiting',
+        et_in_progress: 'In Progress',
+        et_completed: 'Completed',
+        et_today: 'Today',
+        et_filter_date: 'Test Date',
+        et_show_all: 'Show All',
+        et_patient_type: 'Patient Type',
+        et_outpatient: 'Outpatient',
+        et_inpatient: 'Inpatient',
+        et_emergency: 'Emergency',
+        et_health_check: 'Health Check',
+        et_filter_status: 'Status',
+        et_scheduled: 'Scheduled',
+        et_status_in_progress: 'In Progress',
+        et_status_completed: 'Completed',
+        et_cancelled: 'Cancelled',
+        et_filters: 'Filters',
+        et_status_label: 'Status',
+        et_th_patient: 'Patient Name',
+        et_th_sex: 'Sex',
+        et_th_procedure: 'Procedure',
+        et_th_age: 'Age',
+        et_th_status: 'Status',
+        et_th_type: 'Type',
+        et_th_physician: 'Physician',
+        et_modal_title: 'Create New Test',
+        et_sec_patient: 'Patient Information',
+        et_ph_hn: 'HN Number',
+        et_lbl_name: 'Full Name',
+        et_lbl_sex: 'Sex',
+        et_lbl_dob: 'Date of Birth',
+        et_lbl_phone: 'Phone',
+        et_lbl_bed: 'Bed/Room',
+        et_ph_bed: 'Bed number',
+        et_lbl_patient_type: 'Patient Type',
+        et_sec_order: 'Order Information',
+        et_ph_accession: 'Auto-generated (leave blank)',
+        et_accession_hint: 'Leave blank to auto-generate',
+        et_lbl_procedure: 'Procedure',
+        et_lbl_dept: 'Ordering Department',
+        et_lbl_physician: 'Ordering Physician',
+        et_ph_physician: 'Physician name',
+        et_lbl_clinical: 'Clinical Information',
+        et_ph_clinical: 'Symptoms, history, reason for examination',
+        et_sec_station: 'Station Information',
+        et_lbl_sched_date: 'Scheduled Date',
+        et_lbl_sched_time: 'Scheduled Time',
+        et_btn_cancel: 'Cancel',
+        et_btn_create: 'Create Test',
+        et_btn_saving: 'Saving...',
+        et_patient_found: 'Patient found in system',
+        et_new_patient: 'New patient',
+        et_urgent_marked: 'Marked as URGENT',
+        et_routine_marked: 'Marked as ROUTINE',
+        et_status_updated: 'Status updated successfully',
+        et_error: 'An error occurred',
+        et_modal_edit_title: 'Edit Test',
+        et_btn_save: 'Save Changes',
+        et_btn_delete: 'Delete',
+        et_confirm_delete: 'Confirm Delete',
+        et_delete_msg: 'Are you sure you want to delete this test? This action cannot be undone.',
+        et_th_actions: 'Actions',
+        et_deleted: 'Test deleted successfully',
+        et_updated: 'Test updated successfully',
+        // DataTable
+        dt_search: 'Search:',
+        dt_lengthMenu: 'Show _MENU_ entries',
+        dt_info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+        dt_infoEmpty: 'No test records',
+        dt_infoFiltered: '(filtered from _MAX_ entries)',
+        dt_zeroRecords: 'No matching records found',
+        dt_first: 'First', dt_last: 'Last', dt_next: 'Next', dt_previous: 'Previous',
+        dt_processing: 'Loading...',
+        // Status labels for table
+        status_SCHEDULED: 'SCHEDULED',
+        status_IN_PROGRESS: 'IN_PROGRESS',
+        status_COMPLETED: 'COMPLETED',
+        status_CANCELLED: 'CANCELLED',
+        // Source labels for table
+        src_Outpatient: 'Outpatient',
+        src_Inpatient: 'Inpatient',
+        src_Emergency: 'Emergency',
+        src_Health_Check: 'Health Check',
+        et_columns: 'Columns'
+    },
+    th: {
+        et_title: 'จัดการตรวจ ECG',
+        et_subtitle: 'ระบบจัดการรายการตรวจคลื่นไฟฟ้าหัวใจ',
+        et_awaiting: 'รอตรวจ',
+        et_in_progress: 'กำลังตรวจ',
+        et_completed: 'เสร็จสิ้น',
+        et_today: 'วันนี้',
+        et_filter_date: 'วันที่ตรวจ',
+        et_show_all: 'แสดงทั้งหมด',
+        et_patient_type: 'ประเภทผู้ป่วย',
+        et_outpatient: 'ผู้ป่วยนอก',
+        et_inpatient: 'ผู้ป่วยใน',
+        et_emergency: 'ฉุกเฉิน',
+        et_health_check: 'ตรวจสุขภาพ',
+        et_filter_status: 'สถานะ',
+        et_scheduled: 'รอตรวจ',
+        et_status_in_progress: 'กำลังตรวจ',
+        et_status_completed: 'เสร็จสิ้น',
+        et_cancelled: 'ยกเลิก',
+        et_filters: 'ตัวกรอง',
+        et_status_label: 'สถานะ',
+        et_th_patient: 'ชื่อผู้ป่วย',
+        et_th_sex: 'เพศ',
+        et_th_procedure: 'รายการตรวจ',
+        et_th_age: 'อายุ',
+        et_th_status: 'สถานะ',
+        et_th_type: 'ประเภท',
+        et_th_physician: 'ผู้ตรวจ',
+        et_modal_title: 'สร้างรายการตรวจใหม่',
+        et_sec_patient: 'ข้อมูลผู้ป่วย',
+        et_ph_hn: 'เลข HN',
+        et_lbl_name: 'ชื่อ-นามสกุล',
+        et_lbl_sex: 'เพศ',
+        et_lbl_dob: 'วันเกิด',
+        et_lbl_phone: 'เบอร์โทร',
+        et_lbl_bed: 'เตียง/ห้อง',
+        et_ph_bed: 'เลขเตียง',
+        et_lbl_patient_type: 'ประเภทผู้ป่วย',
+        et_sec_order: 'ข้อมูลการสั่งตรวจ',
+        et_ph_accession: 'อัตโนมัติ (ว่างไว้)',
+        et_accession_hint: 'เว้นว่างเพื่อสร้างอัตโนมัติ',
+        et_lbl_procedure: 'รายการตรวจ',
+        et_lbl_dept: 'แผนกที่สั่ง',
+        et_lbl_physician: 'แพทย์ผู้สั่ง',
+        et_ph_physician: 'ชื่อแพทย์ผู้สั่งตรวจ',
+        et_lbl_clinical: 'ข้อมูลทางคลินิก',
+        et_ph_clinical: 'อาการ, ประวัติ, เหตุผลในการส่งตรวจ',
+        et_sec_station: 'ข้อมูลเครื่องตรวจ',
+        et_lbl_sched_date: 'วันที่นัด',
+        et_lbl_sched_time: 'เวลานัด',
+        et_btn_cancel: 'ยกเลิก',
+        et_btn_create: 'สร้างรายการตรวจ',
+        et_btn_saving: 'กำลังบันทึก...',
+        et_patient_found: 'พบข้อมูลผู้ป่วยในระบบ',
+        et_new_patient: 'ผู้ป่วยรายใหม่',
+        et_urgent_marked: 'ทำเครื่องหมาย URGENT สำเร็จ',
+        et_routine_marked: 'เปลี่ยนเป็น ROUTINE',
+        et_status_updated: 'อัพเดทสถานะเรียบร้อย',
+        et_error: 'เกิดข้อผิดพลาด',
+        et_modal_edit_title: 'แก้ไขรายการตรวจ',
+        et_btn_save: 'บันทึกการเปลี่ยนแปลง',
+        et_btn_delete: 'ลบ',
+        et_confirm_delete: 'ยืนยันการลบ',
+        et_delete_msg: 'คุณต้องการลบรายการตรวจนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
+        et_th_actions: 'จัดการ',
+        et_deleted: 'ลบรายการตรวจเรียบร้อย',
+        et_updated: 'อัพเดทรายการตรวจเรียบร้อย',
+        // DataTable
+        dt_search: 'ค้นหา:',
+        dt_lengthMenu: 'แสดง _MENU_ รายการ',
+        dt_info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ',
+        dt_infoEmpty: 'ไม่มีรายการตรวจ',
+        dt_infoFiltered: '(กรองจาก _MAX_ รายการ)',
+        dt_zeroRecords: 'ไม่พบข้อมูลที่ค้นหา',
+        dt_first: 'หน้าแรก', dt_last: 'หน้าสุดท้าย', dt_next: 'ถัดไป', dt_previous: 'ก่อนหน้า',
+        dt_processing: 'กำลังโหลด...',
+        // Status labels for table
+        status_SCHEDULED: 'รอตรวจ',
+        status_IN_PROGRESS: 'กำลังตรวจ',
+        status_COMPLETED: 'เสร็จสิ้น',
+        status_CANCELLED: 'ยกเลิก',
+        // Source labels for table
+        src_Outpatient: 'ผู้ป่วยนอก',
+        src_Inpatient: 'ผู้ป่วยใน',
+        src_Emergency: 'ฉุกเฉิน',
+        src_Health_Check: 'ตรวจสุขภาพ',
+        et_columns: 'คอลัมน์'
+    }
+};
+
+var currentLang = localStorage.getItem('ecg_lang') || 'en';
+
+function getLang(key) {
+    return (ET_I18N[currentLang] && ET_I18N[currentLang][key]) || (ET_I18N.en[key]) || key;
+}
+
+function setLanguage(lang) {
+    currentLang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (ET_I18N[lang] && ET_I18N[lang][key]) {
+            el.textContent = ET_I18N[lang][key];
+        }
+    });
+    // Update placeholders
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n-placeholder');
+        if (ET_I18N[lang] && ET_I18N[lang][key]) {
+            el.placeholder = ET_I18N[lang][key];
+        }
+    });
+    // Reinitialize DataTable
+    if (typeof testsTable !== 'undefined' && testsTable) {
+        testsTable.destroy();
+        initTestsTable();
+    }
+}
+
+var selectedRowId = null;
+var selectedRowData = null;
+var testsTable = null;
+
+function initTestsTable() {
+    testsTable = $('#testsTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{{ url_for("ecg_tests.api_data") }}',
+            data: function(d) {
+                d.status = getCheckedValues('status-filter');
+                d.source = getCheckedValues('source-filter');
+                d.date = $('#filterDate').val();
+            }
+        },
+        columns: [
+            { data: 'patient_id' },
+            { data: 'patient_name' },
+            {
+                data: 'sex',
+                width: '45px',
+                className: 'text-center',
+                render: function(data) {
+                    if (data === 'M') return '<i class="bi bi-gender-male" style="color:var(--apple-blue);"></i>';
+                    if (data === 'F') return '<i class="bi bi-gender-female" style="color:var(--apple-red);"></i>';
+                    return data;
+                }
+            },
+            { data: 'age', width: '50px', className: 'text-center' },
+            { data: 'procedure_desc' },
+            {
+                data: 'status',
+                render: function(data) {
+                    var cls = 'badge-' + data.toLowerCase().replace('_', '-');
+                    var label = getLang('status_' + data) || data;
+                    return '<span class="badge badge-apple ' + cls + '">' + label + '</span>';
+                }
+            },
+            {
+                data: 'priority',
+                width: '35px',
+                className: 'text-center',
+                orderable: false,
+                render: function(data) {
+                    if (data === 'URGENT') {
+                        return '<i class="bi bi-exclamation-circle-fill text-danger" style="font-size:1.1rem;" title="URGENT"></i>';
+                    }
+                    return '';
+                }
+            },
+            {
+                data: 'patient_source',
+                render: function(data) {
+                    var key = 'src_' + data.replace(' ', '_');
+                    return getLang(key) || data;
+                }
+            },
+            { data: 'performing_physician' },
+            { data: 'accession_number' },
+            {
+                data: 'id',
+                orderable: false,
+                width: '80px',
+                render: function(data) {
+                    return '<div class="d-flex gap-1">' +
+                        '<button class="btn btn-apple-secondary btn-apple-sm btn-edit-test" data-id="' + data + '" title="Edit" onclick="event.stopPropagation();editTest(' + data + ')"><i class="bi bi-pencil"></i></button>' +
+                        '<button class="btn btn-apple-danger btn-apple-sm btn-delete-test" data-id="' + data + '" title="Delete" onclick="event.stopPropagation();deleteTest(' + data + ')"><i class="bi bi-trash3"></i></button>' +
+                        '</div>';
+                }
+            }
+        ],
+        order: [[0, 'asc']],
+        language: {
+            search: getLang('dt_search'),
+            lengthMenu: getLang('dt_lengthMenu'),
+            info: getLang('dt_info'),
+            infoEmpty: getLang('dt_infoEmpty'),
+            infoFiltered: getLang('dt_infoFiltered'),
+            zeroRecords: getLang('dt_zeroRecords'),
+            paginate: { first: getLang('dt_first'), last: getLang('dt_last'), next: getLang('dt_next'), previous: getLang('dt_previous') },
+            processing: getLang('dt_processing')
+        },
+        pageLength: 25,
+        dom: '<"d-flex justify-content-between align-items-center mb-3"lf>rtip'
+    });
+}
+
+$(document).ready(function() {
+    initTestsTable();
+    // Row selection
+    $('#testsTable tbody').on('click', 'tr', function() {
+        if ($(this).hasClass('selected')) {
+            $(this).removeClass('selected');
+            selectedRowId = null;
+            selectedRowData = null;
+        } else {
+            testsTable.$('tr.selected').removeClass('selected');
+            $(this).addClass('selected');
+            var data = testsTable.row(this).data();
+            selectedRowId = data ? data.id : null;
+            selectedRowData = data || null;
+        }
+        updateToolbarButtons();
+    });
+
+    // Build column visibility dropdown
+    buildColVisDropdown();
+
+    // Always set date filter to client's LOCAL date on page load
+    var now = new Date();
+    var today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    $('#filterDate').val(today);
+    testsTable.ajax.reload();
+});
+
+function getCheckedValues(className) {
+    var vals = [];
+    $('.' + className + ':checked').each(function() {
+        vals.push($(this).val());
+    });
+    return vals.join(',');
+}
+
+function applyFilters() {
+    if (testsTable) testsTable.ajax.reload();
+}
+
+function clearDateFilter() {
+    $('#filterDate').val('');
+    applyFilters();
+}
+
+// ---- Column Visibility ----
+var COL_VIS_NAMES = [
+    { idx: 0, key: 'HN' },
+    { idx: 1, key: 'et_th_patient' },
+    { idx: 2, key: 'et_th_sex' },
+    { idx: 3, key: 'et_th_age' },
+    { idx: 4, key: 'et_th_procedure' },
+    { idx: 5, key: 'et_th_status' },
+    { idx: 6, key: 'URGENT' },
+    { idx: 7, key: 'et_th_type' },
+    { idx: 8, key: 'et_th_physician' },
+    { idx: 9, key: 'Accession No.' },
+    { idx: 10, key: 'et_th_actions' }
+];
+
+function buildColVisDropdown() {
+    var container = document.getElementById('colVisDropdown');
+    var saved = JSON.parse(localStorage.getItem('ecg_col_vis') || '{}');
+    var html = '';
+    COL_VIS_NAMES.forEach(function(col) {
+        var label = getLang(col.key);
+        if (label === col.key) label = col.key; // fallback to raw key
+        var checked = saved[col.idx] !== false; // default visible
+        html += '<label><input type="checkbox" data-col-idx="' + col.idx + '"' +
+                (checked ? ' checked' : '') + '> ' + label + '</label>';
+    });
+    container.innerHTML = html;
+
+    // Apply saved visibility
+    COL_VIS_NAMES.forEach(function(col) {
+        if (saved[col.idx] === false) {
+            testsTable.column(col.idx).visible(false);
+        }
+    });
+
+    // Bind change events
+    container.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var idx = parseInt(this.getAttribute('data-col-idx'));
+            testsTable.column(idx).visible(this.checked);
+            // Save to localStorage
+            var state = JSON.parse(localStorage.getItem('ecg_col_vis') || '{}');
+            if (this.checked) {
+                delete state[idx]; // default is visible, remove entry
+            } else {
+                state[idx] = false;
+            }
+            localStorage.setItem('ecg_col_vis', JSON.stringify(state));
+        });
+    });
+}
+
+function toggleColVisDropdown() {
+    var dd = document.getElementById('colVisDropdown');
+    dd.classList.toggle('show');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    var wrapper = document.querySelector('.col-vis-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        document.getElementById('colVisDropdown').classList.remove('show');
+    }
+});
+
+function updateToolbarButtons() {
+    var hasSelection = selectedRowId !== null;
+    var hasResult = hasSelection && selectedRowData && selectedRowData.has_result;
+    $('#btnViewReport').prop('disabled', !hasResult);
+    $('#btnMarkUrgent').prop('disabled', !hasSelection);
+    $('#btnUpdateStatus').prop('disabled', !hasSelection);
+}
+
+// ===== Modal (Create / Edit) =====
+var editingItemId = null;
+
+function getTestModal() {
+    return bootstrap.Modal.getOrCreateInstance(document.getElementById('newTestModal'));
+}
+
+function openNewTestModal() {
+    editingItemId = null;
+    $('#newTestForm')[0].reset();
+    $('#hnStatus').text('').removeClass('found not-found');
+    $('#modalTitleText').text(getLang('et_modal_title'));
+    $('#newTestModal .modal-title i').removeClass('bi-pencil').addClass('bi-plus-circle');
+    $('#btnSubmitTest span').text(getLang('et_btn_create'));
+
+    var now = new Date();
+    $('#inputSchedDate').val(now.toISOString().split('T')[0]);
+    var hh = String(now.getHours()).padStart(2, '0');
+    var mm = String(now.getMinutes()).padStart(2, '0');
+    $('#inputSchedTime').val(hh + ':' + mm);
+
+    getTestModal().show();
+}
+
+function editTest(id) {
+    editingItemId = id;
+    $('#newTestForm')[0].reset();
+    $('#hnStatus').text('').removeClass('found not-found');
+    $('#modalTitleText').text(getLang('et_modal_edit_title'));
+    $('#newTestModal .modal-title i').removeClass('bi-plus-circle').addClass('bi-pencil');
+    $('#btnSubmitTest span').text(getLang('et_btn_save'));
+
+    // Fetch item data and populate modal
+    $.getJSON('/ecg-tests/api/item/' + id, function(data) {
+        $('#inputHN').val(data.patient_id);
+        $('#inputName').val(data.patient_name);
+        $('#inputSex').val(data.sex);
+        $('#inputBirthDate').val(data.birth_date);
+        $('[name="accession_number"]').val(data.accession_number);
+        $('[name="procedure_desc"]').val(data.procedure_desc);
+        $('[name="priority"]').val(data.priority);
+        $('[name="station_ae"]').val(data.station_ae);
+        $('[name="station_name"]').val(data.station_name);
+        $('#inputSchedDate').val(data.scheduled_date);
+        $('#inputSchedTime').val(data.scheduled_time);
+        $('[name="ordering_department"]').val(data.ordering_department);
+        $('[name="ordering_physician"]').val(data.ordering_physician);
+        $('[name="patient_source"]').val(data.patient_source);
+        $('[name="bed_number"]').val(data.bed_number);
+        $('[name="phone"]').val(data.phone);
+        $('[name="clinical_info"]').val(data.clinical_info);
+
+        getTestModal().show();
+    }).fail(function(xhr) {
+        var detail = xhr.status + ': ' + (xhr.responseText || '').substring(0, 200);
+        console.error('editTest fail:', xhr.status, xhr.responseText);
+        showToast('error', getLang('et_error') + ' (' + detail + ')');
+    });
+}
+
+// ===== Toggle Filters =====
+function toggleFilters() {
+    var sidebar = document.querySelector('.filter-sidebar');
+    var btn = document.getElementById('btnToggleFilters');
+    sidebar.classList.toggle('collapsed');
+    btn.classList.toggle('active');
+}
+
+function lookupPatient() {
+    var hn = $('#inputHN').val().trim();
+    if (!hn) return;
+
+    $.getJSON('{{ url_for("ecg_tests.lookup_patient", hn="__HN__") }}'.replace('__HN__', hn), function(resp) {
+        if (resp.found) {
+            $('#inputName').val(resp.patient_name);
+            $('#inputSex').val(resp.sex || 'M');
+            if (resp.birth_date) $('#inputBirthDate').val(resp.birth_date);
+            $('#hnStatus').text(getLang('et_patient_found')).addClass('found').removeClass('not-found');
+        } else {
+            $('#hnStatus').text(getLang('et_new_patient')).addClass('not-found').removeClass('found');
+        }
+    });
+}
+
+function submitNewTest(e) {
+    e.preventDefault();
+    var btn = $('#btnSubmitTest');
+    var isEdit = editingItemId !== null;
+    var submitLabel = isEdit ? getLang('et_btn_save') : getLang('et_btn_create');
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>' + getLang('et_btn_saving'));
+
+    var url = isEdit
+        ? '/ecg-tests/' + editingItemId + '/edit'
+        : '{{ url_for("ecg_tests.create") }}';
+
+    $.post(url, $('#newTestForm').serialize(), function(resp) {
+        if (resp.success) {
+            getTestModal().hide();
+            // Reset date filter so newly created test is visible
+            $('#filterDate').val('');
+            testsTable.ajax.reload();
+            showToast('success', resp.message);
+        } else {
+            showToast('error', resp.error || getLang('et_error'));
+        }
+    }).fail(function(xhr) {
+        var msg = getLang('et_error');
+        if (xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        showToast('error', msg);
+    }).always(function() {
+        btn.prop('disabled', false).html('<i class="bi bi-check-lg me-1"></i>' + submitLabel);
+    });
+}
+
+// ===== Delete =====
+var deleteItemId = null;
+
+function deleteTest(id) {
+    deleteItemId = id;
+    $('#deleteModal').modal('show');
+}
+
+$(document).on('click', '#confirmDeleteBtn', function() {
+    if (!deleteItemId) return;
+    $.post('/ecg-tests/' + deleteItemId + '/delete', {}, function(resp) {
+        if (resp.success) {
+            $('#deleteModal').modal('hide');
+            testsTable.ajax.reload();
+            showToast('success', getLang('et_deleted'));
+        }
+    }).fail(function() {
+        showToast('error', getLang('et_error'));
+        $('#deleteModal').modal('hide');
+    });
+});
+
+// ===== Actions =====
+function viewReport() {
+    if (!selectedRowId) return;
+    window.location.href = '{{ url_for("ecg_tests.view_report", item_id=0) }}'.replace('/0/', '/' + selectedRowId + '/');
+}
+
+function reloadAndReselect() {
+    var keepId = selectedRowId;
+    testsTable.ajax.reload(function() {
+        if (!keepId) return;
+        testsTable.rows().every(function() {
+            var d = this.data();
+            if (d && d.id === keepId) {
+                $(this.node()).addClass('selected');
+                selectedRowId = d.id;
+                selectedRowData = d;
+                updateToolbarButtons();
+            }
+        });
+    }, false);
+}
+
+function markUrgent() {
+    if (!selectedRowId || !selectedRowData) return;
+    var currentPriority = selectedRowData.priority || 'ROUTINE';
+    var newPriority = currentPriority === 'URGENT' ? 'ROUTINE' : 'URGENT';
+    $.ajax({
+        url: '/ecg-tests/' + selectedRowId + '/update-priority',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ priority: newPriority }),
+        success: function(resp) {
+            if (resp.success) {
+                reloadAndReselect();
+                var msg = newPriority === 'URGENT' ? getLang('et_urgent_marked') : getLang('et_routine_marked');
+                showToast('success', msg);
+            }
+        },
+        error: function() {
+            showToast('error', getLang('et_error'));
+        }
+    });
+}
+
+function updateSelectedStatus() {
+    var status = $('#statusSelect').val();
+    if (!selectedRowId || !status) return;
+
+    $.ajax({
+        url: '{{ url_for("ecg_tests.update_status", item_id=0) }}'.replace('/0/', '/' + selectedRowId + '/'),
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ status: status }),
+        success: function(resp) {
+            if (resp.success) {
+                reloadAndReselect();
+                showToast('success', getLang('et_status_updated'));
+                $('#statusSelect').val('');
+            }
+        }
+    });
+}
+
+// ===== Toast notification =====
+function showToast(type, message) {
+    var icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+
+    var toast = $('<div class="alert alert-apple alert-' + (type === 'error' ? 'danger' : type) + ' alert-dismissible fade show" ' +
+        'style="position:fixed;top:80px;right:20px;z-index:10000;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,0.15);">' +
+        '<i class="bi bi-' + icon + ' me-2"></i>' + message +
+        '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
+
+    $('body').append(toast);
+    setTimeout(function() { toast.alert('close'); }, 4000);
+}
+</script>
+{% endblock %}
