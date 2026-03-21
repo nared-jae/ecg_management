@@ -106,6 +106,31 @@
         display: block;
     }
 
+    /* ---- Info Card (shared by Measurements & Diagnosis) ---- */
+    .cmp-info-card {
+        border: 1px solid var(--apple-border);
+        border-radius: var(--apple-radius-sm, 8px);
+        background: var(--apple-bg, #fff);
+        margin-top: 0.6rem;
+        overflow: hidden;
+    }
+    .cmp-info-card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.75rem;
+        background: var(--apple-bg-secondary, #f5f5f7);
+        border-bottom: 1px solid var(--apple-border);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--apple-text-secondary);
+    }
+    .cmp-info-card-body {
+        padding: 0.6rem 0.75rem;
+    }
+
     /* ---- Measurements ---- */
     .cmp-section-title {
         font-size: 0.75rem;
@@ -229,16 +254,26 @@
     <div class="cmp-column" id="cmpColLeft">
         <div class="cmp-col-header">
             <span class="cmp-col-title" id="cmpLeftTitle">-</span>
-            <span class="badge" style="background:var(--apple-blue);color:#fff;font-size:0.7rem;border-radius:980px;">Current</span>
+            <span class="badge" style="background:var(--apple-green);color:#fff;font-size:0.7rem;border-radius:980px;">Current</span>
         </div>
         <div class="cmp-canvas-wrap">
             <canvas id="cmpCanvasLeft"></canvas>
         </div>
-        <div style="padding:0.5rem 0.75rem;">
-            <div class="cmp-section-title">Measurements</div>
-            <div class="cmp-meas-grid" id="cmpMeasLeft"></div>
-            <div class="cmp-section-title" style="margin-top:0.5rem;">Diagnosis</div>
-            <div id="cmpDiagLeft" class="cmp-no-data">-</div>
+        <div class="cmp-info-card">
+            <div class="cmp-info-card-header">
+                <i class="bi bi-heart-pulse"></i> Measurements
+            </div>
+            <div class="cmp-info-card-body">
+                <div class="cmp-meas-grid" id="cmpMeasLeft"></div>
+            </div>
+        </div>
+        <div class="cmp-info-card">
+            <div class="cmp-info-card-header">
+                <i class="bi bi-clipboard2-pulse"></i> Diagnosis
+            </div>
+            <div class="cmp-info-card-body">
+                <div id="cmpDiagLeft" class="cmp-no-data">-</div>
+            </div>
         </div>
     </div>
 
@@ -253,11 +288,21 @@
         <div class="cmp-canvas-wrap">
             <canvas id="cmpCanvasRight"></canvas>
         </div>
-        <div style="padding:0.5rem 0.75rem;">
-            <div class="cmp-section-title">Measurements</div>
-            <div class="cmp-meas-grid" id="cmpMeasRight"></div>
-            <div class="cmp-section-title" style="margin-top:0.5rem;">Diagnosis</div>
-            <div id="cmpDiagRight" class="cmp-no-data">-</div>
+        <div class="cmp-info-card">
+            <div class="cmp-info-card-header">
+                <i class="bi bi-heart-pulse"></i> Measurements
+            </div>
+            <div class="cmp-info-card-body">
+                <div class="cmp-meas-grid" id="cmpMeasRight"></div>
+            </div>
+        </div>
+        <div class="cmp-info-card">
+            <div class="cmp-info-card-header">
+                <i class="bi bi-clipboard2-pulse"></i> Diagnosis
+            </div>
+            <div class="cmp-info-card-body">
+                <div id="cmpDiagRight" class="cmp-no-data">-</div>
+            </div>
         </div>
     </div>
 </div>
@@ -265,7 +310,7 @@
 <!-- Hidden ECG & meta data -->
 {% for item in results %}
 {% if item.ecg_json %}
-<script type="application/json" id="ecg-data-{{ item.id }}">{{ item.ecg_json | tojson }}</script>
+<div class="d-none" id="ecg-data-{{ item.id }}">{{ item.ecg_json | tojson }}</div>
 {% endif %}
 <div class="d-none ecg-meta-block"
      data-id="{{ item.id }}"
@@ -279,214 +324,6 @@
 </div>
 {% endfor %}
 
-<script>
-(function() {
-    var CURRENT_ID = {{ current_id }};
-    var ALL_LEADS = ['I','II','III','aVR','aVL','aVF','V1','V2','V3','V4','V5','V6'];
-    var selectedLeads = ALL_LEADS.slice(); // copy
-    var compareRecordId = null;
-
-    // Find first non-current record as default comparison
-    var recordPills = document.querySelectorAll('.cmp-record-pill:not(.current)');
-    if (recordPills.length > 0) {
-        compareRecordId = parseInt(recordPills[0].dataset.id);
-    }
-
-    var MEAS_LABELS = [
-        {key: 'Ventricular Heart Rate', label: 'HR', unit: 'bpm'},
-        {key: 'PR Interval', label: 'PR', unit: 'ms'},
-        {key: 'QRS Duration', label: 'QRS', unit: 'ms'},
-        {key: 'QT Interval', label: 'QT', unit: 'ms'},
-        {key: 'QTc Interval', label: 'QTc', unit: 'ms'},
-        {key: 'P Axis', label: 'P Axis', unit: '\u00B0'},
-        {key: 'QRS Axis', label: 'QRS Axis', unit: '\u00B0'},
-        {key: 'T Axis', label: 'T Axis', unit: '\u00B0'}
-    ];
-
-    function getEcgJson(id) {
-        var el = document.getElementById('ecg-data-' + id);
-        if (!el) return null;
-        try {
-            return JSON.parse(el.textContent);
-        } catch(e) {
-            console.error('Failed to parse ecg-data-' + id, e);
-            return null;
-        }
-    }
-
-    function getWaveformData(id) {
-        var ecg = getEcgJson(id);
-        if (ecg && ecg.waveforms && ecg.waveforms.length > 0) {
-            return ecg.waveforms[0];
-        }
-        return null;
-    }
-
-    function getAnnotations(id) {
-        var ecg = getEcgJson(id);
-        return (ecg && ecg.annotations) ? ecg.annotations : [];
-    }
-
-    function getMeta(id) {
-        var el = document.querySelector('.ecg-meta-block[data-id="' + id + '"]');
-        if (!el) return {};
-        return {
-            status: el.dataset.status || '',
-            diagnosis: el.dataset.diagnosis || '',
-            diagnosed_by: el.dataset.diagnosedBy || '',
-            diagnosed_at: el.dataset.diagnosedAt || '',
-            ecg_interpretation: el.dataset.ecgInterpretation || '',
-            received_date: el.dataset.receivedDate || '-',
-            received_time: el.dataset.receivedTime || ''
-        };
-    }
-
-    function fillMeasurements(containerId, annotations) {
-        var el = document.getElementById(containerId);
-        if (!el) return;
-        var measMap = {};
-        for (var i = 0; i < annotations.length; i++) {
-            if (annotations[i].value && annotations[i].concept) {
-                measMap[annotations[i].concept] = {value: annotations[i].value, unit: annotations[i].unit || ''};
-            }
-        }
-        var html = '';
-        for (var m = 0; m < MEAS_LABELS.length; m++) {
-            var ml = MEAS_LABELS[m];
-            var val = measMap[ml.key] ? measMap[ml.key].value : '-';
-            html += '<div class="cmp-meas-item">';
-            html += '<span class="cmp-meas-label">' + ml.label + '</span>';
-            html += '<span class="cmp-meas-value">' + val + '</span>';
-            html += '<span class="cmp-meas-unit">' + ml.unit + '</span>';
-            html += '</div>';
-        }
-        el.innerHTML = html;
-    }
-
-    function fillDiagnosis(containerId, meta) {
-        var el = document.getElementById(containerId);
-        if (!el) return;
-        var html = '';
-        if (meta.diagnosis) {
-            html += '<div class="cmp-diagnosis-text">' + meta.diagnosis + '</div>';
-        }
-        if (meta.ecg_interpretation) {
-            html += '<div class="cmp-diagnosis-text interpretation">' + meta.ecg_interpretation + '</div>';
-        }
-        if (!meta.diagnosis && !meta.ecg_interpretation) {
-            html += '<div class="cmp-diagnosis-text" style="color:var(--apple-text-secondary);">-</div>';
-        }
-        if (meta.diagnosed_by) {
-            html += '<div class="cmp-diagnosis-by"><i class="bi bi-person me-1"></i>' + meta.diagnosed_by;
-            if (meta.diagnosed_at) html += ' | ' + meta.diagnosed_at;
-            html += '</div>';
-        }
-        el.innerHTML = html;
-    }
-
-    function redrawComparison() {
-        // Left: current record
-        var leftWf = getWaveformData(CURRENT_ID);
-        var leftMeta = getMeta(CURRENT_ID);
-        var leftAnns = getAnnotations(CURRENT_ID);
-
-        console.log('[Compare] CURRENT_ID:', CURRENT_ID, 'compareRecordId:', compareRecordId);
-        console.log('[Compare] leftWf:', leftWf ? 'OK (leads: ' + Object.keys(leftWf.leads || {}).join(',') + ')' : 'NULL');
-        console.log('[Compare] leftMeta:', leftMeta);
-        console.log('[Compare] canvas parent width:', document.getElementById('cmpCanvasLeft').parentElement.clientWidth);
-
-        document.getElementById('cmpLeftTitle').textContent =
-            (leftMeta.received_date || '-') + '  ' + (leftMeta.received_time || '');
-
-        renderCompareECG('cmpCanvasLeft', leftWf, selectedLeads);
-        fillMeasurements('cmpMeasLeft', leftAnns);
-        fillDiagnosis('cmpDiagLeft', leftMeta);
-
-        // Right: compare record
-        if (compareRecordId) {
-            var rightWf = getWaveformData(compareRecordId);
-            var rightMeta = getMeta(compareRecordId);
-            var rightAnns = getAnnotations(compareRecordId);
-
-            document.getElementById('cmpRightTitle').textContent =
-                (rightMeta.received_date || '-') + '  ' + (rightMeta.received_time || '');
-
-            var link = document.getElementById('cmpRightLink');
-            if (link) link.href = '/results/' + compareRecordId;
-
-            renderCompareECG('cmpCanvasRight', rightWf, selectedLeads);
-            fillMeasurements('cmpMeasRight', rightAnns);
-            fillDiagnosis('cmpDiagRight', rightMeta);
-        }
-    }
-
-    // ---- Global functions (called from onclick) ----
-
-    window.selectCompareRecord = function(id) {
-        compareRecordId = id;
-        // Update pill states
-        document.querySelectorAll('.cmp-record-pill:not(.current)').forEach(function(pill) {
-            pill.classList.toggle('active', parseInt(pill.dataset.id) === id);
-        });
-        redrawComparison();
-    };
-
-    window.toggleLead = function(name) {
-        var btn = document.querySelector('.cmp-lead-btn[data-lead="' + name + '"]');
-        var idx = selectedLeads.indexOf(name);
-        if (idx >= 0) {
-            selectedLeads.splice(idx, 1);
-            if (btn) btn.classList.remove('active');
-        } else {
-            selectedLeads.push(name);
-            // Keep order
-            selectedLeads.sort(function(a, b) {
-                return ALL_LEADS.indexOf(a) - ALL_LEADS.indexOf(b);
-            });
-            if (btn) btn.classList.add('active');
-        }
-        // Update "All" button
-        var allBtn = document.querySelector('.cmp-lead-btn.all-btn');
-        if (allBtn) {
-            allBtn.classList.toggle('active', selectedLeads.length === 12);
-        }
-        redrawComparison();
-    };
-
-    window.toggleAllLeads = function() {
-        var allBtn = document.querySelector('.cmp-lead-btn.all-btn');
-        if (selectedLeads.length === 12) {
-            // Deselect all
-            selectedLeads = [];
-            document.querySelectorAll('.cmp-lead-btn[data-lead]').forEach(function(b) { b.classList.remove('active'); });
-            if (allBtn) allBtn.classList.remove('active');
-        } else {
-            // Select all
-            selectedLeads = ALL_LEADS.slice();
-            document.querySelectorAll('.cmp-lead-btn[data-lead]').forEach(function(b) { b.classList.add('active'); });
-            if (allBtn) allBtn.classList.add('active');
-        }
-        redrawComparison();
-    };
-
-    // ---- Init ----
-    // Use requestAnimationFrame to ensure layout is complete before rendering
-    function initComparison() {
-        var canvas = document.getElementById('cmpCanvasLeft');
-        var parentW = canvas ? canvas.parentElement.clientWidth : 0;
-        console.log('[Compare] Init - parent width:', parentW);
-        if (parentW < 50) {
-            // Container not laid out yet, retry
-            console.log('[Compare] Container not ready, retrying...');
-            requestAnimationFrame(initComparison);
-            return;
-        }
-        redrawComparison();
-    }
-    setTimeout(function() {
-        requestAnimationFrame(initComparison);
-    }, 200);
-})();
-</script>
+<!-- JS logic is in ecg-compare-renderer.js; initCompareView() called from detail.html -->
 
 {% endif %}

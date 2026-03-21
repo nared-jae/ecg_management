@@ -57,6 +57,7 @@ class ECGData:
     # Study info
     study_date: str = ""
     study_time: str = ""
+    acquisition_datetime: str = ""
     accession_number: str = ""
     study_description: str = ""
     study_instance_uid: str = ""
@@ -95,6 +96,7 @@ def parse_dicom_ecg(filepath: str) -> Optional[ECGData]:
     # Study info
     ecg.study_date = str(getattr(ds, "StudyDate", ""))
     ecg.study_time = str(getattr(ds, "StudyTime", ""))
+    ecg.acquisition_datetime = str(getattr(ds, "AcquisitionDateTime", ""))
     ecg.accession_number = str(getattr(ds, "AccessionNumber", ""))
     ecg.study_description = str(getattr(ds, "StudyDescription", ""))
     ecg.study_instance_uid = str(getattr(ds, "StudyInstanceUID", ""))
@@ -401,3 +403,59 @@ def _walk_dataset(ds: Dataset, tags: list, depth: int):
             if len(val) > 150:
                 val = val[:150] + "..."
             tags.append({"tag": tag_str, "vr": vr, "name": prefix + name, "value": val, "depth": depth})
+
+
+def embed_diagnosis_in_dicom(filepath: str, diagnosis: str,
+                              diagnosed_by: str = None):
+    """Create a DICOM copy with doctor's diagnosis replacing device interpretation.
+
+    Removes existing text-only annotations (UnformattedTextValue without
+    NumericValue — these are the device interpretation lines) and replaces
+    them with the doctor's diagnosis text. Measurement annotations (those
+    with NumericValue/ConceptNameCodeSequence) are preserved.
+
+    The original file is NOT modified.
+
+    Returns:
+        BytesIO buffer containing the modified DICOM file.
+    """
+    from io import BytesIO
+
+    ds = pydicom.dcmread(filepath, force=True)
+
+    if hasattr(ds, 'WaveformAnnotationSequence'):
+        # Keep only measurement annotations (those with NumericValue or
+        # ConceptNameCodeSequence), remove text-only interpretation items
+        kept = []
+        for ann in ds.WaveformAnnotationSequence:
+            has_text_only = (hasattr(ann, 'UnformattedTextValue')
+                             and not hasattr(ann, 'NumericValue')
+                             and not hasattr(ann, 'ConceptNameCodeSequence'))
+            if not has_text_only:
+                kept.append(ann)
+
+        # Add doctor's diagnosis as replacement interpretation lines
+        for line in diagnosis.split('\n'):
+            stripped = line.strip()
+            if stripped:
+                ann_item = Dataset()
+                ann_item.UnformattedTextValue = stripped  # (0070,0006)
+                kept.append(ann_item)
+
+        ds.WaveformAnnotationSequence = pydicom.Sequence(kept)
+    else:
+        # No existing annotations — just add diagnosis
+        items = []
+        for line in diagnosis.split('\n'):
+            stripped = line.strip()
+            if stripped:
+                ann_item = Dataset()
+                ann_item.UnformattedTextValue = stripped
+                items.append(ann_item)
+        ds.WaveformAnnotationSequence = pydicom.Sequence(items)
+
+    # Save to buffer (original file untouched)
+    buf = BytesIO()
+    ds.save_as(buf)
+    buf.seek(0)
+    return buf

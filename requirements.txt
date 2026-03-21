@@ -5,3 +5,4 @@ Werkzeug==3.1.*
 pydicom==2.4.*
 pynetdicom==2.1.*
 numpy
+reportlab>=4.0

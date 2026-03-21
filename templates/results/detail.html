@@ -493,6 +493,12 @@
     </div>
     <div class="d-flex gap-2">
         {% if result.file_path %}
+        <a href="{{ url_for('results.export_pdf', result_id=result.id) }}" class="btn btn-apple-primary">
+            <i class="bi bi-file-earmark-pdf me-1"></i><span data-i18n="export_pdf">Export PDF</span>
+        </a>
+        <a href="{{ url_for('results.export_hl7', result_id=result.id) }}" class="btn btn-apple-primary">
+            <i class="bi bi-file-earmark-code me-1"></i><span data-i18n="export_hl7">Export HL7</span>
+        </a>
         <a href="{{ url_for('results.download', result_id=result.id) }}" class="btn btn-apple-secondary">
             <i class="bi bi-download me-1"></i><span data-i18n="download_dicom">Download DICOM</span>
         </a>
@@ -632,6 +638,14 @@
             <button class="toolbar-btn" onclick="printECG()" title="Print (Ctrl+P)">
                 <i class="bi bi-printer"></i>
             </button>
+            {% if result.file_path %}
+            <button class="toolbar-btn" onclick="window.location.href='{{ url_for('results.export_pdf', result_id=result.id) }}'" title="Export PDF">
+                <i class="bi bi-file-earmark-pdf"></i> PDF
+            </button>
+            <button class="toolbar-btn" onclick="window.location.href='{{ url_for('results.export_hl7', result_id=result.id) }}'" title="Export HL7">
+                <i class="bi bi-file-earmark-code"></i> HL7
+            </button>
+            {% endif %}
         </div>
     </div>
 
@@ -725,12 +739,17 @@
                           placeholder="Enter diagnosis results here. You can also click statements from the library on the right to add them.">{{ result.diagnosis or '' }}</textarea>
 
                 <!-- DICOM Auto Interpretation - Tag (0070,0006) UnformattedTextValue only -->
-                {% if ecg_json.interpretation_texts %}
+                {% if ecg_json and ecg_json.interpretation_texts %}
                 <div class="mt-3">
-                    <div style="font-size:0.78rem;font-weight:500;color:var(--apple-text-secondary);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:0.5rem;">
-                        <i class="bi bi-robot me-1"></i><span data-i18n="auto_interpretation">Auto Interpretation (from device)</span>
+                    <div style="font-size:0.78rem;font-weight:500;color:var(--apple-text-secondary);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:0.5rem;display:flex;align-items:center;justify-content:space-between;">
+                        <span>
+                            <i class="bi bi-robot me-1"></i><span data-i18n="auto_interpretation">Auto Interpretation (from device)</span>
+                        </span>
+                        <button type="button" onclick="copyInterpretationToDiagnosis()" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;padding:2px 8px;border-radius:4px;" title="Copy to Diagnosis">
+                            <i class="bi bi-clipboard-plus me-1"></i><span data-i18n="copy_to_diagnosis">Copy to Diagnosis</span>
+                        </button>
                     </div>
-                    <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:0.75rem 1rem;font-size:0.88rem;line-height:1.6;">
+                    <div id="autoInterpretationText" style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:0.75rem 1rem;font-size:0.88rem;line-height:1.6;">
                         {% for text in ecg_json.interpretation_texts %}
                             <div>{{ text }}</div>
                         {% endfor %}
@@ -976,6 +995,8 @@ var I18N = {
     en: {
         ecg_result_title: 'ECG Result #' + RESULT_ID,
         ecg_result_subtitle: 'Electrocardiogram examination result details',
+        export_pdf: 'Export PDF',
+        export_hl7: 'Export HL7',
         download_dicom: 'Download DICOM',
         back: 'Back',
         patient: 'Patient',
@@ -985,6 +1006,7 @@ var I18N = {
         diagnosis: 'Diagnosis',
         diagnosed_by: 'Diagnosed by:',
         auto_interpretation: 'Auto Interpretation (from device)',
+        copy_to_diagnosis: 'Copy to Diagnosis',
         save_draft: 'Save Draft',
         submit: 'Submit',
         submit_go_next: 'Submit & Go Next',
@@ -1006,6 +1028,8 @@ var I18N = {
     th: {
         ecg_result_title: 'ผลตรวจ ECG #' + RESULT_ID,
         ecg_result_subtitle: 'รายละเอียดผลตรวจคลื่นไฟฟ้าหัวใจ',
+        export_pdf: 'ส่งออก PDF',
+        export_hl7: 'ส่งออก HL7',
         download_dicom: 'ดาวน์โหลด DICOM',
         back: 'กลับ',
         patient: 'ผู้ป่วย',
@@ -1015,6 +1039,7 @@ var I18N = {
         diagnosis: 'การวินิจฉัย',
         diagnosed_by: 'แพทย์ผู้วินิจฉัย:',
         auto_interpretation: 'การวินิจฉัยอัตโนมัติ (จากเครื่อง)',
+        copy_to_diagnosis: 'คัดลอกไปยังช่องวินิจฉัย',
         save_draft: 'บันทึกร่าง',
         submit: 'ยืนยัน',
         submit_go_next: 'ยืนยัน & ถัดไป',
@@ -1298,12 +1323,34 @@ function drawLeadWaveform(ctx, data, fs, startSample, endSample, x0, y0, pxPerSe
     var totalPoints = actualEnd - actualStart;
     var step = Math.max(1, Math.floor(totalPoints / 3000));
 
-    for (var i = actualStart; i < actualEnd; i += step) {
-        var t  = (i - startSample) / fs;
-        var px = x0 + t * pxPerSecond;
-        var py = y0 - data[i] * pxPerMv;
-        if (firstPoint) { ctx.moveTo(px, py); firstPoint = false; }
-        else { ctx.lineTo(px, py); }
+    if (step <= 1) {
+        // No downsampling needed — draw every point
+        for (var i = actualStart; i < actualEnd; i++) {
+            var t  = (i - startSample) / fs;
+            var px = x0 + t * pxPerSecond;
+            var py = y0 - data[i] * pxPerMv;
+            if (firstPoint) { ctx.moveTo(px, py); firstPoint = false; }
+            else { ctx.lineTo(px, py); }
+        }
+    } else {
+        // Min-max downsampling: preserve spikes by drawing both min and max per bucket
+        for (var b = actualStart; b < actualEnd; b += step) {
+            var bEnd = Math.min(b + step, actualEnd);
+            var minVal = data[b], maxVal = data[b], minIdx = b, maxIdx = b;
+            for (var j = b + 1; j < bEnd; j++) {
+                if (data[j] < minVal) { minVal = data[j]; minIdx = j; }
+                if (data[j] > maxVal) { maxVal = data[j]; maxIdx = j; }
+            }
+            // Draw min first, then max (or vice versa) in sample order
+            var pts = minIdx < maxIdx ? [[minIdx, minVal], [maxIdx, maxVal]] : [[maxIdx, maxVal], [minIdx, minVal]];
+            for (var p = 0; p < pts.length; p++) {
+                var t  = (pts[p][0] - startSample) / fs;
+                var px = x0 + t * pxPerSecond;
+                var py = y0 - pts[p][1] * pxPerMv;
+                if (firstPoint) { ctx.moveTo(px, py); firstPoint = false; }
+                else { ctx.lineTo(px, py); }
+            }
+        }
     }
     ctx.stroke();
 }
@@ -2049,6 +2096,29 @@ function filterStatements() {
     });
 }
 
+// ===== Copy Device Interpretation to Diagnosis =====
+function copyInterpretationToDiagnosis() {
+    var container = document.getElementById('autoInterpretationText');
+    if (!container) return;
+    var divs = container.querySelectorAll('div');
+    var lines = [];
+    divs.forEach(function(div) {
+        var text = div.textContent.trim();
+        if (text) lines.push(text);
+    });
+    if (!lines.length) return;
+
+    var textarea = document.getElementById('diagnosisText');
+    var current = textarea.value.trim();
+    var interpText = lines.join('\n');
+    if (current) {
+        textarea.value = current + '\n' + interpText;
+    } else {
+        textarea.value = interpText;
+    }
+    textarea.focus();
+}
+
 // ===== Diagnosis Save/Submit =====
 function saveDiagnosis(action) {
     var diagnosis = document.getElementById('diagnosisText').value.trim();
@@ -2225,13 +2295,10 @@ function loadComparison() {
             container.innerHTML = html;
             comparisonLoaded = true;
 
-            // innerHTML does NOT execute <script> tags, so we must do it manually
-            var scripts = container.querySelectorAll('script:not([type])');
-            scripts.forEach(function(oldScript) {
-                var newScript = document.createElement('script');
-                newScript.textContent = oldScript.textContent;
-                oldScript.parentNode.replaceChild(newScript, oldScript);
-            });
+            // initCompareView is defined in ecg-compare-renderer.js (already loaded)
+            if (typeof initCompareView === 'function') {
+                initCompareView(RESULT_ID);
+            }
         })
         .catch(function(err) {
             document.getElementById('comparisonContent').innerHTML =

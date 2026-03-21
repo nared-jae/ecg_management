@@ -108,9 +108,69 @@ def detail(result_id):
 @login_required
 def download(result_id):
     result = ECGResult.query.get_or_404(result_id)
-    if result.file_path and os.path.exists(result.file_path):
-        return send_file(result.file_path, as_attachment=True)
-    return "ไม่พบไฟล์", 404
+    if not result.file_path or not os.path.exists(result.file_path):
+        return "ไม่พบไฟล์", 404
+
+    # If diagnosis exists, embed it into a DICOM copy before download
+    if result.diagnosis:
+        from services.ecg_parser import embed_diagnosis_in_dicom
+        buf = embed_diagnosis_in_dicom(
+            result.file_path, result.diagnosis, result.diagnosed_by)
+        filename = os.path.basename(result.file_path)
+        return send_file(buf, as_attachment=True, download_name=filename,
+                         mimetype='application/dicom')
+
+    return send_file(result.file_path, as_attachment=True)
+
+
+@results_bp.route("/pdf/<int:result_id>")
+@login_required
+def export_pdf(result_id):
+    """Generate and download ECG PDF report."""
+    result = ECGResult.query.get_or_404(result_id)
+
+    if not result.file_path or not os.path.exists(result.file_path):
+        return "ไม่พบไฟล์ DICOM", 404
+
+    ecg_data = parse_dicom_ecg(result.file_path)
+    if not ecg_data:
+        return "ไม่สามารถอ่านข้อมูล ECG ได้", 500
+
+    from services.ecg_pdf import generate_ecg_pdf
+    pdf_buffer = generate_ecg_pdf(ecg_data, db_result=result)
+
+    patient_id = result.patient.patient_id if result.patient else "unknown"
+    date_str = result.received_at.strftime("%Y%m%d") if result.received_at else "undated"
+    filename = f"ECG_{patient_id}_{date_str}.pdf"
+
+    return send_file(pdf_buffer, mimetype="application/pdf",
+                     as_attachment=True, download_name=filename)
+
+
+@results_bp.route("/hl7/<int:result_id>")
+@login_required
+def export_hl7(result_id):
+    """Generate and download HL7 v3 aECG (FDA XML) file."""
+    result = ECGResult.query.get_or_404(result_id)
+
+    if not result.file_path or not os.path.exists(result.file_path):
+        return "ไม่พบไฟล์ DICOM", 404
+
+    ecg_data = parse_dicom_ecg(result.file_path)
+    if not ecg_data:
+        return "ไม่สามารถอ่านข้อมูล ECG ได้", 500
+
+    from services.ecg_hl7 import generate_ecg_hl7
+    xml_str = generate_ecg_hl7(ecg_data, db_result=result)
+
+    patient_id = result.patient.patient_id if result.patient else "unknown"
+    date_str = result.received_at.strftime("%Y%m%d%H%M%S") if result.received_at else "undated"
+    filename = f"{patient_id}_{date_str}.xml"
+
+    from io import BytesIO
+    buf = BytesIO(xml_str.encode('utf-8'))
+    return send_file(buf, mimetype="application/xml",
+                     as_attachment=True, download_name=filename)
 
 
 @results_bp.route("/waveform/<int:result_id>")
