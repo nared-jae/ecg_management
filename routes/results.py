@@ -37,7 +37,7 @@ def _calc_stats(role, user_id):
         "pending": pending_count,
         "completed": base_q.filter(ECGResult.status.in_(_DONE)).count(),
         "today": base_q.filter(
-            db.func.date(ECGResult.received_at) == date_cls.today()
+            db.func.date(db.func.coalesce(ECGResult.study_datetime, ECGResult.received_at)) == date_cls.today()
         ).count(),
     }
 
@@ -103,15 +103,17 @@ def api_data():
     source_filter = request.args.get("source", "").strip()
     assign_filter = request.args.get("assignment", "").strip()
 
+    # Use study_datetime for date filtering, fallback to received_at
+    _exam_dt = db.func.coalesce(ECGResult.study_datetime, ECGResult.received_at)
     if date_from:
         try:
-            query = query.filter(ECGResult.received_at >= datetime.strptime(date_from, "%Y-%m-%d"))
+            query = query.filter(_exam_dt >= datetime.strptime(date_from, "%Y-%m-%d"))
         except ValueError:
             pass
     if date_to:
         try:
             from datetime import timedelta
-            query = query.filter(ECGResult.received_at < datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1))
+            query = query.filter(_exam_dt < datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1))
         except ValueError:
             pass
     if status_filter:
@@ -177,11 +179,11 @@ def api_data():
     sort_map = {
         "0": Patient.patient_id,
         "1": Patient.patient_name,
-        "5": ECGResult.received_at,
+        "5": _exam_dt,
         "7": status_order,
         "10": ECGResult.accession_number,
     }
-    sort_col = sort_map.get(order_col, ECGResult.received_at)
+    sort_col = sort_map.get(order_col, _exam_dt)
 
     if order_dir == "desc":
         query = query.order_by(sort_col.desc())
@@ -216,7 +218,7 @@ def api_data():
             "sex": sex,
             "age": age,
             "procedure": procedure,
-            "received_at": r.received_at.strftime("%d/%m/%Y %H:%M") if r.received_at else "-",
+            "received_at": (r.study_datetime or r.received_at).strftime("%d/%m/%Y %H:%M") if (r.study_datetime or r.received_at) else "-",
             "status": r.status,
             "physician": physician,
             "diagnosis": r.diagnosis or "",
@@ -227,6 +229,8 @@ def api_data():
             "assignment_expires_at_iso": r.assignment_expires_at.isoformat() if r.assignment_expires_at else None,
             "is_locked": r.locked_by_id is not None,
             "locked_by": r.locked_by.display_name if r.locked_by else None,
+            "pacs_send_status": r.pacs_send_status,
+            "pacs_sent_at": r.pacs_sent_at.strftime("%d/%m/%Y %H:%M") if r.pacs_sent_at else None,
         })
 
     return jsonify({
@@ -256,9 +260,10 @@ def detail(result_id):
             flash("This case is not assigned to you, or has expired and returned to the central queue. | เคสนี้ไม่ได้ถูกมอบหมายให้คุณ หรือหมดเวลาและถูกคืนกลับสู่คิวส่วนกลางแล้ว", "warning")
             return redirect(url_for("results.my_worklist"))
 
-    # Concurrency lock: try to acquire when doctor opens the case
+    # Concurrency lock: try to acquire when assigned doctor opens the case
     lock_status = {"success": True, "locked_by": None}
-    if current_user.can_diagnose:
+    is_assigned_doctor = (current_user.role == "doctor" and result.assigned_to_id == current_user.id)
+    if is_assigned_doctor:
         if result.locked_by_id and result.locked_by_id != current_user.id:
             locker = result.locked_by
             lock_status = {
@@ -269,7 +274,7 @@ def detail(result_id):
             now = datetime.now()
             result.locked_by_id = current_user.id
             result.locked_at    = now
-            # Advance status to IN_REVIEW when doctor first opens the case;
+            # Advance status to IN_REVIEW when assigned doctor first opens the case;
             # clear the timer — IN_REVIEW cases have no timeout
             status_changed = result.status == "RECEIVED"
             if status_changed:
@@ -344,7 +349,8 @@ def export_pdf(result_id):
     pdf_buffer = generate_ecg_pdf(ecg_data, db_result=result)
 
     patient_id = result.patient.patient_id if result.patient else "unknown"
-    date_str = result.received_at.strftime("%Y%m%d") if result.received_at else "undated"
+    _dt = result.study_datetime or result.received_at
+    date_str = _dt.strftime("%Y%m%d") if _dt else "undated"
     filename = f"ECG_{patient_id}_{date_str}.pdf"
 
     return send_file(pdf_buffer, mimetype="application/pdf",
@@ -368,7 +374,8 @@ def export_hl7(result_id):
     xml_str = generate_ecg_hl7(ecg_data, db_result=result)
 
     patient_id = result.patient.patient_id if result.patient else "unknown"
-    date_str = result.received_at.strftime("%Y%m%d%H%M%S") if result.received_at else "undated"
+    _dt = result.study_datetime or result.received_at
+    date_str = _dt.strftime("%Y%m%d%H%M%S") if _dt else "undated"
     filename = f"{patient_id}_{date_str}.xml"
 
     from io import BytesIO
@@ -538,6 +545,116 @@ def save_diagnosis(result_id):
     return jsonify(response)
 
 
+@results_bp.route("/<int:result_id>/send-to-pacs", methods=["POST"])
+@login_required
+def send_to_pacs(result_id):
+    """Send an approved ECG result to PACS."""
+    result = ECGResult.query.get_or_404(result_id)
+    if result.status not in ("APPROVED", "FINALIZED", "COMPLETED"):
+        return jsonify({"success": False, "error": "Only approved results can be sent to PACS"}), 400
+
+    from services.store_scu import send_result_to_pacs
+    success, message = send_result_to_pacs(result_id, current_app._get_current_object())
+    return jsonify({"success": success, "message": message})
+
+
+@results_bp.route("/<int:result_id>/delete", methods=["POST"])
+@login_required
+def delete_result(result_id):
+    """Delete an ECG result. Admin/IT can delete any; nurse can only delete RECEIVED."""
+    role = current_user.role
+    if role not in ("admin", "it_admin", "nurse"):
+        return jsonify({"success": False, "error": "Not authorised | ไม่มีสิทธิ์"}), 403
+
+    result = ECGResult.query.get_or_404(result_id)
+
+    # Nurse can only delete RECEIVED
+    if role == "nurse" and result.status != "RECEIVED":
+        return jsonify({
+            "success": False,
+            "error": "Nurses can only delete RECEIVED results | พยาบาลลบได้เฉพาะผลที่ยังไม่ถูกวินิจฉัย",
+        }), 400
+
+    # Capture info for audit log BEFORE deleting
+    import json
+    accession = result.accession_number or "-"
+    pacs_status = result.pacs_send_status
+    audit_detail = json.dumps({
+        "result_id": result_id,
+        "accession_number": accession,
+        "patient_id": result.patient.patient_id if result.patient else None,
+        "patient_name": result.patient.patient_name if result.patient else None,
+        "status": result.status,
+        "file_path": result.file_path,
+        "pacs_send_status": pacs_status,
+        "diagnosed_by": result.diagnosed_by,
+    }, ensure_ascii=False)
+
+    # Write audit log (no FK to ecg_results — survives deletion)
+    from models import AuditLog
+    db.session.add(AuditLog(
+        action="delete_result",
+        actor_id=current_user.id,
+        detail=audit_detail,
+    ))
+
+    # Reset linked worklist item back to SCHEDULED so it can receive new results
+    if result.worklist_id:
+        wl = WorklistItem.query.get(result.worklist_id)
+        if wl and wl.status == "COMPLETED":
+            wl.status = "SCHEDULED"
+
+    # Delete related records
+    AssignmentLog.query.filter_by(ecg_result_id=result_id).delete()
+    from models import Notification
+    Notification.query.filter_by(related_result_id=result_id).delete()
+
+    # Delete DICOM file from disk
+    file_deleted = False
+    if result.file_path and os.path.exists(result.file_path):
+        try:
+            os.remove(result.file_path)
+            file_deleted = True
+        except OSError:
+            pass  # file removal is best-effort
+
+    db.session.delete(result)
+    db.session.commit()
+
+    msg = f"Result {accession} deleted"
+    if file_deleted:
+        msg += " (DICOM file removed)"
+    if pacs_status == "SENT":
+        msg += " — Note: already sent to PACS"
+    msg += f" | ลบผลตรวจ {accession} แล้ว"
+
+    return jsonify({"success": True, "message": msg})
+
+
+@results_bp.route("/<int:result_id>/reset-status", methods=["POST"])
+@login_required
+def reset_status(result_id):
+    """Reset a stuck IN_REVIEW case back to RECEIVED (nurse/admin only)."""
+    if current_user.role not in ("admin", "it_admin", "nurse"):
+        return jsonify({"success": False, "error": "Not authorised"}), 403
+
+    result = ECGResult.query.get_or_404(result_id)
+    if result.status != "IN_REVIEW":
+        return jsonify({"success": False, "error": "Only IN_REVIEW cases can be reset"}), 400
+
+    result.status = "RECEIVED"
+    result.locked_by_id = None
+    result.locked_at = None
+    result.assigned_to_id = None
+    result.assignment_expires_at = None
+    db.session.add(AssignmentLog(
+        ecg_result_id=result_id, action="reset", actor_id=current_user.id
+    ))
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "Case reset to RECEIVED | เคสถูกรีเซ็ตเป็น RECEIVED"})
+
+
 @results_bp.route("/api/browse")
 @login_required
 def api_browse():
@@ -646,6 +763,22 @@ def _import_dicom_files(directory: str) -> int:
                 db.session.add(patient)
                 db.session.flush()
 
+            # Extract study date/time from DICOM tags
+            study_dt = None
+            acq_dt_str = str(getattr(ds, "AcquisitionDateTime", "") or "").strip()
+            sd_str = str(getattr(ds, "StudyDate", "") or "").strip()
+            st_str = str(getattr(ds, "StudyTime", "") or "").strip()
+            try:
+                if acq_dt_str and len(acq_dt_str) >= 14:
+                    study_dt = datetime.strptime(acq_dt_str[:14], "%Y%m%d%H%M%S")
+                elif sd_str and len(sd_str) == 8:
+                    if st_str and len(st_str) >= 6:
+                        study_dt = datetime.strptime(sd_str + st_str[:6], "%Y%m%d%H%M%S")
+                    else:
+                        study_dt = datetime.strptime(sd_str, "%Y%m%d")
+            except (ValueError, TypeError):
+                study_dt = None
+
             # Find matching worklist
             worklist = None
             if accession:
@@ -659,6 +792,7 @@ def _import_dicom_files(directory: str) -> int:
                 sop_instance_uid=sop_uid,
                 file_path=os.path.abspath(dest_path),
                 received_at=datetime.now(),
+                study_datetime=study_dt,
                 status="RECEIVED",
             )
             db.session.add(result)

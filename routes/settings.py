@@ -6,7 +6,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 
-from models import db, SystemSetting, User, AssignmentLog, ECGResult, Notification
+from models import db, SystemSetting, User, AssignmentLog, ECGResult, Notification, get_setting
 from utils.decorators import roles_required
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
@@ -30,7 +30,16 @@ def index():
         flash("Settings saved successfully. | บันทึกการตั้งค่าเรียบร้อยแล้ว", "success")
         return redirect(url_for("settings.index"))
 
+    # Keys managed by the DICOM tab — exclude from General tab
+    _dicom_keys = {
+        "ext_mwl_host", "ext_mwl_port", "ext_mwl_ae", "ext_mwl_local_ae",
+        "ext_mwl_auto_sync", "ext_mwl_sync_interval", "ext_mwl_last_sync_at",
+        "pacs_host", "pacs_port", "pacs_ae", "pacs_local_ae",
+        "scp_mwl_ae_title", "scp_mwl_port",
+        "scp_store_ae_title", "scp_store_port", "scp_storage_dir",
+    }
     all_settings = SystemSetting.query.order_by(SystemSetting.key).all()
+    general_settings = [s for s in all_settings if s.key not in _dicom_keys]
 
     dicom_config = {
         "MWL_AE_TITLE": current_app.config.get("MWL_AE_TITLE", "MWL"),
@@ -42,11 +51,24 @@ def index():
 
     all_roles = ["admin", "doctor", "nurse", "it_admin", "viewer"]
 
+    # DICOM settings for tab forms (SCP + SCU)
+    dicom_keys = [
+        # SCP settings (require restart)
+        "scp_mwl_ae_title", "scp_mwl_port",
+        "scp_store_ae_title", "scp_store_port", "scp_storage_dir",
+        # SCU settings (no restart needed)
+        "ext_mwl_host", "ext_mwl_port", "ext_mwl_ae", "ext_mwl_local_ae",
+        "ext_mwl_auto_sync", "ext_mwl_sync_interval", "ext_mwl_last_sync_at",
+        "pacs_host", "pacs_port", "pacs_ae", "pacs_local_ae",
+    ]
+    setting_values = {k: get_setting(k, "") for k in dicom_keys}
+
     return render_template(
         "settings/index.html",
-        settings=all_settings,
+        settings=general_settings,
         dicom_config=dicom_config,
         all_roles=all_roles,
+        setting_values=setting_values,
     )
 
 
@@ -333,3 +355,48 @@ def api_audit():
         "recordsFiltered": filtered,
         "data": data,
     })
+
+
+# ---------------------------------------------------------------------------
+# DICOM Integration API (MWL SCU + PACS Store SCU)
+# ---------------------------------------------------------------------------
+@settings_bp.route("/api/dicom/test-mwl", methods=["POST"])
+@login_required
+@roles_required("admin", "it_admin")
+def test_mwl():
+    """Test connection to external MWL server."""
+    data = request.get_json(silent=True) or {}
+    host = data.get("host", "").strip()
+    port = int(data.get("port", 104))
+    remote_ae = data.get("remote_ae", "MWL").strip()
+    local_ae = data.get("local_ae", "ECG_SCU").strip()
+
+    from services.mwl_scu import test_mwl_connection
+    success, message = test_mwl_connection(host, port, remote_ae, local_ae)
+    return jsonify({"success": success, "message": message})
+
+
+@settings_bp.route("/api/dicom/test-pacs", methods=["POST"])
+@login_required
+@roles_required("admin", "it_admin")
+def test_pacs():
+    """Test connection to PACS server via C-ECHO."""
+    data = request.get_json(silent=True) or {}
+    host = data.get("host", "").strip()
+    port = int(data.get("port", 104))
+    remote_ae = data.get("remote_ae", "PACS").strip()
+    local_ae = data.get("local_ae", "ECG_SCU").strip()
+
+    from services.store_scu import test_pacs_connection
+    success, message = test_pacs_connection(host, port, remote_ae, local_ae)
+    return jsonify({"success": success, "message": message})
+
+
+@settings_bp.route("/api/dicom/sync-mwl", methods=["POST"])
+@login_required
+@roles_required("admin", "it_admin")
+def sync_mwl():
+    """Trigger immediate MWL synchronization."""
+    from services.mwl_scu import sync_from_external_mwl
+    result = sync_from_external_mwl(current_app._get_current_object())
+    return jsonify(result)

@@ -67,6 +67,22 @@ class StoreSCP:
         if sex not in ("M", "F", "O"):
             sex = ""
 
+        # Extract study date/time from DICOM tags
+        study_dt = None
+        acq_dt_str = str(getattr(ds, "AcquisitionDateTime", "") or "").strip()
+        study_date_str = str(getattr(ds, "StudyDate", "") or "").strip()
+        study_time_str = str(getattr(ds, "StudyTime", "") or "").strip()
+        try:
+            if acq_dt_str and len(acq_dt_str) >= 14:
+                study_dt = datetime.strptime(acq_dt_str[:14], "%Y%m%d%H%M%S")
+            elif study_date_str and len(study_date_str) == 8:
+                if study_time_str and len(study_time_str) >= 6:
+                    study_dt = datetime.strptime(study_date_str + study_time_str[:6], "%Y%m%d%H%M%S")
+                else:
+                    study_dt = datetime.strptime(study_date_str, "%Y%m%d")
+        except (ValueError, TypeError):
+            study_dt = None
+
         # Create database record
         with self.flask_app.app_context():
             from models import db, ECGResult, Patient, WorklistItem
@@ -99,6 +115,7 @@ class StoreSCP:
                 sop_instance_uid=sop_uid,
                 file_path=filepath,
                 received_at=datetime.now(),
+                study_datetime=study_dt,
                 status="RECEIVED",
             )
             db.session.add(result)

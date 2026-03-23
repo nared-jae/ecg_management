@@ -265,6 +265,10 @@
     .hn-status.found { color: var(--apple-green); }
     .hn-status.not-found { color: var(--apple-text-secondary); }
 
+    /* Spin animation for sync button */
+    .spin-icon { animation: spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
     @media (max-width: 992px) {
         .ecg-test-layout { flex-direction: column; }
         .filter-sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; }
@@ -363,6 +367,10 @@
             <button class="filter-toggle-btn primary" onclick="openNewTestModal()">
                 <i class="bi bi-plus-lg"></i>
                 <span data-i18n="et_new_test">New Test</span>
+            </button>
+            <button class="filter-toggle-btn" onclick="syncWorklist()" id="btnSyncMwl" title="Sync from external Worklist Server">
+                <i class="bi bi-cloud-download"></i>
+                <span data-i18n="et_sync_worklist">Sync Worklist</span>
             </button>
             <button class="btn btn-apple-secondary" id="btnViewReport" onclick="viewReport()" disabled>
                 <i class="bi bi-file-earmark-medical me-1"></i><span data-i18n="et_view_report">View Report</span>
@@ -689,7 +697,12 @@ var ET_I18N = {
         src_Inpatient: 'Inpatient',
         src_Emergency: 'Emergency',
         src_Health_Check: 'Health Check',
-        et_columns: 'Columns'
+        et_columns: 'Columns',
+        et_sync_worklist: 'Sync Worklist',
+        et_th_source: 'Source',
+        et_syncing: 'Syncing...',
+        et_sync_success: 'Worklist synced successfully',
+        et_sync_error: 'Sync failed'
     },
     th: {
         et_title: 'จัดการตรวจ ECG',
@@ -797,7 +810,12 @@ var ET_I18N = {
         src_Inpatient: 'ผู้ป่วยใน',
         src_Emergency: 'ฉุกเฉิน',
         src_Health_Check: 'ตรวจสุขภาพ',
-        et_columns: 'คอลัมน์'
+        et_columns: 'คอลัมน์',
+        et_sync_worklist: 'ซิงค์ Worklist',
+        et_th_source: 'แหล่งที่มา',
+        et_syncing: 'กำลังซิงค์...',
+        et_sync_success: 'ซิงค์ Worklist สำเร็จ',
+        et_sync_error: 'ซิงค์ล้มเหลว'
     }
 };
 
@@ -902,7 +920,15 @@ function initTestsTable() {
             { data: 'performing_physician', title: getLang('et_th_physician') },
             // 9: Accession No.
             { data: 'accession_number', title: getLang('et_th_accession') },
-            // 10: Actions
+            // 10: Source
+            {
+                data: 'source', title: getLang('et_th_source'), width: '80px',
+                render: function(data) {
+                    if (data === 'EXTERNAL') return '<span class="badge" style="background:#e8f0fe;color:#1a73e8;font-weight:500;">External</span>';
+                    return '<span class="badge" style="background:var(--apple-bg-secondary);color:var(--apple-text-secondary);font-weight:500;">Manual</span>';
+                }
+            },
+            // 11: Actions
             {
                 data: 'id', title: getLang('et_th_actions'), orderable: false, width: '80px',
                 render: function(data) {
@@ -938,9 +964,11 @@ function initTestsTable() {
 }
 
 $(document).ready(function() {
-    // Default filter to today
+    // Default filter to today + SCHEDULED/IN_PROGRESS
     var _today = new Date().toISOString().split('T')[0];
     $('#filterDate').val(_today);
+    $('.status-filter[value="SCHEDULED"]').prop('checked', true);
+    $('.status-filter[value="IN_PROGRESS"]').prop('checked', true);
     initTestsTable();
     // Row selection
     $('#testsTable tbody').on('click', 'tr', function() {
@@ -960,6 +988,20 @@ $(document).ready(function() {
 
     // Build column visibility dropdown
     buildColVisDropdown();
+
+    // Auto-open New Test modal if prefill_hn param is present (from Patients page)
+    var _prefillHN = new URLSearchParams(window.location.search).get('prefill_hn');
+    if (_prefillHN) {
+        // Clear date filter so table shows all
+        $('#filterDate').val('');
+        applyFilters();
+        // Open modal and lookup patient
+        openNewTestModal();
+        $('#inputHN').val(_prefillHN);
+        lookupPatient();
+        // Clean URL
+        window.history.replaceState({}, '', '{{ url_for("ecg_tests.index") }}');
+    }
 
     // Re-align columns on window resize
     var _resizeTimer;
@@ -1000,7 +1042,8 @@ var COL_VIS_NAMES = [
     { idx: 7, key: 'et_th_type' },
     { idx: 8, key: 'et_th_physician' },
     { idx: 9, key: 'et_th_accession' },
-    { idx: 10, key: 'et_th_actions' }
+    { idx: 10, key: 'et_th_source' },
+    { idx: 11, key: 'et_th_actions' }
 ];
 
 function buildColVisDropdown() {
@@ -1261,6 +1304,37 @@ function updateSelectedStatus() {
                 $('#statusSelect').val('');
             }
         }
+    });
+}
+
+// ===== Sync Worklist =====
+function syncWorklist() {
+    var btn = document.getElementById('btnSyncMwl');
+    btn.disabled = true;
+    btn.querySelector('i').className = 'bi bi-arrow-repeat spin-icon';
+    showToast('info', getLang('et_syncing'));
+
+    fetch('{{ url_for("ecg_tests.sync_mwl") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.querySelector('i').className = 'bi bi-cloud-download';
+        if (data.success) {
+            var msg = data.created + ' new, ' + data.updated + ' updated';
+            showToast('success', getLang('et_sync_success') + ' (' + msg + ')');
+            // Reload table with current filters preserved
+            testsTable.ajax.reload();
+        } else {
+            showToast('error', data.error || getLang('et_sync_error'));
+        }
+    })
+    .catch(function() {
+        btn.disabled = false;
+        btn.querySelector('i').className = 'bi bi-cloud-download';
+        showToast('error', getLang('et_sync_error'));
     });
 }
 

@@ -53,6 +53,14 @@
                         </a>
                     </li>
                     {% endif %}
+                    {% if current_user.is_authenticated and current_user.role not in ['doctor', 'viewer'] %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('patients.') %}active{% endif %}"
+                           href="{{ url_for('patients.index') }}">
+                            <i class="bi bi-people me-1"></i><span data-nav-i18n="nav_patients">Patients</span>
+                        </a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'results.index' %}active{% endif %}"
                            href="{{ url_for('results.index') }}">
@@ -159,6 +167,7 @@
             dashboard: 'Dashboard',
             ecg_tests: 'ECG Tests',
             ecg_results: 'ECG Results',
+            nav_patients: 'Patients',
             my_worklist: 'My Worklist',
             nav_settings: 'Settings',
             notifications: 'Notifications',
@@ -171,6 +180,7 @@
             dashboard: 'แดชบอร์ด',
             ecg_tests: 'จัดการตรวจ ECG',
             ecg_results: 'ผลตรวจ ECG',
+            nav_patients: 'ผู้ป่วย',
             my_worklist: 'รายการของฉัน',
             nav_settings: 'ตั้งค่าระบบ',
             notifications: 'การแจ้งเตือน',
@@ -226,6 +236,7 @@
         if (_TABLE_RELOAD_TYPES.indexOf(data.type) >= 0) {
             if (window.resultsTable)  window.resultsTable.ajax.reload(null, false);
             if (window.worklistTable) window.worklistTable.ajax.reload(null, false);
+            if (window.testsTable)    window.testsTable.ajax.reload(null, false);
         }
     });
 

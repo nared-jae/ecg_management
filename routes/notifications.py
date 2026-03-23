@@ -93,10 +93,27 @@ def push_notification(user_id: int, message: str, message_th: str,
 
 
 def push_broadcast_to_roles(roles: list, message: str, message_th: str,
-                            notif_type: str, result_id: int = None):
+                            notif_type: str, result_id: int = None,
+                            persist: bool = True):
     """Emit a SocketIO event to all users in the given roles.
     Uses role-based rooms (role_nurse, role_admin, etc.).
-    Does NOT persist Notification rows to avoid spam."""
+    When persist=True, also saves Notification rows so they appear in the bell."""
+    from models import User
+
+    if persist:
+        # Persist notification for each user in target roles
+        users = User.query.filter(User.role.in_(roles)).all()
+        for u in users:
+            notif = Notification(
+                user_id=u.id,
+                message=message,
+                message_th=message_th,
+                type=notif_type,
+                related_result_id=result_id,
+            )
+            db.session.add(notif)
+        db.session.commit()
+
     payload = {
         "id": 0,
         "message": message,

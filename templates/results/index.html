@@ -37,9 +37,9 @@
     <!-- Filter Sidebar -->
     <div class="filter-sidebar collapsed" id="filterSidebar">
 
-        <!-- Received Date Range -->
+        <!-- Exam Date Range -->
         <div class="filter-card">
-            <div class="filter-title"><i class="bi bi-calendar3 me-1"></i><span data-i18n="rs_f_date">RECEIVED DATE</span></div>
+            <div class="filter-title"><i class="bi bi-calendar3 me-1"></i><span data-i18n="rs_f_date">EXAM DATE</span></div>
             <label class="filter-check-label" data-i18n="rs_f_from">From</label>
             <input type="date" class="form-control form-control-sm mb-2" id="filterDateFrom" onchange="applyFilters()">
             <label class="filter-check-label" data-i18n="rs_f_to">To</label>
@@ -179,6 +179,32 @@
                     <i class="bi bi-exclamation-triangle me-1"></i>
                     <span id="forceActionConfirmText" data-i18n="rs_force_proceed">Proceed Anyway</span>
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Result Confirmation Modal -->
+<div class="modal fade" id="deleteResultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="border-radius:var(--apple-radius);border:none;">
+            <div class="modal-body text-center p-4">
+                <div style="width:56px;height:56px;border-radius:50%;background:#fff0f0;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                    <i class="bi bi-trash3" style="font-size:1.5rem;color:var(--apple-red);"></i>
+                </div>
+                <h5 style="font-weight:500;" data-i18n="rs_delete_title">Delete Result</h5>
+                <p id="deleteResultMsg" style="color:var(--apple-text-secondary);font-size:0.85rem;"></p>
+                <div id="deleteResultPacsWarn" style="display:none;" class="alert alert-warning py-2 px-3 mb-3" role="alert">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <span style="font-size:0.8rem;" data-i18n="rs_delete_pacs_warn">This result was already sent to PACS. The PACS copy will not be removed.</span>
+                </div>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-apple-secondary btn-apple-sm" data-bs-dismiss="modal" data-i18n="rs_cancel">Cancel</button>
+                    <button type="button" class="btn btn-apple-sm" id="deleteResultConfirmBtn"
+                            style="background:var(--apple-red);color:#fff;border:none;">
+                        <i class="bi bi-trash3 me-1"></i><span data-i18n="rs_delete">Delete</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -340,7 +366,7 @@ var RS_I18N = {
         rs_th_sex: 'Sex',
         rs_th_age: 'Age',
         rs_th_procedure: 'Procedure',
-        rs_th_received: 'Received Date',
+        rs_th_received: 'Exam Date',
         rs_th_physician: 'Physician',
         rs_th_status: 'Status',
         rs_th_assigned: 'Assigned To',
@@ -364,13 +390,19 @@ var RS_I18N = {
         rs_force_unassign_msg: 'This will interrupt the doctor and return the case to the unassigned pool. Continue?',
         rs_force_reassign_msg: 'This will interrupt the doctor and reassign the case to another doctor. Continue?',
         rs_force_proceed: 'Proceed Anyway',
+        rs_reset_status: 'Reset to RECEIVED',
+        rs_confirm_reset: 'Reset this stuck case back to RECEIVED?',
+        rs_delete: 'Delete',
+        rs_delete_title: 'Delete Result',
+        rs_delete_msg: 'Are you sure you want to delete result {accession}? This action cannot be undone.',
+        rs_delete_pacs_warn: 'This result was already sent to PACS. The PACS copy will not be removed.',
         rs_view_all: 'All My Cases',
         rs_view_mine: 'My Cases (Pending)',
         rs_view_unassigned: 'Unassigned Pool',
         rs_filters: 'Filters',
         rs_stat_unassigned: 'Unassigned', rs_stat_pending: 'Pending',
         rs_stat_completed: 'Completed',  rs_stat_today: 'Today',
-        rs_f_date: 'RECEIVED DATE', rs_f_from: 'From', rs_f_to: 'To',
+        rs_f_date: 'EXAM DATE', rs_f_from: 'From', rs_f_to: 'To',
         rs_f_clear_date: 'Clear Date', rs_f_status: 'STATUS',
         rs_f_received: 'Received', rs_f_in_review: 'In Review', rs_f_reviewed: 'Reviewed',
         rs_f_approved: 'Approved', rs_f_finalized: 'Finalized',
@@ -415,6 +447,10 @@ var RS_I18N = {
         rs_browse_empty: 'No subfolders',
         rs_browse_dcm_found: '{count} .dcm files found in this folder',
         rs_browse_no_dcm: 'No .dcm files in this folder',
+        rs_th_pacs: 'PACS',
+        rs_pacs_sending: 'Sending...',
+        rs_pacs_sent: 'Sent to PACS successfully',
+        rs_pacs_failed: 'Send to PACS failed',
     },
     th: {
         rs_title: 'ผลตรวจ ECG',
@@ -426,7 +462,7 @@ var RS_I18N = {
         rs_th_sex: 'เพศ',
         rs_th_age: 'อายุ',
         rs_th_procedure: 'รายการตรวจ',
-        rs_th_received: 'วันที่รับ',
+        rs_th_received: 'วันที่ตรวจ',
         rs_th_physician: 'แพทย์ผู้ตรวจ',
         rs_th_status: 'สถานะ',
         rs_th_assigned: 'มอบหมายให้',
@@ -450,13 +486,19 @@ var RS_I18N = {
         rs_force_unassign_msg: 'เคสจะถูกดึงคืนและส่งกลับไปยังคิวรอมอบหมาย ต้องการดำเนินการต่อหรือไม่?',
         rs_force_reassign_msg: 'เคสจะถูกมอบหมายให้แพทย์ท่านอื่น ต้องการดำเนินการต่อหรือไม่?',
         rs_force_proceed: 'ดำเนินการต่อ',
+        rs_reset_status: 'รีเซ็ตเป็น RECEIVED',
+        rs_confirm_reset: 'รีเซ็ตเคสนี้กลับเป็น RECEIVED หรือไม่?',
+        rs_delete: 'ลบ',
+        rs_delete_title: 'ลบผลตรวจ',
+        rs_delete_msg: 'คุณต้องการลบผลตรวจ {accession} หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
+        rs_delete_pacs_warn: 'ผลตรวจนี้ถูกส่งไปยัง PACS แล้ว สำเนาใน PACS จะไม่ถูกลบ',
         rs_view_all: 'ทั้งหมด (ของฉัน)',
         rs_view_mine: 'รอวินิจฉัย',
         rs_view_unassigned: 'คิวรอมอบหมาย',
         rs_filters: 'ตัวกรอง',
         rs_stat_unassigned: 'ยังไม่มอบหมาย', rs_stat_pending: 'รอดำเนินการ',
         rs_stat_completed: 'เสร็จสิ้น',      rs_stat_today: 'วันนี้',
-        rs_f_date: 'วันที่รับ', rs_f_from: 'ตั้งแต่', rs_f_to: 'ถึง',
+        rs_f_date: 'วันที่ตรวจ', rs_f_from: 'ตั้งแต่', rs_f_to: 'ถึง',
         rs_f_clear_date: 'ล้างวันที่', rs_f_status: 'สถานะ',
         rs_f_received: 'รับแล้ว', rs_f_in_review: 'กำลังวินิจฉัย', rs_f_reviewed: 'ตรวจแล้ว',
         rs_f_approved: 'อนุมัติแล้ว', rs_f_finalized: 'สรุปแล้ว',
@@ -501,6 +543,10 @@ var RS_I18N = {
         rs_browse_empty: 'ไม่มีโฟลเดอร์ย่อย',
         rs_browse_dcm_found: 'พบไฟล์ .dcm {count} ไฟล์ในโฟลเดอร์นี้',
         rs_browse_no_dcm: 'ไม่มีไฟล์ .dcm ในโฟลเดอร์นี้',
+        rs_th_pacs: 'PACS',
+        rs_pacs_sending: 'กำลังส่ง...',
+        rs_pacs_sent: 'ส่งไปยัง PACS สำเร็จ',
+        rs_pacs_failed: 'ส่งไปยัง PACS ล้มเหลว',
     }
 };
 
@@ -536,6 +582,7 @@ var COL_VIS_NAMES = [
     { idx: 8,  key: 'rs_th_assigned' },
     { idx: 9,  key: 'rs_th_expires' },
     { idx: 10, key: 'rs_th_accession', defaultOff: true },
+    { idx: 11, key: 'rs_th_pacs' },
 ];
 
 function buildColVisDropdown() {
@@ -716,7 +763,7 @@ function initResultsTable() {
             { data: 'age', title: getLang('rs_th_age'), width: '50px', className: 'text-center' },
             // 4: Procedure
             { data: 'procedure', title: getLang('rs_th_procedure') },
-            // 5: Received Date
+            // 5: Exam Date
             { data: 'received_at', title: getLang('rs_th_received') },
             // 6: Physician
             { data: 'physician', title: getLang('rs_th_physician') },
@@ -745,7 +792,19 @@ function initResultsTable() {
             },
             // 10: Accession No.
             { data: 'accession_number', title: getLang('rs_th_accession') },
-            // 11: Actions (always visible, not in picker)
+            // 11: PACS Status
+            {
+                data: 'pacs_send_status', title: getLang('rs_th_pacs'), width: '80px',
+                render: function(data, type, row) {
+                    var btnStyle = 'border:none;font-size:0.75rem;padding:0.25rem 0.6rem;border-radius:6px;';
+                    if (data === 'SENT') return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#e6f4ea;color:#1a7f37;" title="' + (row.pacs_sent_at || '') + '" onclick="sendToPacs(' + row.id + ',this)"><i class="bi bi-check-circle me-1"></i>Sent</button>';
+                    if (data === 'FAILED') return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#fff0f0;color:var(--apple-red);" onclick="sendToPacs(' + row.id + ',this)" title="Retry"><i class="bi bi-arrow-clockwise me-1"></i>Retry</button>';
+                    var isDone = _DONE_STATUSES.indexOf((row.status || '').toUpperCase()) >= 0;
+                    if (isDone) return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#e8f0fe;color:#1a73e8;" onclick="sendToPacs(' + row.id + ',this)" title="Send to PACS"><i class="bi bi-cloud-upload me-1"></i>Send</button>';
+                    return '<span style="color:var(--apple-text-secondary);font-size:0.78rem;">—</span>';
+                }
+            },
+            // 12: Actions (always visible, not in picker)
             {
                 data: 'id', title: getLang('rs_th_actions'), orderable: false, width: '110px', className: 'text-start',
                 render: function(data, type, row) {
@@ -772,6 +831,12 @@ function initResultsTable() {
                                 html += ' <button class="btn btn-apple-sm" style="background:#e3f2fd;color:#1565c0;border:none;" '
                                       + 'onclick="openAssign(' + data + ', \'' + (row.accession_number || '') + '\')" title="' + getLang('rs_assign') + '">'
                                       + '<i class="bi bi-person-plus"></i></button>';
+                                // Reset button for stuck IN_REVIEW cases with no assignment
+                                if ((row.status || '').toUpperCase() === 'IN_REVIEW') {
+                                    html += ' <button class="btn btn-apple-sm" style="background:#fff3e0;color:#e65100;border:none;" '
+                                          + 'onclick="resetStatus(' + data + ')" title="' + getLang('rs_reset_status') + '">'
+                                          + '<i class="bi bi-arrow-counterclockwise"></i></button>';
+                                }
                             }
                         }
                     }
@@ -784,6 +849,18 @@ function initResultsTable() {
                         html += ' <button class="btn btn-apple-sm" style="background:#fff0f0;color:var(--apple-red);border:none;" '
                               + 'onclick="rejectCase(' + data + ')" title="' + getLang('rs_reject') + '">'
                               + '<i class="bi bi-x-circle"></i></button>';
+                    }
+
+                    // Delete button: admin/it_admin = all, nurse = RECEIVED only
+                    var canDelete = false;
+                    var st = (row.status || '').toUpperCase();
+                    if (USER_ROLE === 'admin' || USER_ROLE === 'it_admin') canDelete = true;
+                    else if (USER_ROLE === 'nurse' && st === 'RECEIVED') canDelete = true;
+                    if (canDelete) {
+                        var pacsWarn = row.pacs_send_status === 'SENT' ? 1 : 0;
+                        html += ' <button class="btn btn-apple-sm" style="background:#fff0f0;color:var(--apple-red);border:none;" '
+                              + 'onclick="confirmDeleteResult(' + data + ',\'' + (row.accession_number || '-').replace(/'/g, "\\'") + '\',' + pacsWarn + ')" title="' + getLang('rs_delete') + '">'
+                              + '<i class="bi bi-trash3"></i></button>';
                     }
 
                     return html;
@@ -929,6 +1006,53 @@ function _executeUnassign(resultId) {
             if (data.success) resultsTable.ajax.reload(null, false);
         });
 }
+
+function resetStatus(resultId) {
+    if (!confirm(getLang('rs_confirm_reset'))) return;
+    fetch('/results/' + resultId + '/reset-status', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                resultsTable.ajax.reload(null, false);
+                showToast('success', data.message);
+            } else {
+                showToast('error', data.error);
+            }
+        });
+}
+
+// ===== Delete Result =====
+var _deleteResultId = null;
+var _deleteResultModal = null;
+
+function confirmDeleteResult(resultId, accession, pacsWarn) {
+    _deleteResultId = resultId;
+    var msg = getLang('rs_delete_msg').replace('{accession}', accession);
+    document.getElementById('deleteResultMsg').textContent = msg;
+    document.getElementById('deleteResultPacsWarn').style.display = pacsWarn ? 'block' : 'none';
+    _deleteResultModal = new bootstrap.Modal(document.getElementById('deleteResultModal'));
+    _deleteResultModal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var delBtn = document.getElementById('deleteResultConfirmBtn');
+    if (delBtn) {
+        delBtn.addEventListener('click', function() {
+            if (!_deleteResultId) return;
+            fetch('/results/' + _deleteResultId + '/delete', { method: 'POST' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (_deleteResultModal) _deleteResultModal.hide();
+                    if (data.success) {
+                        resultsTable.ajax.reload(null, false);
+                        showToast('success', data.message);
+                    } else {
+                        showToast('error', data.error);
+                    }
+                });
+        });
+    }
+});
 
 // ===== Force Action Modal =====
 var _forceActionModal = null;
@@ -1106,9 +1230,49 @@ function rejectCase(resultId) {
         });
 }
 
+// ===== Send to PACS =====
+function sendToPacs(resultId, btnEl) {
+    if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; }
+
+    fetch('/results/' + resultId + '/send-to-pacs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showToast('success', getLang('rs_pacs_sent'));
+        } else {
+            showToast('error', data.message || getLang('rs_pacs_failed'));
+        }
+        if (resultsTable) resultsTable.ajax.reload(null, false);
+    })
+    .catch(function() {
+        showToast('error', getLang('rs_pacs_failed'));
+        if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="bi bi-cloud-upload me-1"></i>Send'; }
+    });
+}
+
+function showToast(type, message) {
+    var icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+    var toast = $('<div class="alert alert-' + (type === 'error' ? 'danger' : type) + ' alert-dismissible fade show" ' +
+        'style="position:fixed;top:80px;right:20px;z-index:10000;min-width:300px;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.15);font-size:0.88rem;">' +
+        '<i class="bi bi-' + icon + ' me-2"></i>' + message +
+        '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
+    $('body').append(toast);
+    setTimeout(function() { toast.alert('close'); }, 4000);
+}
+
 $(document).ready(function() {
     setView(_currentView);
     initResultsTable();
+
+    // Apply search param from URL (e.g. from Patients page "View Results")
+    var urlSearch = new URLSearchParams(window.location.search).get('search');
+    if (urlSearch && resultsTable) {
+        resultsTable.search(urlSearch).draw();
+    }
+
     // Fallback sync every 60s (safety net — SocketIO handles real-time updates)
     setInterval(function() {
         if (resultsTable) resultsTable.ajax.reload(null, false);

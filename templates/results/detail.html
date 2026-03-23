@@ -557,9 +557,10 @@
     <div class="col-md-3">
         <div class="apple-card h-100">
             <div class="card-label"><i class="bi bi-calendar me-1"></i><span data-i18n="exam_date">Exam Date</span></div>
-            <div style="font-weight:500;font-size:1.05rem;">{{ result.received_at.strftime('%d/%m/%Y') if result.received_at else '-' }}</div>
+            {% set exam_dt = result.study_datetime or result.received_at %}
+            <div style="font-weight:500;font-size:1.05rem;">{{ exam_dt.strftime('%d/%m/%Y') if exam_dt else '-' }}</div>
             <div style="font-size:0.85rem;color:var(--apple-text-secondary);margin-top:0.25rem;">
-                {{ result.received_at.strftime('%H:%M:%S') if result.received_at else '' }}
+                {{ exam_dt.strftime('%H:%M:%S') if exam_dt else '' }}
             </div>
         </div>
     </div>
@@ -688,6 +689,18 @@
         <button class="toolbar-btn" onclick="window.location.href='{{ url_for('results.download', result_id=result.id) }}'" title="Download DICOM">
             <i class="bi bi-download"></i> DICOM
         </button>
+        {% if result.status in ('APPROVED', 'FINALIZED', 'COMPLETED') %}
+        <button class="toolbar-btn" id="btnSendPacs" onclick="sendToPacsDetail()" title="Send to PACS"
+                style="{% if result.pacs_send_status == 'SENT' %}background:#e6f4ea;color:#1a7f37;border-color:#1a7f37;{% endif %}">
+            {% if result.pacs_send_status == 'SENT' %}
+            <i class="bi bi-check-circle"></i> PACS Sent
+            {% elif result.pacs_send_status == 'FAILED' %}
+            <i class="bi bi-x-circle" style="color:var(--apple-red);"></i> Retry PACS
+            {% else %}
+            <i class="bi bi-cloud-upload"></i> Send to PACS
+            {% endif %}
+        </button>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -2429,5 +2442,27 @@ function _updateCountdown() {
 setInterval(_updateCountdown, 1000);
 _updateCountdown();
 {% endif %}
+
+function sendToPacsDetail() {
+    var btn = document.getElementById('btnSendPacs');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...'; }
+
+    fetch('/results/{{ result.id }}/send-to-pacs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (btn) { btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> PACS Sent'; btn.style.background = '#e6f4ea'; btn.style.color = '#1a7f37'; btn.disabled = false; }
+        } else {
+            if (btn) { btn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Failed'; btn.style.background = '#fff0f0'; btn.style.color = 'var(--apple-red)'; btn.disabled = false; }
+            alert(data.message || 'Send to PACS failed');
+        }
+    })
+    .catch(function() {
+        if (btn) { btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i> Send to PACS'; btn.disabled = false; }
+    });
+}
 </script>
 {% endblock %}

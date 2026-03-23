@@ -8,6 +8,40 @@ from extensions import socketio, scheduler
 from models import db, User, Patient, WorklistItem
 
 
+def _auto_sync_mwl(flask_app):
+    """
+    Background job: runs every 60 seconds.
+    Checks if auto-sync is enabled and if the configured interval has elapsed,
+    then triggers MWL synchronization.
+    """
+    from models import get_setting, SystemSetting, db
+
+    with flask_app.app_context():
+        if get_setting("ext_mwl_auto_sync", "false") != "true":
+            return
+        if not get_setting("ext_mwl_host", ""):
+            return
+
+        interval = int(get_setting("ext_mwl_sync_interval", "30"))
+        last_sync_str = get_setting("ext_mwl_last_sync_at", "")
+
+        if last_sync_str:
+            try:
+                last_sync = datetime.strptime(last_sync_str, "%Y-%m-%d %H:%M:%S")
+                elapsed = (datetime.now() - last_sync).total_seconds() / 60
+                if elapsed < interval:
+                    return  # Not yet time to sync
+            except ValueError:
+                pass  # Invalid timestamp, proceed with sync
+
+    from services.mwl_scu import sync_from_external_mwl
+    result = sync_from_external_mwl(flask_app)
+    if result.get("success"):
+        print(f"[Auto-Sync MWL] {result['created']} created, {result['updated']} updated")
+    elif result.get("error"):
+        print(f"[Auto-Sync MWL] Error: {result['error']}")
+
+
 def _check_assignment_timeouts(flask_app):
     """
     Background job: runs every 60 seconds.
@@ -110,6 +144,14 @@ def create_app():
         seconds=60,
         replace_existing=True,
     )
+    scheduler.add_job(
+        id="auto_sync_mwl",
+        func=_auto_sync_mwl,
+        args=[app],
+        trigger="interval",
+        seconds=60,
+        replace_existing=True,
+    )
 
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -130,6 +172,7 @@ def create_app():
     from routes.notifications import notifications_bp
     from routes.assignment import assignment_bp
     from routes.settings import settings_bp
+    from routes.patients import patients_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -139,13 +182,67 @@ def create_app():
     app.register_blueprint(notifications_bp)
     app.register_blueprint(assignment_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(patients_bp)
 
     # Create tables and seed data
     with app.app_context():
         db.create_all()
+        _auto_migrate(db)
         _seed_default_data(stable_uid_from_text)
 
     return app
+
+
+def _auto_migrate(db):
+    """Add missing columns to existing tables (SQLite ALTER TABLE)."""
+    import sqlalchemy
+    inspector = sqlalchemy.inspect(db.engine)
+    ecg_cols = [c["name"] for c in inspector.get_columns("ecg_results")]
+    if "study_datetime" not in ecg_cols:
+        db.session.execute(sqlalchemy.text("ALTER TABLE ecg_results ADD COLUMN study_datetime DATETIME"))
+        db.session.commit()
+        print("[Migrate] Added study_datetime column to ecg_results")
+
+        # Backfill from DICOM files
+        _backfill_study_datetime(db)
+
+
+def _backfill_study_datetime(db):
+    """Backfill study_datetime from DICOM files for existing records."""
+    import os
+    from datetime import datetime as dt
+    from models import ECGResult
+    try:
+        import pydicom
+    except ImportError:
+        return
+
+    results = ECGResult.query.filter(ECGResult.study_datetime.is_(None)).all()
+    count = 0
+    for r in results:
+        if not r.file_path or not os.path.exists(r.file_path):
+            continue
+        try:
+            ds = pydicom.dcmread(r.file_path, force=True)
+            acq_dt_str = str(getattr(ds, "AcquisitionDateTime", "") or "").strip()
+            sd_str = str(getattr(ds, "StudyDate", "") or "").strip()
+            st_str = str(getattr(ds, "StudyTime", "") or "").strip()
+            study_dt = None
+            if acq_dt_str and len(acq_dt_str) >= 14:
+                study_dt = dt.strptime(acq_dt_str[:14], "%Y%m%d%H%M%S")
+            elif sd_str and len(sd_str) == 8:
+                if st_str and len(st_str) >= 6:
+                    study_dt = dt.strptime(sd_str + st_str[:6], "%Y%m%d%H%M%S")
+                else:
+                    study_dt = dt.strptime(sd_str, "%Y%m%d")
+            if study_dt:
+                r.study_datetime = study_dt
+                count += 1
+        except Exception:
+            continue
+    if count:
+        db.session.commit()
+        print(f"[Migrate] Backfilled study_datetime for {count} records")
 
 
 def _seed_default_data(stable_uid_from_text=None):
@@ -284,6 +381,25 @@ def _seed_default_data(stable_uid_from_text=None):
             "label": "Assignment Timeout (minutes)",
             "description": "เวลาที่แพทย์มีในการวินิจฉัยเคสก่อนที่ระบบจะคืนกลับสู่คิวส่วนกลาง",
         },
+        # External MWL Server settings
+        {"key": "ext_mwl_host", "value": "", "label": "External MWL Server Host", "description": "Hostname or IP of the external MWL server"},
+        {"key": "ext_mwl_port", "value": "104", "label": "External MWL Server Port", "description": "Port of the external MWL server"},
+        {"key": "ext_mwl_ae", "value": "MWL", "label": "External MWL AE Title", "description": "AE Title of the external MWL server"},
+        {"key": "ext_mwl_local_ae", "value": "ECG_SCU", "label": "Local SCU AE Title (MWL)", "description": "Local AE Title used when querying MWL"},
+        {"key": "ext_mwl_auto_sync", "value": "false", "label": "MWL Auto-Sync", "description": "Enable automatic worklist synchronization"},
+        {"key": "ext_mwl_sync_interval", "value": "30", "label": "MWL Sync Interval (minutes)", "description": "Interval in minutes between auto-sync runs"},
+        {"key": "ext_mwl_last_sync_at", "value": "", "label": "Last MWL Sync", "description": "Timestamp of the last successful MWL sync"},
+        # PACS Server settings
+        {"key": "pacs_host", "value": "", "label": "PACS Server Host", "description": "Hostname or IP of the PACS server"},
+        {"key": "pacs_port", "value": "104", "label": "PACS Server Port", "description": "Port of the PACS server"},
+        {"key": "pacs_ae", "value": "PACS", "label": "PACS AE Title", "description": "AE Title of the PACS server"},
+        {"key": "pacs_local_ae", "value": "ECG_SCU", "label": "Local SCU AE Title (PACS)", "description": "Local AE Title used when sending to PACS"},
+        # Local SCP settings (require restart)
+        {"key": "scp_mwl_ae_title", "value": "MWL", "label": "MWL SCP AE Title", "description": "AE Title for the local MWL SCP server (requires restart)"},
+        {"key": "scp_mwl_port", "value": "6701", "label": "MWL SCP Port", "description": "Port for the local MWL SCP server (requires restart)"},
+        {"key": "scp_store_ae_title", "value": "ECG_STORE", "label": "Store SCP AE Title", "description": "AE Title for the local Store SCP server (requires restart)"},
+        {"key": "scp_store_port", "value": "6702", "label": "Store SCP Port", "description": "Port for the local Store SCP server (requires restart)"},
+        {"key": "scp_storage_dir", "value": "", "label": "DICOM Storage Directory", "description": "Directory for storing received DICOM files (requires restart)"},
     ]
     for d in defaults:
         if not SystemSetting.query.filter_by(key=d["key"]).first():
@@ -292,24 +408,43 @@ def _seed_default_data(stable_uid_from_text=None):
 
 
 def start_dicom_servers(app):
-    """Start DICOM MWL and Store SCP servers as daemon threads."""
+    """Start DICOM MWL and Store SCP servers as daemon threads.
+
+    Reads SCP settings from SystemSetting DB (falls back to config.py defaults).
+    Changes to these settings require a program restart to take effect.
+    """
     from services.mwl_server import MWLServer
     from services.store_scp import StoreSCP
+    from models import get_setting
+
+    with app.app_context():
+        mwl_ae = get_setting("scp_mwl_ae_title", app.config["MWL_AE_TITLE"])
+        mwl_port = int(get_setting("scp_mwl_port", str(app.config["MWL_PORT"])))
+        store_ae = get_setting("scp_store_ae_title", app.config["STORE_AE_TITLE"])
+        store_port = int(get_setting("scp_store_port", str(app.config["STORE_PORT"])))
+        storage_dir = get_setting("scp_storage_dir", "") or app.config["DICOM_STORAGE_DIR"]
 
     mwl = MWLServer(
         flask_app=app,
-        ae_title=app.config["MWL_AE_TITLE"],
-        port=app.config["MWL_PORT"],
+        ae_title=mwl_ae,
+        port=mwl_port,
     )
     mwl.start()
 
     store = StoreSCP(
         flask_app=app,
-        ae_title=app.config["STORE_AE_TITLE"],
-        port=app.config["STORE_PORT"],
-        storage_dir=app.config["DICOM_STORAGE_DIR"],
+        ae_title=store_ae,
+        port=store_port,
+        storage_dir=storage_dir,
     )
     store.start()
+
+    # Update app.config so the running values are visible elsewhere
+    app.config["MWL_AE_TITLE"] = mwl_ae
+    app.config["MWL_PORT"] = mwl_port
+    app.config["STORE_AE_TITLE"] = store_ae
+    app.config["STORE_PORT"] = store_port
+    app.config["DICOM_STORAGE_DIR"] = storage_dir
 
 
 if __name__ == "__main__":
@@ -318,9 +453,10 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 60)
     print("  ECG Management System")
-    print("  Web:   http://localhost:5000")
-    print(f"  MWL:   Port {app.config['MWL_PORT']} (AE: {app.config['MWL_AE_TITLE']})")
-    print(f"  Store: Port {app.config['STORE_PORT']} (AE: {app.config['STORE_AE_TITLE']})")
+    print("  Web:      http://localhost:5000")
+    print(f"  MWL SCP:  Port {app.config['MWL_PORT']} (AE: {app.config['MWL_AE_TITLE']})")
+    print(f"  Store SCP: Port {app.config['STORE_PORT']} (AE: {app.config['STORE_AE_TITLE']})")
+    print(f"  Storage:  {app.config['DICOM_STORAGE_DIR']}")
     print("  Login: admin/admin123  |  nurse01/nurse123")
     print("         doctor01/doctor123  |  doctor02/doctor123")
     print("=" * 60 + "\n")

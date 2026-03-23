@@ -1,6 +1,17 @@
 <form method="POST" action="{{ url_for('settings.index') }}">
     <div class="apple-table-wrapper" style="padding:1.5rem;">
         {% if settings %}
+
+        <!-- ===== Group: Workflow Settings ===== -->
+        <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
+            <i class="bi bi-gear me-2"></i><span data-i18n="gen_group_workflow">Workflow Settings</span>
+        </h6>
+        <div class="alert d-flex align-items-start mb-3"
+             style="background:#f0f5ff;color:var(--apple-blue);border:none;border-radius:var(--apple-radius-sm);font-size:0.85rem;">
+            <i class="bi bi-info-circle me-2 mt-1"></i>
+            <span data-i18n="gen_workflow_info">Settings that control ECG workflow behavior. Changes take effect immediately.</span>
+        </div>
+
         <div class="row g-4">
             {% for s in settings %}
             <div class="col-12 col-md-6">
@@ -10,13 +21,21 @@
                         {{ s.label or s.key }}
                     </label>
 
+                    {% if s.value and s.value.isdigit() %}
                     <input type="number"
                            class="form-control"
                            name="{{ s.key }}"
                            value="{{ s.value }}"
                            min="1"
-                           max="480"
+                           max="1440"
                            style="max-width:180px;font-size:1rem;font-weight:600;">
+                    {% else %}
+                    <input type="text"
+                           class="form-control"
+                           name="{{ s.key }}"
+                           value="{{ s.value }}"
+                           style="max-width:400px;font-size:1rem;font-weight:600;">
+                    {% endif %}
 
                     {% if s.description %}
                     <p class="mt-2 mb-1" style="font-size:0.82rem;color:var(--apple-text-secondary);">
@@ -49,10 +68,15 @@
         </p>
         {% endif %}
 
+        {% if settings %}
         <div class="mt-4">
             <button type="submit" class="btn btn-apple">
                 <i class="bi bi-floppy me-1"></i><span data-i18n="save_btn">Save Settings</span>
             </button>
+            <span class="ms-3 text-muted" style="font-size:0.82rem;">
+                <i class="bi bi-lightning me-1"></i><span data-i18n="gen_no_restart">Changes take effect immediately (no restart required)</span>
+            </span>
         </div>
+        {% endif %}
     </div>
 </form>

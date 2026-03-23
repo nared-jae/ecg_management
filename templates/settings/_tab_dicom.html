@@ -1,59 +1,479 @@
 <div class="apple-table-wrapper" style="padding:1.5rem;">
-    <div class="alert d-flex align-items-start mb-4"
-         style="background:#f0f5ff;color:var(--apple-blue);border:none;border-radius:var(--apple-radius-sm);">
+
+    <!-- ===== Section 1: Local SCP — MWL Server (ECG device pulls worklist from here) ===== -->
+    <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
+        <i class="bi bi-hdd-rack me-2"></i>MWL SCP Server
+        <span class="badge bg-warning text-dark ms-2" style="font-size:0.7rem;font-weight:500;">
+            <i class="bi bi-arrow-clockwise me-1"></i>Requires Restart
+        </span>
+    </h6>
+    <div class="alert d-flex align-items-start mb-3"
+         style="background:#f0f5ff;color:var(--apple-blue);border:none;border-radius:var(--apple-radius-sm);font-size:0.85rem;">
         <i class="bi bi-info-circle me-2 mt-1"></i>
-        <span data-i18n="dicom_info">DICOM settings are configured in config.py and require a server restart to take effect.</span>
+        <span>The ECG device connects to this server to <strong>pull the worklist</strong>. Configure these values to match the ECG device's Worklist settings (Server AETitle, Port). Changes require a <strong>program restart</strong>.</span>
     </div>
 
-    <div class="row g-4">
-        <div class="col-12 col-md-6">
-            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
-                <label class="form-label fw-600" style="font-size:0.85rem;color:var(--apple-text-secondary);"
-                       data-i18n="dicom_mwl_ae">MWL AE Title</label>
-                <div style="font-size:1.1rem;font-weight:600;color:var(--apple-text);">
-                    {{ dicom_config.MWL_AE_TITLE }}
-                </div>
-            </div>
-        </div>
+    <!-- Running values indicator -->
+    <div class="mb-3 d-flex flex-wrap gap-3" style="font-size:0.82rem;">
+        <span class="text-muted">
+            <i class="bi bi-play-circle me-1"></i>Currently running:
+            <strong>{{ dicom_config.MWL_AE_TITLE }}</strong> on port <strong>{{ dicom_config.MWL_PORT }}</strong>
+        </span>
+    </div>
 
-        <div class="col-12 col-md-6">
-            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
-                <label class="form-label fw-600" style="font-size:0.85rem;color:var(--apple-text-secondary);"
-                       data-i18n="dicom_mwl_port">MWL Port</label>
-                <div style="font-size:1.1rem;font-weight:600;color:var(--apple-text);">
-                    {{ dicom_config.MWL_PORT }}
-                </div>
-            </div>
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-md-3">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Server AE Title</label>
+            <input type="text" class="form-control" id="scp_mwl_ae_title"
+                   value="{{ setting_values.scp_mwl_ae_title or dicom_config.MWL_AE_TITLE }}" maxlength="16"
+                   placeholder="e.g. MWL">
+            <div class="form-text" style="font-size:0.75rem;">Must match ECG device's "Server AETitle" in Worklist settings</div>
         </div>
+        <div class="col-12 col-md-2">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Port</label>
+            <input type="number" class="form-control" id="scp_mwl_port"
+                   value="{{ setting_values.scp_mwl_port or dicom_config.MWL_PORT }}" min="1" max="65535">
+            <div class="form-text" style="font-size:0.75rem;">Must match ECG device's Worklist "Port"</div>
+        </div>
+    </div>
 
-        <div class="col-12 col-md-6">
-            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
-                <label class="form-label fw-600" style="font-size:0.85rem;color:var(--apple-text-secondary);"
-                       data-i18n="dicom_store_ae">Store SCP AE Title</label>
-                <div style="font-size:1.1rem;font-weight:600;color:var(--apple-text);">
-                    {{ dicom_config.STORE_AE_TITLE }}
-                </div>
-            </div>
-        </div>
+    <div class="d-flex gap-2 mb-4">
+        <button class="btn btn-sm btn-primary" onclick="saveScpSettings('mwl')">
+            <i class="bi bi-check-lg me-1"></i>Save
+        </button>
+        <span id="scpMwlStatus" class="ms-2 align-self-center" style="font-size:0.85rem;"></span>
+    </div>
 
-        <div class="col-12 col-md-6">
-            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
-                <label class="form-label fw-600" style="font-size:0.85rem;color:var(--apple-text-secondary);"
-                       data-i18n="dicom_store_port">Store SCP Port</label>
-                <div style="font-size:1.1rem;font-weight:600;color:var(--apple-text);">
-                    {{ dicom_config.STORE_PORT }}
-                </div>
-            </div>
-        </div>
+    <hr class="my-4">
 
-        <div class="col-12">
-            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
-                <label class="form-label fw-600" style="font-size:0.85rem;color:var(--apple-text-secondary);"
-                       data-i18n="dicom_storage_dir">DICOM Storage Directory</label>
-                <div style="font-size:1rem;font-weight:600;color:var(--apple-text);word-break:break-all;">
-                    {{ dicom_config.DICOM_STORAGE_DIR }}
-                </div>
+    <!-- ===== Section 2: Local SCP — Store Server (ECG device sends results here) ===== -->
+    <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
+        <i class="bi bi-hdd-rack me-2"></i>Store SCP Server
+        <span class="badge bg-warning text-dark ms-2" style="font-size:0.7rem;font-weight:500;">
+            <i class="bi bi-arrow-clockwise me-1"></i>Requires Restart
+        </span>
+    </h6>
+    <div class="alert d-flex align-items-start mb-3"
+         style="background:#f0f5ff;color:var(--apple-blue);border:none;border-radius:var(--apple-radius-sm);font-size:0.85rem;">
+        <i class="bi bi-info-circle me-2 mt-1"></i>
+        <span>The ECG device sends completed ECG results to this server via <strong>DICOM C-STORE</strong>. Configure these values to match the ECG device's Transfer Setup (Server AETitle, Port). Changes require a <strong>program restart</strong>.</span>
+    </div>
+
+    <!-- Running values indicator -->
+    <div class="mb-3 d-flex flex-wrap gap-3" style="font-size:0.82rem;">
+        <span class="text-muted">
+            <i class="bi bi-play-circle me-1"></i>Currently running:
+            <strong>{{ dicom_config.STORE_AE_TITLE }}</strong> on port <strong>{{ dicom_config.STORE_PORT }}</strong>
+        </span>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-md-3">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Server AE Title</label>
+            <input type="text" class="form-control" id="scp_store_ae_title"
+                   value="{{ setting_values.scp_store_ae_title or dicom_config.STORE_AE_TITLE }}" maxlength="16"
+                   placeholder="e.g. ECG_STORE">
+            <div class="form-text" style="font-size:0.75rem;">Must match ECG device's "Server AETitle" in Transfer Setup</div>
+        </div>
+        <div class="col-12 col-md-2">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Port</label>
+            <input type="number" class="form-control" id="scp_store_port"
+                   value="{{ setting_values.scp_store_port or dicom_config.STORE_PORT }}" min="1" max="65535">
+            <div class="form-text" style="font-size:0.75rem;">Must match ECG device's Transfer "Port"</div>
+        </div>
+        <div class="col-12 col-md-7">
+            <label class="form-label fw-600" style="font-size:0.82rem;">DICOM Storage Directory</label>
+            <input type="text" class="form-control" id="scp_storage_dir"
+                   value="{{ setting_values.scp_storage_dir or dicom_config.DICOM_STORAGE_DIR }}"
+                   placeholder="e.g. C:\ecg_data\dicom_storage">
+            <div class="form-text" style="font-size:0.75rem;">Directory to store received DICOM files (leave empty for default)</div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <button class="btn btn-sm btn-primary" onclick="saveScpSettings('store')">
+            <i class="bi bi-check-lg me-1"></i>Save
+        </button>
+        <span id="scpStoreStatus" class="ms-2 align-self-center" style="font-size:0.85rem;"></span>
+    </div>
+
+    <hr class="my-4">
+
+    <!-- ===== Section 3: External MWL Server — SCU (pull worklist from external system) ===== -->
+    <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
+        <i class="bi bi-cloud-download me-2"></i>External MWL Server (Worklist Query)
+        <span class="badge bg-success ms-2" style="font-size:0.7rem;font-weight:500;">
+            <i class="bi bi-lightning me-1"></i>No Restart Required
+        </span>
+    </h6>
+    <div class="alert d-flex align-items-start mb-3"
+         style="background:#f0fff4;color:#1a7f37;border:none;border-radius:var(--apple-radius-sm);font-size:0.85rem;">
+        <i class="bi bi-arrow-down-circle me-2 mt-1"></i>
+        <span>Configure an external MWL server (e.g. HIS/RIS) to <strong>pull worklist items</strong> into ECG Tests. Changes take effect <strong>immediately</strong> (no restart needed).</span>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-md-4">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Host / IP</label>
+            <input type="text" class="form-control" id="ext_mwl_host"
+                   value="{{ setting_values.ext_mwl_host or '' }}" placeholder="e.g. 192.168.1.100">
+        </div>
+        <div class="col-12 col-md-2">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Port</label>
+            <input type="number" class="form-control" id="ext_mwl_port"
+                   value="{{ setting_values.ext_mwl_port or '104' }}" min="1" max="65535">
+        </div>
+        <div class="col-12 col-md-3">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Remote AE Title</label>
+            <input type="text" class="form-control" id="ext_mwl_ae"
+                   value="{{ setting_values.ext_mwl_ae or 'MWL' }}" maxlength="16">
+        </div>
+        <div class="col-12 col-md-3">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Local AE Title</label>
+            <input type="text" class="form-control" id="ext_mwl_local_ae"
+                   value="{{ setting_values.ext_mwl_local_ae or 'ECG_SCU' }}" maxlength="16">
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-md-3">
+            <div class="form-check form-switch mt-2">
+                <input class="form-check-input" type="checkbox" id="ext_mwl_auto_sync"
+                       {{ 'checked' if setting_values.ext_mwl_auto_sync == 'true' else '' }}>
+                <label class="form-check-label fw-600" for="ext_mwl_auto_sync" style="font-size:0.85rem;">
+                    Auto-Sync
+                </label>
             </div>
         </div>
+        <div class="col-12 col-md-3">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Sync Interval (min)</label>
+            <input type="number" class="form-control" id="ext_mwl_sync_interval"
+                   value="{{ setting_values.ext_mwl_sync_interval or '30' }}" min="1" max="1440">
+        </div>
+        <div class="col-12 col-md-6 d-flex align-items-end">
+            <span class="text-muted" style="font-size:0.82rem;">
+                {% if setting_values.ext_mwl_last_sync_at %}
+                    Last sync: {{ setting_values.ext_mwl_last_sync_at }}
+                {% else %}
+                    Never synced
+                {% endif %}
+            </span>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <button class="btn btn-sm btn-primary" id="btnSaveMwl" onclick="saveMwlSettings()">
+            <i class="bi bi-check-lg me-1"></i>Save
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" id="btnTestMwl" onclick="testMwlConnection()">
+            <i class="bi bi-plug me-1"></i>Test Connection
+        </button>
+        <button class="btn btn-sm btn-outline-success" id="btnSyncMwl" onclick="syncMwlNow()">
+            <i class="bi bi-arrow-repeat me-1"></i>Sync Now
+        </button>
+        <span id="mwlStatus" class="ms-2 align-self-center" style="font-size:0.85rem;"></span>
+    </div>
+
+    <hr class="my-4">
+
+    <!-- ===== Section 4: PACS Server — SCU (send results to external PACS) ===== -->
+    <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
+        <i class="bi bi-cloud-upload me-2"></i>PACS Server (Result Sending)
+        <span class="badge bg-success ms-2" style="font-size:0.7rem;font-weight:500;">
+            <i class="bi bi-lightning me-1"></i>No Restart Required
+        </span>
+    </h6>
+    <div class="alert d-flex align-items-start mb-3"
+         style="background:#fffbf0;color:#9a6700;border:none;border-radius:var(--apple-radius-sm);font-size:0.85rem;">
+        <i class="bi bi-arrow-up-circle me-2 mt-1"></i>
+        <span>Configure the PACS server to <strong>send approved ECG results</strong>. Use "Send to PACS" button on the ECG Results page. Changes take effect <strong>immediately</strong>.</span>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-md-4">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Host / IP</label>
+            <input type="text" class="form-control" id="pacs_host"
+                   value="{{ setting_values.pacs_host or '' }}" placeholder="e.g. 192.168.1.200">
+        </div>
+        <div class="col-12 col-md-2">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Port</label>
+            <input type="number" class="form-control" id="pacs_port"
+                   value="{{ setting_values.pacs_port or '104' }}" min="1" max="65535">
+        </div>
+        <div class="col-12 col-md-3">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Remote AE Title</label>
+            <input type="text" class="form-control" id="pacs_ae"
+                   value="{{ setting_values.pacs_ae or 'PACS' }}" maxlength="16">
+        </div>
+        <div class="col-12 col-md-3">
+            <label class="form-label fw-600" style="font-size:0.82rem;">Local AE Title</label>
+            <input type="text" class="form-control" id="pacs_local_ae"
+                   value="{{ setting_values.pacs_local_ae or 'ECG_SCU' }}" maxlength="16">
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-3">
+        <button class="btn btn-sm btn-primary" id="btnSavePacs" onclick="savePacsSettings()">
+            <i class="bi bi-check-lg me-1"></i>Save
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" id="btnTestPacs" onclick="testPacsConnection()">
+            <i class="bi bi-plug me-1"></i>Test Connection
+        </button>
+        <span id="pacsStatus" class="ms-2 align-self-center" style="font-size:0.85rem;"></span>
+    </div>
+
+    <hr class="my-4">
+
+    <!-- ===== Summary Table: Settings & Restart Requirements ===== -->
+    <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
+        <i class="bi bi-list-check me-2"></i>Settings Reference
+    </h6>
+    <div class="table-responsive">
+        <table class="table table-sm" style="font-size:0.82rem;">
+            <thead>
+                <tr style="background:var(--apple-bg-secondary);">
+                    <th>Section</th>
+                    <th>Setting</th>
+                    <th>Current Value</th>
+                    <th>Restart?</th>
+                    <th>Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td rowspan="2"><strong>MWL SCP</strong></td>
+                    <td>Server AE Title</td>
+                    <td><code>{{ dicom_config.MWL_AE_TITLE }}</code></td>
+                    <td><span class="badge bg-warning text-dark">Yes</span></td>
+                    <td>ECG device's "Server AETitle" in Worklist menu</td>
+                </tr>
+                <tr>
+                    <td>Port</td>
+                    <td><code>{{ dicom_config.MWL_PORT }}</code></td>
+                    <td><span class="badge bg-warning text-dark">Yes</span></td>
+                    <td>ECG device's "Port" in Worklist menu</td>
+                </tr>
+                <tr>
+                    <td rowspan="3"><strong>Store SCP</strong></td>
+                    <td>Server AE Title</td>
+                    <td><code>{{ dicom_config.STORE_AE_TITLE }}</code></td>
+                    <td><span class="badge bg-warning text-dark">Yes</span></td>
+                    <td>ECG device's "Server AETitle" in Transfer Setup</td>
+                </tr>
+                <tr>
+                    <td>Port</td>
+                    <td><code>{{ dicom_config.STORE_PORT }}</code></td>
+                    <td><span class="badge bg-warning text-dark">Yes</span></td>
+                    <td>ECG device's "Port" in Transfer Setup</td>
+                </tr>
+                <tr>
+                    <td>Storage Directory</td>
+                    <td><code style="word-break:break-all;">{{ dicom_config.DICOM_STORAGE_DIR }}</code></td>
+                    <td><span class="badge bg-warning text-dark">Yes</span></td>
+                    <td>File path for received DICOM files</td>
+                </tr>
+                <tr>
+                    <td rowspan="4"><strong>Ext. MWL SCU</strong></td>
+                    <td>Host / Port</td>
+                    <td><code>{{ setting_values.ext_mwl_host or '-' }}:{{ setting_values.ext_mwl_port or '104' }}</code></td>
+                    <td><span class="badge bg-success">No</span></td>
+                    <td>External worklist server to pull from</td>
+                </tr>
+                <tr>
+                    <td>Remote AE Title</td>
+                    <td><code>{{ setting_values.ext_mwl_ae or 'MWL' }}</code></td>
+                    <td><span class="badge bg-success">No</span></td>
+                    <td>AE Title of the external MWL server</td>
+                </tr>
+                <tr>
+                    <td>Local AE Title</td>
+                    <td><code>{{ setting_values.ext_mwl_local_ae or 'ECG_SCU' }}</code></td>
+                    <td><span class="badge bg-success">No</span></td>
+                    <td>Our AE Title when querying</td>
+                </tr>
+                <tr>
+                    <td>Auto-Sync</td>
+                    <td><code>{{ setting_values.ext_mwl_auto_sync or 'false' }}</code> / {{ setting_values.ext_mwl_sync_interval or '30' }} min</td>
+                    <td><span class="badge bg-success">No</span></td>
+                    <td>Automatic sync interval</td>
+                </tr>
+                <tr>
+                    <td rowspan="3"><strong>PACS SCU</strong></td>
+                    <td>Host / Port</td>
+                    <td><code>{{ setting_values.pacs_host or '-' }}:{{ setting_values.pacs_port or '104' }}</code></td>
+                    <td><span class="badge bg-success">No</span></td>
+                    <td>PACS server to send results to</td>
+                </tr>
+                <tr>
+                    <td>Remote AE Title</td>
+                    <td><code>{{ setting_values.pacs_ae or 'PACS' }}</code></td>
+                    <td><span class="badge bg-success">No</span></td>
+                    <td>AE Title of the PACS server</td>
+                </tr>
+                <tr>
+                    <td>Local AE Title</td>
+                    <td><code>{{ setting_values.pacs_local_ae or 'ECG_SCU' }}</code></td>
+                    <td><span class="badge bg-success">No</span></td>
+                    <td>Our AE Title when sending</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
+
+<script>
+/* ---------- SCP Settings (Requires Restart) ---------- */
+function saveScpSettings(type) {
+    const formData = new FormData();
+    const statusId = type === 'mwl' ? 'scpMwlStatus' : 'scpStoreStatus';
+
+    if (type === 'mwl') {
+        formData.append('scp_mwl_ae_title', document.getElementById('scp_mwl_ae_title').value.trim());
+        formData.append('scp_mwl_port', document.getElementById('scp_mwl_port').value.trim());
+    } else {
+        formData.append('scp_store_ae_title', document.getElementById('scp_store_ae_title').value.trim());
+        formData.append('scp_store_port', document.getElementById('scp_store_port').value.trim());
+        formData.append('scp_storage_dir', document.getElementById('scp_storage_dir').value.trim());
+    }
+
+    fetch('{{ url_for("settings.index") }}', { method: 'POST', body: formData })
+        .then(r => {
+            if (r.redirected) {
+                showStatus(statusId, true, 'Saved — restart program to apply');
+            }
+        })
+        .catch(() => showStatus(statusId, false, 'Save failed'));
+}
+
+/* ---------- External MWL Settings ---------- */
+function getMwlValues() {
+    return {
+        ext_mwl_host: document.getElementById('ext_mwl_host').value.trim(),
+        ext_mwl_port: document.getElementById('ext_mwl_port').value.trim(),
+        ext_mwl_ae: document.getElementById('ext_mwl_ae').value.trim(),
+        ext_mwl_local_ae: document.getElementById('ext_mwl_local_ae').value.trim(),
+        ext_mwl_auto_sync: document.getElementById('ext_mwl_auto_sync').checked ? 'true' : 'false',
+        ext_mwl_sync_interval: document.getElementById('ext_mwl_sync_interval').value.trim(),
+    };
+}
+
+function saveMwlSettings() {
+    const vals = getMwlValues();
+    const formData = new FormData();
+    Object.entries(vals).forEach(([k, v]) => formData.append(k, v));
+
+    fetch('{{ url_for("settings.index") }}', { method: 'POST', body: formData })
+        .then(r => { if (r.redirected) { showStatus('mwlStatus', true, 'Saved'); } })
+        .catch(() => showStatus('mwlStatus', false, 'Save failed'));
+}
+
+function testMwlConnection() {
+    const vals = getMwlValues();
+    showStatus('mwlStatus', null, 'Testing...');
+    document.getElementById('btnTestMwl').disabled = true;
+
+    fetch('{{ url_for("settings.test_mwl") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            host: vals.ext_mwl_host,
+            port: parseInt(vals.ext_mwl_port),
+            remote_ae: vals.ext_mwl_ae,
+            local_ae: vals.ext_mwl_local_ae,
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        showStatus('mwlStatus', data.success, data.message);
+        document.getElementById('btnTestMwl').disabled = false;
+    })
+    .catch(e => {
+        showStatus('mwlStatus', false, 'Request failed');
+        document.getElementById('btnTestMwl').disabled = false;
+    });
+}
+
+function syncMwlNow() {
+    showStatus('mwlStatus', null, 'Syncing...');
+    document.getElementById('btnSyncMwl').disabled = true;
+
+    fetch('{{ url_for("settings.sync_mwl") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showStatus('mwlStatus', true,
+                `Synced: ${data.created} new, ${data.updated} updated, ${data.skipped} skipped (${data.total} total)`);
+        } else {
+            showStatus('mwlStatus', false, data.error || 'Sync failed');
+        }
+        document.getElementById('btnSyncMwl').disabled = false;
+    })
+    .catch(e => {
+        showStatus('mwlStatus', false, 'Request failed');
+        document.getElementById('btnSyncMwl').disabled = false;
+    });
+}
+
+/* ---------- PACS Settings ---------- */
+function getPacsValues() {
+    return {
+        pacs_host: document.getElementById('pacs_host').value.trim(),
+        pacs_port: document.getElementById('pacs_port').value.trim(),
+        pacs_ae: document.getElementById('pacs_ae').value.trim(),
+        pacs_local_ae: document.getElementById('pacs_local_ae').value.trim(),
+    };
+}
+
+function savePacsSettings() {
+    const vals = getPacsValues();
+    const formData = new FormData();
+    Object.entries(vals).forEach(([k, v]) => formData.append(k, v));
+
+    fetch('{{ url_for("settings.index") }}', { method: 'POST', body: formData })
+        .then(r => { if (r.redirected) { showStatus('pacsStatus', true, 'Saved'); } })
+        .catch(() => showStatus('pacsStatus', false, 'Save failed'));
+}
+
+function testPacsConnection() {
+    const vals = getPacsValues();
+    showStatus('pacsStatus', null, 'Testing...');
+    document.getElementById('btnTestPacs').disabled = true;
+
+    fetch('{{ url_for("settings.test_pacs") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            host: vals.pacs_host,
+            port: parseInt(vals.pacs_port),
+            remote_ae: vals.pacs_ae,
+            local_ae: vals.pacs_local_ae,
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        showStatus('pacsStatus', data.success, data.message);
+        document.getElementById('btnTestPacs').disabled = false;
+    })
+    .catch(e => {
+        showStatus('pacsStatus', false, 'Request failed');
+        document.getElementById('btnTestPacs').disabled = false;
+    });
+}
+
+/* ---------- Helper ---------- */
+function showStatus(elementId, success, message) {
+    const el = document.getElementById(elementId);
+    if (success === null) {
+        el.innerHTML = `<span class="text-muted"><i class="bi bi-hourglass-split me-1"></i>${message}</span>`;
+    } else if (success) {
+        el.innerHTML = `<span class="text-success"><i class="bi bi-check-circle me-1"></i>${message}</span>`;
+    } else {
+        el.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle me-1"></i>${message}</span>`;
+    }
+    // Auto-clear after 15 seconds
+    setTimeout(() => { if (el) el.innerHTML = ''; }, 15000);
+}
+</script>

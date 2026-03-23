@@ -123,6 +123,7 @@ def api_data():
             "scheduled_date": _format_date(item.scheduled_date),
             "scheduled_time": _format_time(item.scheduled_time),
             "has_result": has_result,
+            "source": getattr(item, 'source', None) or "MANUAL",
         })
 
     return jsonify({
@@ -131,6 +132,16 @@ def api_data():
         "recordsFiltered": filtered,
         "data": data,
     })
+
+
+@ecg_tests_bp.route("/api/sync-mwl", methods=["POST"])
+@login_required
+def sync_mwl():
+    """Trigger MWL sync from ECG Tests page."""
+    from flask import current_app
+    from services.mwl_scu import sync_from_external_mwl
+    result = sync_from_external_mwl(current_app._get_current_object())
+    return jsonify(result)
 
 
 @ecg_tests_bp.route("/create", methods=["POST"])

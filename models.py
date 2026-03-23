@@ -86,6 +86,8 @@ class WorklistItem(db.Model):
     phone = db.Column(db.String(20))                 # เบอร์โทร
     clinical_info = db.Column(db.String(500))        # ข้อมูลทางคลินิก
 
+    source = db.Column(db.String(20), default="MANUAL")  # MANUAL | EXTERNAL
+
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -105,6 +107,7 @@ class ECGResult(db.Model):
 
     file_path = db.Column(db.String(500))
     received_at = db.Column(db.DateTime, default=datetime.now)
+    study_datetime = db.Column(db.DateTime, nullable=True)  # Actual exam date/time from DICOM tags
     status = db.Column(db.String(20), default="RECEIVED")  # RECEIVED, REVIEWED, APPROVED
     notes = db.Column(db.Text)
 
@@ -121,6 +124,10 @@ class ECGResult(db.Model):
     # Concurrency lock fields
     locked_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     locked_at    = db.Column(db.DateTime, nullable=True)
+
+    # PACS send fields
+    pacs_send_status = db.Column(db.String(20), nullable=True)  # None | SENT | FAILED
+    pacs_sent_at = db.Column(db.DateTime, nullable=True)
 
     assigned_to = db.relationship("User", foreign_keys=[assigned_to_id], backref="assigned_results")
     locked_by   = db.relationship("User", foreign_keys=[locked_by_id],   backref="locked_results")
@@ -174,6 +181,19 @@ class SystemSetting(db.Model):
     updated_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
+
+
+class AuditLog(db.Model):
+    """General audit trail for destructive or sensitive actions (no FK to deleted records)."""
+    __tablename__ = "audit_logs"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    action     = db.Column(db.String(50), nullable=False)   # e.g. delete_result, reset_status
+    actor_id   = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    detail     = db.Column(db.Text)                          # JSON or free-text description
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    actor = db.relationship("User", foreign_keys=[actor_id])
 
 
 def get_setting(key: str, default=None):
