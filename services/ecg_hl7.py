@@ -725,6 +725,25 @@ def _build_interpretation(ecg_data, db_result=None) -> str:
     lines.append('                </annotation>')
     lines.append('              </component>')
 
+    # <author> element — standard HL7 v3 aECG way to identify
+    # the physician who interpreted the study
+    if has_diagnosis:
+        diagnosed_by = getattr(db_result, 'diagnosed_by', '') or ''
+        diagnosed_at = getattr(db_result, 'diagnosed_at', None)
+        author_time = diagnosed_at.strftime('%Y%m%d%H%M%S') if diagnosed_at else ''
+        if diagnosed_by:
+            lines.append('              <author>')
+            lines.append('                <assignedEntity>')
+            lines.append('                  <assignedAuthorType>')
+            lines.append('                    <assignedPerson>')
+            lines.append(f'                      <name>{_esc(diagnosed_by)}</name>')
+            lines.append('                    </assignedPerson>')
+            lines.append('                  </assignedAuthorType>')
+            lines.append('                </assignedEntity>')
+            if author_time:
+                lines.append(f'                <time value="{author_time}"/>')
+            lines.append('              </author>')
+
     lines.append('            </annotation>')
     lines.append('          </component>')
     return '\n'.join(lines) + '\n'

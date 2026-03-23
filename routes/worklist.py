@@ -119,7 +119,7 @@ def delete(item_id):
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return jsonify({"success": True})
 
-    flash("ลบรายการเรียบร้อยแล้ว", "success")
+    flash("Item deleted successfully. | ลบรายการเรียบร้อยแล้ว", "success")
     return redirect(url_for("worklist.index"))
 
 
@@ -169,7 +169,7 @@ def _save_worklist_item(item):
     item.status = f.get("status", "SCHEDULED")
 
     db.session.commit()
-    flash("บันทึกรายการเรียบร้อยแล้ว", "success")
+    flash("Item saved successfully. | บันทึกรายการเรียบร้อยแล้ว", "success")
     return redirect(url_for("worklist.index"))
 
 

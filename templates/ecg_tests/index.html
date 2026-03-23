@@ -115,9 +115,22 @@
     /* ---- Action Toolbar ---- */
     .action-toolbar {
         display: flex;
+        align-items: center;
         gap: 0.5rem;
         flex-wrap: wrap;
         padding: 0.75rem 0;
+    }
+
+    /* ---- Primary action button (same shape as filter-toggle-btn but blue) ---- */
+    .filter-toggle-btn.primary {
+        background: var(--apple-blue);
+        color: #fff;
+        border-color: var(--apple-blue);
+    }
+    .filter-toggle-btn.primary:hover {
+        background: #005ec4;
+        border-color: #005ec4;
+        color: #fff;
     }
 
     /* ---- Column Visibility Dropdown ---- */
@@ -153,10 +166,7 @@
     .col-vis-dropdown label:hover { background: var(--apple-bg-secondary); }
     .col-vis-dropdown input[type="checkbox"] { accent-color: var(--apple-blue); }
 
-    /* ---- Table horizontal scroll & no-wrap ---- */
-    .apple-table-wrapper {
-        overflow-x: auto;
-    }
+    /* ---- Table horizontal scroll (handled by DataTables scrollX) ---- */
     #testsTable {
         white-space: nowrap;
     }
@@ -296,7 +306,7 @@
 
 <div class="ecg-test-layout">
     <!-- Filter Sidebar -->
-    <div class="filter-sidebar">
+    <div class="filter-sidebar collapsed">
         <!-- Date Filter -->
         <div class="filter-card">
             <div class="filter-title"><i class="bi bi-calendar3"></i> <span data-i18n="et_filter_date">Test Date</span></div>
@@ -346,27 +356,28 @@
     <div class="main-panel">
         <!-- Action Toolbar -->
         <div class="action-toolbar">
-            <button class="filter-toggle-btn active" id="btnToggleFilters" onclick="toggleFilters()" title="Toggle Filters">
+            <button class="filter-toggle-btn" id="btnToggleFilters" onclick="toggleFilters()" title="Toggle Filters">
                 <i class="bi bi-funnel" id="filterToggleIcon"></i>
                 <span data-i18n="et_filters">Filters</span>
             </button>
-            <button class="btn btn-apple" onclick="openNewTestModal()">
-                <i class="bi bi-plus-lg me-1"></i>New Test
+            <button class="filter-toggle-btn primary" onclick="openNewTestModal()">
+                <i class="bi bi-plus-lg"></i>
+                <span data-i18n="et_new_test">New Test</span>
             </button>
             <button class="btn btn-apple-secondary" id="btnViewReport" onclick="viewReport()" disabled>
-                <i class="bi bi-file-earmark-medical me-1"></i>View Report
+                <i class="bi bi-file-earmark-medical me-1"></i><span data-i18n="et_view_report">View Report</span>
             </button>
             <button class="btn btn-apple-secondary" id="btnMarkUrgent" onclick="markUrgent()" disabled>
-                <i class="bi bi-exclamation-triangle me-1"></i>Urgent
+                <i class="bi bi-exclamation-triangle me-1"></i><span data-i18n="et_urgent_btn">Urgent</span>
             </button>
             <button class="btn btn-apple-secondary" id="btnUpdateStatus" disabled>
                 <i class="bi bi-arrow-repeat me-1"></i><span data-i18n="et_status_label">Status</span>
                 <select id="statusSelect" class="ms-1" style="border:none;background:transparent;font-size:0.85rem;outline:none;" onchange="updateSelectedStatus()">
                     <option value="" data-i18n-opt="et_select_status">-- Select --</option>
-                    <option value="SCHEDULED">Scheduled</option>
-                    <option value="IN_PROGRESS">In Progress</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="CANCELLED">Cancelled</option>
+                    <option value="SCHEDULED" data-i18n-opt="et_opt_scheduled">Scheduled</option>
+                    <option value="IN_PROGRESS" data-i18n-opt="et_opt_in_progress">In Progress</option>
+                    <option value="COMPLETED" data-i18n-opt="et_opt_completed">Completed</option>
+                    <option value="CANCELLED" data-i18n-opt="et_opt_cancelled">Cancelled</option>
                 </select>
             </button>
             <div class="col-vis-wrapper ms-auto">
@@ -379,23 +390,7 @@
 
         <!-- DataTable -->
         <div class="apple-table-wrapper">
-            <table id="testsTable" class="table" style="width:100%;">
-                <thead>
-                    <tr>
-                        <th>HN</th>
-                        <th data-i18n="et_th_patient">Patient Name</th>
-                        <th style="width:45px;" data-i18n="et_th_sex">Sex</th>
-                        <th style="width:50px;" data-i18n="et_th_age">Age</th>
-                        <th data-i18n="et_th_procedure">Procedure</th>
-                        <th data-i18n="et_th_status">Status</th>
-                        <th style="width:60px;">URGENT</th>
-                        <th data-i18n="et_th_type">Type</th>
-                        <th data-i18n="et_th_physician">Physician</th>
-                        <th>Accession No.</th>
-                        <th style="width:80px;" data-i18n="et_th_actions">Actions</th>
-                    </tr>
-                </thead>
-            </table>
+            <table id="testsTable" class="table" style="width:100%;"></table>
         </div>
     </div>
 </div>
@@ -419,7 +414,7 @@
                         </div>
                         <div class="row g-3">
                             <div class="col-md-4">
-                                <label class="form-label">HN <span style="color:var(--apple-red);">*</span></label>
+                                <label class="form-label"><span data-i18n="et_th_hn">HN</span> <span style="color:var(--apple-red);">*</span></label>
                                 <input type="text" class="form-control" name="patient_id" id="inputHN"
                                        required data-i18n-placeholder="et_ph_hn" placeholder="HN Number" onblur="lookupPatient()">
                                 <div class="hn-status" id="hnStatus"></div>
@@ -432,9 +427,9 @@
                             <div class="col-md-3">
                                 <label class="form-label" data-i18n="et_lbl_sex">Sex</label>
                                 <select class="form-select" name="sex" id="inputSex">
-                                    <option value="M" data-i18n-opt="male">Male</option>
-                                    <option value="F" data-i18n-opt="female">Female</option>
-                                    <option value="O" data-i18n-opt="other">Other</option>
+                                    <option value="M" data-i18n-opt="et_sex_male">Male</option>
+                                    <option value="F" data-i18n-opt="et_sex_female">Female</option>
+                                    <option value="O" data-i18n-opt="et_sex_other">Other</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
@@ -452,10 +447,10 @@
                             <div class="col-md-6">
                                 <label class="form-label" data-i18n="et_lbl_patient_type">Patient Type</label>
                                 <select class="form-select" name="patient_source">
-                                    <option value="Outpatient">Outpatient</option>
-                                    <option value="Inpatient">Inpatient</option>
-                                    <option value="Emergency">Emergency</option>
-                                    <option value="Health Check">Health Check</option>
+                                    <option value="Outpatient" data-i18n-opt="et_outpatient">Outpatient</option>
+                                    <option value="Inpatient" data-i18n-opt="et_inpatient">Inpatient</option>
+                                    <option value="Emergency" data-i18n-opt="et_emergency">Emergency</option>
+                                    <option value="Health Check" data-i18n-opt="et_health_check">Health Check</option>
                                 </select>
                             </div>
                         </div>
@@ -468,7 +463,7 @@
                         </div>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Accession Number</label>
+                                <label class="form-label" data-i18n="et_lbl_accession">Accession Number</label>
                                 <input type="text" class="form-control" name="accession_number"
                                        data-i18n-placeholder="et_ph_accession" placeholder="Auto-generated (leave blank)">
                                 <div class="form-text" style="color:var(--apple-text-secondary);font-size:0.75rem;" data-i18n="et_accession_hint">
@@ -514,10 +509,10 @@
                                        data-i18n-placeholder="et_ph_physician" placeholder="Physician name">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Priority</label>
+                                <label class="form-label" data-i18n="et_lbl_priority">Priority</label>
                                 <select class="form-select" name="priority">
-                                    <option value="ROUTINE" selected>Routine</option>
-                                    <option value="URGENT">Urgent</option>
+                                    <option value="ROUTINE" selected data-i18n-opt="et_opt_routine">Routine</option>
+                                    <option value="URGENT" data-i18n-opt="et_opt_urgent">Urgent</option>
                                 </select>
                             </div>
                             <div class="col-md-8">
@@ -535,11 +530,11 @@
                         </div>
                         <div class="row g-3">
                             <div class="col-md-3">
-                                <label class="form-label">Station AE</label>
+                                <label class="form-label" data-i18n="et_lbl_station_ae">Station AE</label>
                                 <input type="text" class="form-control" name="station_ae" value="CP150">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">Station Name</label>
+                                <label class="form-label" data-i18n="et_lbl_station_name">Station Name</label>
                                 <input type="text" class="form-control" name="station_name" value="ECG-ROOM1">
                             </div>
                             <div class="col-md-3">
@@ -652,7 +647,27 @@ var ET_I18N = {
         et_btn_delete: 'Delete',
         et_confirm_delete: 'Confirm Delete',
         et_delete_msg: 'Are you sure you want to delete this test? This action cannot be undone.',
+        et_th_hn: 'HN',
+        et_th_accession: 'Accession No.',
+        et_th_urgent: 'Urgent',
         et_th_actions: 'Actions',
+        et_new_test: 'New Test',
+        et_view_report: 'View Report',
+        et_urgent_btn: 'Urgent',
+        et_select_status: '-- Select --',
+        et_opt_scheduled: 'Scheduled',
+        et_opt_in_progress: 'In Progress',
+        et_opt_completed: 'Completed',
+        et_opt_cancelled: 'Cancelled',
+        et_opt_routine: 'Routine',
+        et_opt_urgent: 'Urgent',
+        et_lbl_accession: 'Accession Number',
+        et_lbl_priority: 'Priority',
+        et_lbl_station_ae: 'Station AE',
+        et_lbl_station_name: 'Station Name',
+        et_sex_male: 'Male',
+        et_sex_female: 'Female',
+        et_sex_other: 'Other',
         et_deleted: 'Test deleted successfully',
         et_updated: 'Test updated successfully',
         // DataTable
@@ -666,7 +681,7 @@ var ET_I18N = {
         dt_processing: 'Loading...',
         // Status labels for table
         status_SCHEDULED: 'SCHEDULED',
-        status_IN_PROGRESS: 'IN_PROGRESS',
+        status_IN_PROGRESS: 'IN PROGRESS',
         status_COMPLETED: 'COMPLETED',
         status_CANCELLED: 'CANCELLED',
         // Source labels for table
@@ -740,7 +755,27 @@ var ET_I18N = {
         et_btn_delete: 'ลบ',
         et_confirm_delete: 'ยืนยันการลบ',
         et_delete_msg: 'คุณต้องการลบรายการตรวจนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
+        et_th_hn: 'HN',
+        et_th_accession: 'เลขที่ Accession',
+        et_th_urgent: 'เร่งด่วน',
         et_th_actions: 'จัดการ',
+        et_new_test: 'สร้างรายการตรวจ',
+        et_view_report: 'ดูผลตรวจ',
+        et_urgent_btn: 'เร่งด่วน',
+        et_select_status: '-- เลือก --',
+        et_opt_scheduled: 'รอตรวจ',
+        et_opt_in_progress: 'กำลังตรวจ',
+        et_opt_completed: 'เสร็จสิ้น',
+        et_opt_cancelled: 'ยกเลิก',
+        et_opt_routine: 'ปกติ',
+        et_opt_urgent: 'เร่งด่วน',
+        et_lbl_accession: 'เลขที่ Accession',
+        et_lbl_priority: 'ความเร่งด่วน',
+        et_lbl_station_ae: 'Station AE',
+        et_lbl_station_name: 'ชื่อ Station',
+        et_sex_male: 'ชาย',
+        et_sex_female: 'หญิง',
+        et_sex_other: 'อื่นๆ',
         et_deleted: 'ลบรายการตรวจเรียบร้อย',
         et_updated: 'อัพเดทรายการตรวจเรียบร้อย',
         // DataTable
@@ -787,6 +822,13 @@ function setLanguage(lang) {
             el.placeholder = ET_I18N[lang][key];
         }
     });
+    // Update select options
+    document.querySelectorAll('[data-i18n-opt]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n-opt');
+        if (ET_I18N[lang] && ET_I18N[lang][key]) {
+            el.textContent = ET_I18N[lang][key];
+        }
+    });
     // Reinitialize DataTable
     if (typeof testsTable !== 'undefined' && testsTable) {
         testsTable.destroy();
@@ -811,33 +853,36 @@ function initTestsTable() {
             }
         },
         columns: [
-            { data: 'patient_id' },
-            { data: 'patient_name' },
+            // 0: HN
+            { data: 'patient_id', title: getLang('et_th_hn') },
+            // 1: Patient Name
+            { data: 'patient_name', title: getLang('et_th_patient') },
+            // 2: Sex
             {
-                data: 'sex',
-                width: '45px',
-                className: 'text-center',
+                data: 'sex', title: getLang('et_th_sex'), width: '45px', className: 'text-center',
                 render: function(data) {
                     if (data === 'M') return '<i class="bi bi-gender-male" style="color:var(--apple-blue);"></i>';
                     if (data === 'F') return '<i class="bi bi-gender-female" style="color:var(--apple-red);"></i>';
                     return data;
                 }
             },
-            { data: 'age', width: '50px', className: 'text-center' },
-            { data: 'procedure_desc' },
+            // 3: Age
+            { data: 'age', title: getLang('et_th_age'), width: '50px', className: 'text-center' },
+            // 4: Procedure
+            { data: 'procedure_desc', title: getLang('et_th_procedure') },
+            // 5: Status
             {
-                data: 'status',
+                data: 'status', title: getLang('et_th_status'),
                 render: function(data) {
                     var cls = 'badge-' + data.toLowerCase().replace('_', '-');
                     var label = getLang('status_' + data) || data;
                     return '<span class="badge badge-apple ' + cls + '">' + label + '</span>';
                 }
             },
+            // 6: Urgent
             {
-                data: 'priority',
-                width: '35px',
-                className: 'text-center',
-                orderable: false,
+                data: 'priority', title: getLang('et_th_urgent'), width: '50px',
+                className: 'text-center', orderable: false,
                 render: function(data) {
                     if (data === 'URGENT') {
                         return '<i class="bi bi-exclamation-circle-fill text-danger" style="font-size:1.1rem;" title="URGENT"></i>';
@@ -845,19 +890,21 @@ function initTestsTable() {
                     return '';
                 }
             },
+            // 7: Type
             {
-                data: 'patient_source',
+                data: 'patient_source', title: getLang('et_th_type'),
                 render: function(data) {
                     var key = 'src_' + data.replace(' ', '_');
                     return getLang(key) || data;
                 }
             },
-            { data: 'performing_physician' },
-            { data: 'accession_number' },
+            // 8: Physician
+            { data: 'performing_physician', title: getLang('et_th_physician') },
+            // 9: Accession No.
+            { data: 'accession_number', title: getLang('et_th_accession') },
+            // 10: Actions
             {
-                data: 'id',
-                orderable: false,
-                width: '80px',
+                data: 'id', title: getLang('et_th_actions'), orderable: false, width: '80px',
                 render: function(data) {
                     return '<div class="d-flex gap-1">' +
                         '<button class="btn btn-apple-secondary btn-apple-sm btn-edit-test" data-id="' + data + '" title="Edit" onclick="event.stopPropagation();editTest(' + data + ')"><i class="bi bi-pencil"></i></button>' +
@@ -878,11 +925,22 @@ function initTestsTable() {
             processing: getLang('dt_processing')
         },
         pageLength: 25,
-        dom: '<"d-flex justify-content-between align-items-center mb-3"lf>rtip'
+        scrollX: true,
+        autoWidth: false,
+        dom: '<"d-flex justify-content-between align-items-center mb-3"lf>rtip',
+        drawCallback: function() {
+            // Fix header/body column alignment after each draw
+            setTimeout(function() {
+                if (testsTable) testsTable.columns.adjust();
+            }, 50);
+        }
     });
 }
 
 $(document).ready(function() {
+    // Default filter to today
+    var _today = new Date().toISOString().split('T')[0];
+    $('#filterDate').val(_today);
     initTestsTable();
     // Row selection
     $('#testsTable tbody').on('click', 'tr', function() {
@@ -903,11 +961,14 @@ $(document).ready(function() {
     // Build column visibility dropdown
     buildColVisDropdown();
 
-    // Always set date filter to client's LOCAL date on page load
-    var now = new Date();
-    var today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    $('#filterDate').val(today);
-    testsTable.ajax.reload();
+    // Re-align columns on window resize
+    var _resizeTimer;
+    $(window).on('resize', function() {
+        clearTimeout(_resizeTimer);
+        _resizeTimer = setTimeout(function() {
+            if (testsTable) testsTable.columns.adjust();
+        }, 200);
+    });
 });
 
 function getCheckedValues(className) {
@@ -929,16 +990,16 @@ function clearDateFilter() {
 
 // ---- Column Visibility ----
 var COL_VIS_NAMES = [
-    { idx: 0, key: 'HN' },
+    { idx: 0, key: 'et_th_hn' },
     { idx: 1, key: 'et_th_patient' },
     { idx: 2, key: 'et_th_sex' },
     { idx: 3, key: 'et_th_age' },
     { idx: 4, key: 'et_th_procedure' },
     { idx: 5, key: 'et_th_status' },
-    { idx: 6, key: 'URGENT' },
+    { idx: 6, key: 'et_th_urgent' },
     { idx: 7, key: 'et_th_type' },
     { idx: 8, key: 'et_th_physician' },
-    { idx: 9, key: 'Accession No.' },
+    { idx: 9, key: 'et_th_accession' },
     { idx: 10, key: 'et_th_actions' }
 ];
 
@@ -1066,6 +1127,10 @@ function toggleFilters() {
     var btn = document.getElementById('btnToggleFilters');
     sidebar.classList.toggle('collapsed');
     btn.classList.toggle('active');
+    // Re-align columns after sidebar transition (300ms CSS transition)
+    setTimeout(function() {
+        if (testsTable) testsTable.columns.adjust();
+    }, 350);
 }
 
 function lookupPatient() {
@@ -1098,8 +1163,8 @@ function submitNewTest(e) {
     $.post(url, $('#newTestForm').serialize(), function(resp) {
         if (resp.success) {
             getTestModal().hide();
-            // Reset date filter so newly created test is visible
-            $('#filterDate').val('');
+            // Reset date filter to today so newly created test is visible
+            $('#filterDate').val(new Date().toISOString().split('T')[0]);
             testsTable.ajax.reload();
             showToast('success', resp.message);
         } else {

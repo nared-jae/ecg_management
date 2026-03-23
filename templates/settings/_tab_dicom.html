@@ -1,0 +1,59 @@
+<div class="apple-table-wrapper" style="padding:1.5rem;">
+    <div class="alert d-flex align-items-start mb-4"
+         style="background:#f0f5ff;color:var(--apple-blue);border:none;border-radius:var(--apple-radius-sm);">
+        <i class="bi bi-info-circle me-2 mt-1"></i>
+        <span data-i18n="dicom_info">DICOM settings are configured in config.py and require a server restart to take effect.</span>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-md-6">
+            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
+                <label class="form-label fw-600" style="font-size:0.85rem;color:var(--apple-text-secondary);"
+                       data-i18n="dicom_mwl_ae">MWL AE Title</label>
+                <div style="font-size:1.1rem;font-weight:600;color:var(--apple-text);">
+                    {{ dicom_config.MWL_AE_TITLE }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
+                <label class="form-label fw-600" style="font-size:0.85rem;color:var(--apple-text-secondary);"
+                       data-i18n="dicom_mwl_port">MWL Port</label>
+                <div style="font-size:1.1rem;font-weight:600;color:var(--apple-text);">
+                    {{ dicom_config.MWL_PORT }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
+                <label class="form-label fw-600" style="font-size:0.85rem;color:var(--apple-text-secondary);"
+                       data-i18n="dicom_store_ae">Store SCP AE Title</label>
+                <div style="font-size:1.1rem;font-weight:600;color:var(--apple-text);">
+                    {{ dicom_config.STORE_AE_TITLE }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
+                <label class="form-label fw-600" style="font-size:0.85rem;color:var(--apple-text-secondary);"
+                       data-i18n="dicom_store_port">Store SCP Port</label>
+                <div style="font-size:1.1rem;font-weight:600;color:var(--apple-text);">
+                    {{ dicom_config.STORE_PORT }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
+                <label class="form-label fw-600" style="font-size:0.85rem;color:var(--apple-text-secondary);"
+                       data-i18n="dicom_storage_dir">DICOM Storage Directory</label>
+                <div style="font-size:1rem;font-weight:600;color:var(--apple-text);word-break:break-all;">
+                    {{ dicom_config.DICOM_STORAGE_DIR }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

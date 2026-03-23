@@ -442,6 +442,12 @@ def embed_diagnosis_in_dicom(filepath: str, diagnosis: str,
                 ann_item.UnformattedTextValue = stripped  # (0070,0006)
                 kept.append(ann_item)
 
+        # Add "Diagnosed by:" attribution line
+        if diagnosed_by:
+            attr_item = Dataset()
+            attr_item.UnformattedTextValue = f"Diagnosed by: {diagnosed_by}"
+            kept.append(attr_item)
+
         ds.WaveformAnnotationSequence = pydicom.Sequence(kept)
     else:
         # No existing annotations — just add diagnosis
@@ -452,7 +458,18 @@ def embed_diagnosis_in_dicom(filepath: str, diagnosis: str,
                 ann_item = Dataset()
                 ann_item.UnformattedTextValue = stripped
                 items.append(ann_item)
+        # Add "Diagnosed by:" attribution line
+        if diagnosed_by:
+            attr_item = Dataset()
+            attr_item.UnformattedTextValue = f"Diagnosed by: {diagnosed_by}"
+            items.append(attr_item)
         ds.WaveformAnnotationSequence = pydicom.Sequence(items)
+
+    # Set standard DICOM tag for the interpreting physician
+    # NameOfPhysiciansReadingStudy (0008,1060) — standard tag for
+    # the physician who interpreted the study
+    if diagnosed_by:
+        ds.NameOfPhysiciansReadingStudy = diagnosed_by
 
     # Save to buffer (original file untouched)
     buf = BytesIO()

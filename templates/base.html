@@ -45,28 +45,70 @@
                             <i class="bi bi-grid-1x2 me-1"></i><span data-nav-i18n="dashboard">Dashboard</span>
                         </a>
                     </li>
+                    {% if current_user.is_authenticated and current_user.role not in ['doctor', 'viewer'] %}
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('ecg_tests.') %}active{% endif %}"
                            href="{{ url_for('ecg_tests.index') }}">
                             <i class="bi bi-clipboard2-pulse me-1"></i><span data-nav-i18n="ecg_tests">ECG Tests</span>
                         </a>
                     </li>
+                    {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('results.') %}active{% endif %}"
+                        <a class="nav-link {% if request.endpoint == 'results.index' %}active{% endif %}"
                            href="{{ url_for('results.index') }}">
                             <i class="bi bi-file-earmark-medical me-1"></i><span data-nav-i18n="ecg_results">ECG Results</span>
                         </a>
                     </li>
+                    {% if current_user.is_authenticated and current_user.role in ['admin', 'it_admin', 'nurse'] %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}"
+                           href="{{ url_for('settings.index') }}">
+                            <i class="bi bi-gear me-1"></i><span data-nav-i18n="nav_settings">Settings</span>
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
 
-                <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center gap-2">
                     <!-- Language Toggle -->
-                    <div class="lang-toggle me-3">
+                    <div class="lang-toggle">
                         <button class="lang-btn" data-lang="en" onclick="setNavLanguage('en')">EN</button>
                         <button class="lang-btn" data-lang="th" onclick="setNavLanguage('th')">TH</button>
                     </div>
 
-                    <span class="nav-user me-3">
+                    {% if current_user.is_authenticated %}
+                    <!-- Notification Bell -->
+                    <div class="dropdown">
+                        <button class="btn btn-apple-secondary btn-apple-sm position-relative"
+                                id="notifBell" data-bs-toggle="dropdown" aria-expanded="false"
+                                onclick="loadUnreadNotifications()">
+                            <i class="bi bi-bell"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                  id="notifBadge" style="display:none;font-size:0.6rem;padding:3px 5px;"></span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm p-0"
+                            id="notifDropdown" style="min-width:320px;max-height:420px;overflow-y:auto;border-radius:12px;">
+                            <li class="d-flex justify-content-between align-items-center px-3 py-2"
+                                style="background:var(--apple-bg-secondary);border-radius:12px 12px 0 0;border-bottom:1px solid var(--apple-border);">
+                                <span style="font-weight:600;font-size:0.85rem;" data-nav-i18n="notifications">Notifications</span>
+                                <button class="btn btn-link p-0 text-secondary" style="font-size:0.75rem;"
+                                        onclick="markAllRead()" data-nav-i18n="mark_all_read">Mark all read</button>
+                            </li>
+                            <div id="notifList" style="min-height:60px;">
+                                <li class="px-3 py-3 text-secondary text-center" style="font-size:0.85rem;">
+                                    <i class="bi bi-bell-slash me-1"></i><span data-nav-i18n="no_notifications">No notifications</span>
+                                </li>
+                            </div>
+                        </ul>
+                    </div>
+
+                    <!-- Role Badge -->
+                    <span class="badge" style="background:var(--apple-bg-secondary);color:var(--apple-text-secondary);font-size:0.68rem;font-weight:500;border-radius:6px;padding:3px 7px;">
+                        {{ current_user.role | upper }}
+                    </span>
+                    {% endif %}
+
+                    <span class="nav-user">
                         <i class="bi bi-person-circle me-1"></i>{{ current_user.display_name }}
                     </span>
                     <a href="{{ url_for('auth.logout') }}" class="btn btn-apple-secondary btn-apple-sm">
@@ -86,7 +128,7 @@
                         {% if category == 'error' %}<i class="bi bi-exclamation-circle me-2"></i>
                         {% elif category == 'success' %}<i class="bi bi-check-circle me-2"></i>
                         {% else %}<i class="bi bi-info-circle me-2"></i>{% endif %}
-                        {{ message }}
+                        <span class="flash-msg">{{ message }}</span>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 {% endfor %}
@@ -107,6 +149,9 @@
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
 
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
     <!-- Global Language Toggle -->
     <script>
     var NAV_I18N = {
@@ -114,12 +159,24 @@
             dashboard: 'Dashboard',
             ecg_tests: 'ECG Tests',
             ecg_results: 'ECG Results',
+            my_worklist: 'My Worklist',
+            nav_settings: 'Settings',
+            notifications: 'Notifications',
+            mark_all_read: 'Mark all read',
+            no_notifications: 'No notifications',
+            view_case: 'View case',
             logout: 'Logout'
         },
         th: {
             dashboard: 'แดชบอร์ด',
             ecg_tests: 'จัดการตรวจ ECG',
             ecg_results: 'ผลตรวจ ECG',
+            my_worklist: 'รายการของฉัน',
+            nav_settings: 'ตั้งค่าระบบ',
+            notifications: 'การแจ้งเตือน',
+            mark_all_read: 'อ่านทั้งหมดแล้ว',
+            no_notifications: 'ไม่มีการแจ้งเตือน',
+            view_case: 'ดูเคส',
             logout: 'ออกจากระบบ'
         }
     };
@@ -128,26 +185,119 @@
         localStorage.setItem('ecg_lang', lang);
         document.querySelectorAll('[data-nav-i18n]').forEach(function(el) {
             var key = el.getAttribute('data-nav-i18n');
-            if (NAV_I18N[lang] && NAV_I18N[lang][key]) {
-                el.textContent = NAV_I18N[lang][key];
-            }
+            if (NAV_I18N[lang] && NAV_I18N[lang][key]) el.textContent = NAV_I18N[lang][key];
         });
-        // Update lang toggle buttons
         document.querySelectorAll('.lang-btn').forEach(function(btn) {
             btn.classList.toggle('active', btn.dataset.lang === lang);
         });
-        // Also update page-level i18n if function exists
-        if (typeof setLanguage === 'function') {
-            setLanguage(lang);
-        }
+        if (typeof setLanguage === 'function') setLanguage(lang);
+        if (typeof _applyFlashLang === 'function') _applyFlashLang(lang);
     }
 
-    // Init on load
+    function _applyFlashLang(lang) {
+        document.querySelectorAll('.flash-msg').forEach(function(el) {
+            var text = el.getAttribute('data-flash-full') || el.textContent;
+            if (!el.getAttribute('data-flash-full')) el.setAttribute('data-flash-full', text);
+            if (text.indexOf(' | ') >= 0) {
+                var parts = text.split(' | ');
+                el.textContent = lang === 'th' ? parts[1] : parts[0];
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         var lang = localStorage.getItem('ecg_lang') || 'en';
         setNavLanguage(lang);
+        _applyFlashLang(lang);
     });
     </script>
+
+    {% if current_user.is_authenticated %}
+    <!-- SocketIO + Notification System -->
+    <script>
+    var _socket = io({ transports: ['polling'] });
+
+    var _TABLE_RELOAD_TYPES = ['assignment', 'unassigned', 'timeout', 'accepted', 'rejected', 'in_review', 'diagnosed', 'new_result', 'draft_saved'];
+
+    _socket.on('notification', function(data) {
+        _showNavToast(data);
+        loadUnreadNotifications();
+        // Auto-reload DataTables on any assignment-related event
+        if (_TABLE_RELOAD_TYPES.indexOf(data.type) >= 0) {
+            if (window.resultsTable)  window.resultsTable.ajax.reload(null, false);
+            if (window.worklistTable) window.worklistTable.ajax.reload(null, false);
+        }
+    });
+
+    function loadUnreadNotifications() {
+        fetch('/notifications/api/unread')
+            .then(function(r) { return r.json(); })
+            .then(function(items) {
+                var badge = document.getElementById('notifBadge');
+                var list  = document.getElementById('notifList');
+                if (!badge || !list) return;
+
+                if (items.length > 0) {
+                    badge.textContent = items.length > 9 ? '9+' : items.length;
+                    badge.style.display = 'inline';
+                } else {
+                    badge.style.display = 'none';
+                }
+
+                var lang = localStorage.getItem('ecg_lang') || 'en';
+                if (items.length === 0) {
+                    var noNotifText = (NAV_I18N[lang] && NAV_I18N[lang].no_notifications) || 'No notifications';
+                    list.innerHTML = '<li class="px-3 py-3 text-secondary text-center" style="font-size:0.85rem;"><i class="bi bi-bell-slash me-1"></i>' + noNotifText + '</li>';
+                    return;
+                }
+                list.innerHTML = items.map(function(n) {
+                    var msg  = (lang === 'th' && n.message_th) ? n.message_th : n.message;
+                    var icon = n.type === 'assignment' ? 'bi-person-check text-primary' :
+                               n.type === 'timeout'   ? 'bi-clock-history text-warning' :
+                                                        'bi-bell text-secondary';
+                    var href = n.related_result_id ? '/results/' + n.related_result_id : '#';
+                    return '<li><a href="' + href + '" class="d-flex gap-2 px-3 py-2 text-decoration-none border-bottom" style="color:inherit;">' +
+                        '<i class="bi ' + icon + ' mt-1 flex-shrink-0"></i>' +
+                        '<div><div style="font-size:0.82rem;">' + msg + '</div>' +
+                        '<div style="font-size:0.72rem;color:var(--apple-text-secondary);">' + n.created_at + '</div></div>' +
+                        '</a></li>';
+                }).join('');
+            })
+            .catch(function() {});
+    }
+
+    function markAllRead() {
+        fetch('/notifications/read-all', { method: 'POST' })
+            .then(function() { loadUnreadNotifications(); });
+    }
+
+    function _showNavToast(data) {
+        var lang = localStorage.getItem('ecg_lang') || 'en';
+        var msg  = (lang === 'th' && data.message_th) ? data.message_th : data.message;
+        var icon = data.type === 'assignment' ? 'bi-person-check' :
+                   data.type === 'timeout'    ? 'bi-clock-history' : 'bi-bell';
+        var href = data.related_result_id ? '/results/' + data.related_result_id : null;
+
+        var toast = document.createElement('div');
+        toast.style.cssText = 'position:fixed;top:72px;right:20px;z-index:99999;min-width:280px;max-width:360px;' +
+            'background:#fff;border:1px solid var(--apple-border);border-radius:12px;padding:12px 16px;' +
+            'box-shadow:0 4px 20px rgba(0,0,0,0.12);display:flex;gap:10px;align-items:flex-start;';
+        var viewText = (NAV_I18N[lang] && NAV_I18N[lang].view_case) || 'View case';
+        toast.innerHTML = '<i class="bi ' + icon + '" style="color:var(--apple-blue);font-size:1.1rem;margin-top:1px;flex-shrink:0;"></i>' +
+            '<div style="flex:1;font-size:0.83rem;">' + msg +
+            (href ? '<br><a href="' + href + '" style="font-size:0.75rem;color:var(--apple-blue);">' + viewText + ' →</a>' : '') +
+            '</div>' +
+            '<button onclick="this.parentNode.remove()" style="border:none;background:none;color:#999;font-size:1rem;line-height:1;padding:0;cursor:pointer;">&times;</button>';
+        document.body.appendChild(toast);
+        setTimeout(function() { if (toast.parentNode) toast.remove(); }, 7000);
+    }
+
+    // Load badge once on page open; Socket.IO handles real-time updates
+    document.addEventListener('DOMContentLoaded', function() {
+        loadUnreadNotifications();
+    });
+    </script>
+    {% endif %}
 
     {% block extra_js %}{% endblock %}
 </body>

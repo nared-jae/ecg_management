@@ -77,16 +77,16 @@ def api_data():
     order_dir = request.args.get("order[0][dir]", "desc")
 
     col_map = {
-        0: WorklistItem.id,
-        1: WorklistItem.accession_number,
-        2: Patient.patient_name,
-        3: Patient.patient_id,
-        4: Patient.sex,
-        5: WorklistItem.requested_procedure_desc,
-        6: Patient.birth_date,
-        7: WorklistItem.status,
-        8: WorklistItem.patient_source,
-        9: WorklistItem.performing_physician,
+        0: Patient.patient_id,                       # HN
+        1: Patient.patient_name,                     # Patient Name
+        2: Patient.sex,                              # Sex
+        3: Patient.birth_date,                       # Age (sort by DOB)
+        4: WorklistItem.requested_procedure_desc,    # Procedure
+        5: WorklistItem.status,                      # Status
+        # 6: priority — orderable: false, skip
+        7: WorklistItem.patient_source,              # Type
+        8: WorklistItem.performing_physician,        # Physician
+        9: WorklistItem.accession_number,            # Accession No.
     }
     order_column = col_map.get(order_col, WorklistItem.id)
     if order_dir == "desc":

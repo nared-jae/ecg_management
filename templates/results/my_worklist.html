@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}My Worklist - SMD ECG Management{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 data-i18n="mw_title">My Worklist</h1>
+        <p data-i18n="mw_subtitle">Cases assigned to me</p>
+    </div>
+    <a href="{{ url_for('results.index') }}" class="btn btn-apple-secondary">
+        <i class="bi bi-list-ul me-1"></i><span data-i18n="mw_all_results">All Results</span>
+    </a>
+</div>
+
+<div class="apple-table-wrapper">
+    <table id="worklistTable" class="table" style="width: 100%;"></table>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dataTables_length select { padding-right: 2rem !important; }
+    #worklistTable { white-space: nowrap; }
+    .badge-assigned   { background:#e3f2fd; color:#1565c0; }
+    .badge-unassigned { background:var(--apple-bg-secondary); color:var(--apple-text-secondary); }
+    .expires-urgent   { color: var(--apple-red); font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var USER_ROLE = '{{ current_user.role }}';
+var MW_I18N = {
+    en: {
+        mw_title: 'My Worklist',
+        mw_subtitle: 'Cases assigned to me',
+        mw_all_results: 'All Results',
+        mw_tab_mine: 'My Cases',
+        mw_tab_pool: 'Unassigned Pool',
+        mw_th_hn: 'HN',
+        mw_th_patient: 'Patient Name',
+        mw_th_sex: 'Sex',
+        mw_th_age: 'Age',
+        mw_th_procedure: 'Procedure',
+        mw_th_received: 'Received Date',
+        mw_th_physician: 'Physician',
+        mw_th_status: 'Status',
+        mw_th_expires: 'Expires In',
+        mw_th_actions: 'Actions',
+        mw_view: 'View',
+        mw_accept: 'Accept Case',
+        mw_reject: 'Reject Case',
+        mw_expired: 'Expired',
+        dt_search: 'Search:',
+        dt_lengthMenu: 'Show _MENU_ entries',
+        dt_info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+        dt_infoEmpty: 'No cases available',
+        dt_infoFiltered: '(filtered from _MAX_ entries)',
+        dt_zeroRecords: 'No matching records found',
+        dt_first: 'First', dt_last: 'Last', dt_next: 'Next', dt_previous: 'Previous',
+        dt_processing: 'Loading...'
+    },
+    th: {
+        mw_title: 'รายการของฉัน',
+        mw_subtitle: 'เคสที่ถูกมอบหมายให้ฉัน',
+        mw_all_results: 'ผลตรวจทั้งหมด',
+        mw_tab_mine: 'เคสของฉัน',
+        mw_tab_pool: 'คิวรอมอบหมาย',
+        mw_th_hn: 'HN',
+        mw_th_patient: 'ชื่อผู้ป่วย',
+        mw_th_sex: 'เพศ',
+        mw_th_age: 'อายุ',
+        mw_th_procedure: 'รายการตรวจ',
+        mw_th_received: 'วันที่รับ',
+        mw_th_physician: 'แพทย์ผู้ตรวจ',
+        mw_th_status: 'สถานะ',
+        mw_th_expires: 'หมดเวลาใน',
+        mw_th_actions: 'จัดการ',
+        mw_view: 'ดูรายละเอียด',
+        mw_accept: 'รับเคส',
+        mw_reject: 'ปฏิเสธเคส',
+        mw_expired: 'หมดเวลาแล้ว',
+        dt_search: 'ค้นหา:',
+        dt_lengthMenu: 'แสดง _MENU_ รายการ',
+        dt_info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ',
+        dt_infoEmpty: 'ไม่มีเคส',
+        dt_infoFiltered: '(กรองจาก _MAX_ รายการ)',
+        dt_zeroRecords: 'ไม่พบข้อมูลที่ค้นหา',
+        dt_first: 'หน้าแรก', dt_last: 'หน้าสุดท้าย', dt_next: 'ถัดไป', dt_previous: 'ก่อนหน้า',
+        dt_processing: 'กำลังโหลด...'
+    }
+};
+
+var currentLang = localStorage.getItem('ecg_lang') || 'en';
+var worklistTable = null;
+
+function getLang(key) {
+    return (MW_I18N[currentLang] && MW_I18N[currentLang][key]) || (MW_I18N.en[key]) || key;
+}
+
+function setLanguage(lang) {
+    currentLang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (MW_I18N[lang] && MW_I18N[lang][key]) el.textContent = MW_I18N[lang][key];
+    });
+    if (worklistTable) {
+        worklistTable.destroy();
+        initWorklistTable();
+    }
+}
+
+function formatExpiry(expiresAt) {
+    if (!expiresAt) return '<span style="color:var(--apple-text-secondary);">—</span>';
+    var now = new Date();
+    var exp = new Date(expiresAt);
+    var diff = Math.floor((exp - now) / 1000);
+    if (diff <= 0) return '<span class="badge" style="background:#ffe0e0;color:var(--apple-red);">' + getLang('mw_expired') + '</span>';
+    var m = Math.floor(diff / 60), s = diff % 60;
+    var text = m + ':' + (s < 10 ? '0' : '') + s;
+    var cls = diff < 300 ? 'expires-urgent' : '';
+    return '<span class="' + cls + '" data-expires="' + expiresAt + '">' + text + '</span>';
+}
+
+function initWorklistTable() {
+    var columns = [
+        { data: 'patient_id', title: getLang('mw_th_hn') },
+        { data: 'patient_name', title: getLang('mw_th_patient') },
+        {
+            data: 'sex', title: getLang('mw_th_sex'), width: '45px', className: 'text-center',
+            render: function(data) {
+                if (data === 'M') return '<i class="bi bi-gender-male" style="color:var(--apple-blue);"></i>';
+                if (data === 'F') return '<i class="bi bi-gender-female" style="color:var(--apple-red);"></i>';
+                return data || '';
+            }
+        },
+        { data: 'age', title: getLang('mw_th_age'), width: '50px', className: 'text-center' },
+        { data: 'procedure', title: getLang('mw_th_procedure') },
+        { data: 'received_at', title: getLang('mw_th_received') },
+        { data: 'physician', title: getLang('mw_th_physician') },
+        {
+            data: 'status', title: getLang('mw_th_status'),
+            render: function(data) {
+                return '<span class="badge badge-apple badge-' + data.toLowerCase() + '">' + data + '</span>';
+            }
+        }
+    ];
+
+    columns.push({
+        data: 'assignment_expires_at_iso', title: getLang('mw_th_expires'), orderable: false,
+        render: function(data) { return formatExpiry(data); }
+    });
+
+    columns.push({
+        data: 'id', title: getLang('mw_th_actions'), orderable: false, width: '130px', className: 'text-center',
+        render: function(data, type, row) {
+            var html = '<a href="/results/' + data + '" class="btn btn-apple-secondary btn-apple-sm" title="' + getLang('mw_view') + '"><i class="bi bi-eye"></i></a>';
+            if (row.assigned_to_id) {
+                html += ' <button class="btn btn-apple-sm" style="background:#f0fdf4;color:var(--apple-green);border:none;" '
+                      + 'onclick="acceptCase(' + data + ')" title="' + getLang('mw_accept') + '">'
+                      + '<i class="bi bi-check-circle"></i></button>';
+                html += ' <button class="btn btn-apple-sm" style="background:#fff0f0;color:var(--apple-red);border:none;" '
+                      + 'onclick="rejectCase(' + data + ')" title="' + getLang('mw_reject') + '">'
+                      + '<i class="bi bi-x-circle"></i></button>';
+            }
+            return html;
+        }
+    });
+
+    worklistTable = $('#worklistTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '{{ url_for("results.api_data") }}',
+            data: function(d) { d.view = 'mine'; }
+        },
+        columns: columns,
+        order: [[5, 'desc']],
+        language: {
+            search: getLang('dt_search'),
+            lengthMenu: getLang('dt_lengthMenu'),
+            info: getLang('dt_info'),
+            infoEmpty: getLang('dt_infoEmpty'),
+            infoFiltered: getLang('dt_infoFiltered'),
+            zeroRecords: getLang('dt_zeroRecords'),
+            paginate: { first: getLang('dt_first'), last: getLang('dt_last'), next: getLang('dt_next'), previous: getLang('dt_previous') },
+            processing: getLang('dt_processing')
+        },
+        pageLength: 25,
+        dom: '<"d-flex justify-content-between align-items-center mb-3"lf>rtip',
+        drawCallback: function() {
+            startCountdownTicker();
+        }
+    });
+}
+
+// Countdown ticker: updates all expiry spans every second
+var _countdownTimer = null;
+function startCountdownTicker() {
+    if (_countdownTimer) clearInterval(_countdownTimer);
+    _countdownTimer = setInterval(function() {
+        document.querySelectorAll('[data-expires]').forEach(function(el) {
+            var exp = new Date(el.getAttribute('data-expires'));
+            var diff = Math.floor((exp - new Date()) / 1000);
+            if (diff <= 0) {
+                el.textContent = getLang('mw_expired');
+                el.style.color = 'var(--apple-red)';
+                el.removeAttribute('data-expires');
+            } else {
+                var m = Math.floor(diff / 60), s = diff % 60;
+                el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+                el.style.color = diff < 300 ? 'var(--apple-red)' : '';
+                el.style.fontWeight = diff < 300 ? '600' : '';
+            }
+        });
+    }, 1000);
+}
+
+function acceptCase(resultId) {
+    fetch('/api/assignment/' + resultId + '/accept', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) worklistTable.ajax.reload(null, false);
+            else alert(data.error || 'Error');
+        });
+}
+
+function rejectCase(resultId) {
+    if (!confirm('Reject this case and return it to the unassigned pool?')) return;
+    fetch('/api/assignment/' + resultId + '/reject', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) worklistTable.ajax.reload(null, false);
+            else alert(data.error || 'Error');
+        });
+}
+
+$(document).ready(function() {
+    initWorklistTable();
+});
+</script>
+{% endblock %}

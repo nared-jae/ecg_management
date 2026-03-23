@@ -1,0 +1,58 @@
+<form method="POST" action="{{ url_for('settings.index') }}">
+    <div class="apple-table-wrapper" style="padding:1.5rem;">
+        {% if settings %}
+        <div class="row g-4">
+            {% for s in settings %}
+            <div class="col-12 col-md-6">
+                <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
+                    <label class="form-label fw-600" style="font-size:0.95rem;color:var(--apple-text);"
+                           data-i18n="setting_label_{{ s.key }}">
+                        {{ s.label or s.key }}
+                    </label>
+
+                    <input type="number"
+                           class="form-control"
+                           name="{{ s.key }}"
+                           value="{{ s.value }}"
+                           min="1"
+                           max="480"
+                           style="max-width:180px;font-size:1rem;font-weight:600;">
+
+                    {% if s.description %}
+                    <p class="mt-2 mb-1" style="font-size:0.82rem;color:var(--apple-text-secondary);">
+                        <i class="bi bi-info-circle me-1"></i><span data-i18n="setting_desc_{{ s.key }}">{{ s.description }}</span>
+                    </p>
+                    {% endif %}
+
+                    {% if s.updated_at and s.updated_by %}
+                    <p class="mb-0" style="font-size:0.75rem;color:var(--apple-text-secondary);">
+                        <i class="bi bi-clock-history me-1"></i>
+                        <span data-i18n="last_updated_by">Last updated by</span>
+                        <strong>{{ s.updated_by.display_name }}</strong>
+                        <span data-i18n="on_date">on</span>
+                        {{ s.updated_at.strftime('%d/%m/%Y %H:%M') }}
+                    </p>
+                    {% elif s.updated_at %}
+                    <p class="mb-0" style="font-size:0.75rem;color:var(--apple-text-secondary);">
+                        <i class="bi bi-clock-history me-1"></i>
+                        <span data-i18n="last_updated">Last updated:</span>
+                        {{ s.updated_at.strftime('%d/%m/%Y %H:%M') }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-center" style="color:var(--apple-text-secondary);padding:2rem;" data-i18n="no_settings">
+            No settings configured yet.
+        </p>
+        {% endif %}
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-apple">
+                <i class="bi bi-floppy me-1"></i><span data-i18n="save_btn">Save Settings</span>
+            </button>
+        </div>
+    </div>
+</form>

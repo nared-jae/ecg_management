@@ -22,7 +22,7 @@ def login():
             next_page = request.args.get("next")
             return redirect(next_page or url_for("dashboard.index"))
 
-        flash("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "error")
+        flash("Invalid username or password. | ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "error")
 
     return render_template("login.html")
 

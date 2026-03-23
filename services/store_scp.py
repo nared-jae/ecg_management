@@ -58,12 +58,31 @@ class StoreSCP:
         print(f"[Store SCP] Received: Patient={patient_id} Accession={accession}")
         print(f"[Store SCP] Saved to: {filepath}")
 
+        # Extract patient demographics from DICOM tags
+        patient_name = str(getattr(ds, "PatientName", "") or "").strip()
+        sex         = str(getattr(ds, "PatientSex", "") or "").strip().upper()[:1]
+        birth_date  = str(getattr(ds, "PatientBirthDate", "") or "").strip()
+
+        # Normalise sex to M/F/O or empty
+        if sex not in ("M", "F", "O"):
+            sex = ""
+
         # Create database record
         with self.flask_app.app_context():
             from models import db, ECGResult, Patient, WorklistItem
 
-            # Find patient
+            # Find or auto-create patient from DICOM tags
             patient = Patient.query.filter_by(patient_id=patient_id).first()
+            if patient is None and patient_id and patient_id != "UNKNOWN":
+                patient = Patient(
+                    patient_id=patient_id,
+                    patient_name=patient_name or patient_id,
+                    sex=sex,
+                    birth_date=birth_date if len(birth_date) == 8 else None,
+                )
+                db.session.add(patient)
+                db.session.flush()   # get patient.id before commit
+                print(f"[Store SCP] Auto-created Patient: HN={patient_id} Name={patient_name}")
 
             # Find worklist item by accession number
             worklist = None
@@ -85,6 +104,19 @@ class StoreSCP:
             db.session.add(result)
             db.session.commit()
             print(f"[Store SCP] DB record created: ECGResult #{result.id}")
+
+            # Notify nurses/admins that a new ECG result has arrived
+            try:
+                from routes.notifications import push_broadcast_to_roles
+                push_broadcast_to_roles(
+                    roles=["nurse", "admin"],
+                    message=f"New ECG received: {patient_name or patient_id} (Acc: {accession or 'N/A'})",
+                    message_th=f"ผล ECG ใหม่: {patient_name or patient_id} (Acc: {accession or 'N/A'})",
+                    notif_type="new_result",
+                    result_id=result.id,
+                )
+            except Exception as e:
+                print(f"[Store SCP] Notification failed: {e}")
 
         return 0x0000  # Success
 

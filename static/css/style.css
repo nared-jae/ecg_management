@@ -247,7 +247,7 @@ body {
     border-radius: var(--apple-radius);
     box-shadow: var(--apple-card-shadow);
     padding: 1.5rem;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .apple-table-wrapper .table {
@@ -300,6 +300,7 @@ body {
     border-radius: var(--apple-radius-sm);
     padding: 0.3rem 0.6rem;
     font-size: 0.88rem;
+    min-width: 5em;
 }
 
 .dataTables_wrapper .dataTables_paginate .paginate_button {

@@ -486,6 +486,37 @@
 <!-- Toast notifications -->
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- Concurrency Lock Banner -->
+{% if not lock_status.success %}
+<div class="d-flex align-items-center gap-2 mb-3 p-3"
+     style="background:#fff8e1;border-left:4px solid #f59e0b;border-radius:var(--apple-radius-sm);">
+    <i class="bi bi-lock-fill" style="color:#f59e0b;font-size:1.2rem;"></i>
+    <div>
+        <strong>Read-Only Mode</strong> — This case is currently being reviewed by
+        <strong>{{ lock_status.locked_by }}</strong>. You can view but cannot save changes.
+    </div>
+</div>
+{% endif %}
+
+<!-- Assignment Info Banner (for assigned doctor) -->
+{% if current_user.is_authenticated and current_user.can_diagnose and result.assigned_to_id == current_user.id %}
+<div class="d-flex align-items-center gap-2 mb-3 p-3"
+     style="background:#e3f2fd;border-left:4px solid var(--apple-blue);border-radius:var(--apple-radius-sm);">
+    <i class="bi bi-person-check" style="color:var(--apple-blue);font-size:1.1rem;"></i>
+    <div style="flex:1;">
+        <strong>Assigned to you</strong>
+        {% if result.assignment_expires_at %}
+        | Expires: <strong id="assignmentCountdown" style="font-variant-numeric:tabular-nums;">
+            {{ result.assignment_expires_at.strftime('%H:%M') }}</strong>
+        {% endif %}
+    </div>
+    <button onclick="returnToPool()" class="btn btn-apple-sm"
+            style="background:#fff0f0;color:var(--apple-red);border:1px solid var(--apple-red);font-size:0.78rem;">
+        <i class="bi bi-arrow-return-left me-1"></i>Return to pool
+    </button>
+</div>
+{% endif %}
+
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
         <h1 data-i18n="ecg_result_title">ECG Result #{{ result.id }}</h1>
@@ -494,12 +525,12 @@
     <div class="d-flex gap-2">
         {% if result.file_path %}
         <a href="{{ url_for('results.export_pdf', result_id=result.id) }}" class="btn btn-apple-primary">
-            <i class="bi bi-file-earmark-pdf me-1"></i><span data-i18n="export_pdf">Export PDF</span>
+            <i class="bi bi-file-earmark-pdf me-1"></i><span data-i18n="export_pdf">Download PDF</span>
         </a>
         <a href="{{ url_for('results.export_hl7', result_id=result.id) }}" class="btn btn-apple-primary">
-            <i class="bi bi-file-earmark-code me-1"></i><span data-i18n="export_hl7">Export HL7</span>
+            <i class="bi bi-file-earmark-code me-1"></i><span data-i18n="export_hl7">Download HL7</span>
         </a>
-        <a href="{{ url_for('results.download', result_id=result.id) }}" class="btn btn-apple-secondary">
+        <a href="{{ url_for('results.download', result_id=result.id) }}" class="btn btn-apple-primary">
             <i class="bi bi-download me-1"></i><span data-i18n="download_dicom">Download DICOM</span>
         </a>
         {% endif %}
@@ -638,16 +669,27 @@
             <button class="toolbar-btn" onclick="printECG()" title="Print (Ctrl+P)">
                 <i class="bi bi-printer"></i>
             </button>
-            {% if result.file_path %}
-            <button class="toolbar-btn" onclick="window.location.href='{{ url_for('results.export_pdf', result_id=result.id) }}'" title="Export PDF">
-                <i class="bi bi-file-earmark-pdf"></i> PDF
+            <div class="toolbar-separator"></div>
+            <button class="toolbar-btn" onclick="toggleMoreToolbar()" id="btnMoreToolbar" title="More options">
+                <i class="bi bi-chevron-double-right" id="btnMoreIcon"></i>
             </button>
-            <button class="toolbar-btn" onclick="window.location.href='{{ url_for('results.export_hl7', result_id=result.id) }}'" title="Export HL7">
-                <i class="bi bi-file-earmark-code"></i> HL7
-            </button>
-            {% endif %}
         </div>
     </div>
+
+    <!-- Download Row (shown when » is clicked) -->
+    {% if result.file_path %}
+    <div id="toolbarMore" class="ecg-toolbar" style="display:none;border-top:none;justify-content:flex-end;">
+        <button class="toolbar-btn" onclick="window.location.href='{{ url_for('results.export_pdf', result_id=result.id) }}'" title="Download PDF">
+            <i class="bi bi-file-earmark-pdf"></i> PDF
+        </button>
+        <button class="toolbar-btn" onclick="window.location.href='{{ url_for('results.export_hl7', result_id=result.id) }}'" title="Download HL7">
+            <i class="bi bi-file-earmark-code"></i> HL7
+        </button>
+        <button class="toolbar-btn" onclick="window.location.href='{{ url_for('results.download', result_id=result.id) }}'" title="Download DICOM">
+            <i class="bi bi-download"></i> DICOM
+        </button>
+    </div>
+    {% endif %}
 
     <!-- Caliper Info Bar -->
     <div class="caliper-info-bar" id="caliperInfoBar">
@@ -736,7 +778,8 @@
 
                 <!-- Diagnosis text -->
                 <textarea class="diagnosis-textarea" id="diagnosisText"
-                          placeholder="Enter diagnosis results here. You can also click statements from the library on the right to add them.">{{ result.diagnosis or '' }}</textarea>
+                          placeholder="Enter diagnosis results here. You can also click statements from the library on the right to add them."
+                          {% if not lock_status.success %}disabled title="Case is locked by {{ lock_status.locked_by }}"{% endif %}>{{ result.diagnosis or '' }}</textarea>
 
                 <!-- DICOM Auto Interpretation - Tag (0070,0006) UnformattedTextValue only -->
                 {% if ecg_json and ecg_json.interpretation_texts %}
@@ -995,8 +1038,8 @@ var I18N = {
     en: {
         ecg_result_title: 'ECG Result #' + RESULT_ID,
         ecg_result_subtitle: 'Electrocardiogram examination result details',
-        export_pdf: 'Export PDF',
-        export_hl7: 'Export HL7',
+        export_pdf: 'Download PDF',
+        export_hl7: 'Download HL7',
         download_dicom: 'Download DICOM',
         back: 'Back',
         patient: 'Patient',
@@ -1028,8 +1071,8 @@ var I18N = {
     th: {
         ecg_result_title: 'ผลตรวจ ECG #' + RESULT_ID,
         ecg_result_subtitle: 'รายละเอียดผลตรวจคลื่นไฟฟ้าหัวใจ',
-        export_pdf: 'ส่งออก PDF',
-        export_hl7: 'ส่งออก HL7',
+        export_pdf: 'ดาวน์โหลด PDF',
+        export_hl7: 'ดาวน์โหลด HL7',
         download_dicom: 'ดาวน์โหลด DICOM',
         back: 'กลับ',
         patient: 'ผู้ป่วย',
@@ -1560,6 +1603,15 @@ function toggleFullscreen() {
 
 // ===== Print =====
 function printECG() { window.print(); }
+
+// ===== More Toolbar Toggle =====
+function toggleMoreToolbar() {
+    var more = document.getElementById('toolbarMore');
+    var icon = document.getElementById('btnMoreIcon');
+    var isOpen = more.style.display !== 'none';
+    more.style.display = isOpen ? 'none' : 'flex';
+    icon.className = isOpen ? 'bi bi-chevron-double-right' : 'bi bi-chevron-double-left';
+}
 
 // ===== Keyboard shortcuts =====
 document.addEventListener('keydown', function(e) {
@@ -2135,8 +2187,9 @@ function saveDiagnosis(action) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(data)
     })
-    .then(function(resp) { return resp.json(); })
-    .then(function(json) {
+    .then(function(resp) { return resp.json().then(function(json) { return {ok: resp.ok, data: json}; }); })
+    .then(function(result) {
+        var json = result.data;
         if (json.success) {
             var msg = action === 'save' ?
                 I18N[currentLang].saved_success :
@@ -2146,9 +2199,14 @@ function saveDiagnosis(action) {
             if (action === 'submit_next' && json.next_id) {
                 window.location.href = '/results/' + json.next_id;
             } else if (action === 'submit' || action === 'submit_next') {
-                // Reload to update status badge
-                setTimeout(function() { location.reload(); }, 800);
+                // Redirect back to results list after diagnosis complete
+                setTimeout(function() { window.location.href = '/results/'; }, 800);
             }
+        } else if (json.force_redirect) {
+            // Case was unassigned/reassigned while doctor had page open
+            var errMsg = currentLang === 'th' ? (json.error_th || json.error) : json.error;
+            alert(errMsg);
+            window.location.href = '/results/';
         } else {
             showToast(json.error || I18N[currentLang].save_error, 'error');
         }
@@ -2316,4 +2374,60 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endif %}
+
+<script>
+// ===== Assignment Lock: release on page leave =====
+var _caseUnassigned = false;
+{% if lock_status is defined and lock_status and lock_status.get('success') %}
+window.addEventListener('beforeunload', function() {
+    // Don't send unlock if case was already unassigned by nurse (lock already cleared)
+    if (!_caseUnassigned) {
+        navigator.sendBeacon('/api/assignment/{{ result.id }}/unlock');
+    }
+});
+{% endif %}
+
+// ===== Real-time: listen for case_unassigned from nurse =====
+if (typeof io !== 'undefined') {
+    var _detailSocket = io({ transports: ['polling'] });
+    _detailSocket.on('case_unassigned', function(data) {
+        if (data.result_id === {{ result.id }}) {
+            _caseUnassigned = true;
+            var lang = localStorage.getItem('ecg_lang') || 'en';
+            var msg = (lang === 'th') ? (data.message_th || data.message) : data.message;
+            alert(msg);
+            window.location.href = '/results/';
+        }
+    });
+}
+
+// ===== Return to Pool (doctor rejects their own assigned case) =====
+function returnToPool() {
+    if (!confirm('Return this case to the unassigned pool?')) return;
+    fetch('/api/assignment/{{ result.id }}/reject', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                window.location.href = '/results/my-worklist';
+            }
+        });
+}
+
+// ===== Assignment Countdown Timer =====
+{% if result.assignment_expires_at %}
+var _expiresAt = new Date('{{ result.assignment_expires_at.isoformat() }}');
+function _updateCountdown() {
+    var remaining = Math.max(0, Math.floor((_expiresAt - new Date()) / 1000));
+    var m = Math.floor(remaining / 60), s = remaining % 60;
+    var el = document.getElementById('assignmentCountdown');
+    if (el) {
+        el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+        if (remaining < 300) el.style.color = 'var(--apple-red)';
+        else el.style.color = '';
+    }
+}
+setInterval(_updateCountdown, 1000);
+_updateCountdown();
+{% endif %}
+</script>
 {% endblock %}
