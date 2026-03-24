@@ -14,8 +14,10 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
     display_name = db.Column(db.String(120), nullable=False)
+    display_name_en = db.Column(db.String(120), nullable=True)  # English name for DICOM/MWL
     role = db.Column(db.String(20), default="user")  # admin, doctor, nurse, it_admin, viewer, user
     is_active_user = db.Column(db.Boolean, default=True)
+    can_be_assigned = db.Column(db.Boolean, default=False)  # Show in Assign Case dropdown
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     def set_password(self, password):
@@ -129,8 +131,19 @@ class ECGResult(db.Model):
     pacs_send_status = db.Column(db.String(20), nullable=True)  # None | SENT | FAILED
     pacs_sent_at = db.Column(db.DateTime, nullable=True)
 
+    # Export to folder fields
+    pdf_export_status = db.Column(db.String(20), nullable=True)   # None | SENT | FAILED
+    hl7_export_status = db.Column(db.String(20), nullable=True)   # None | SENT | FAILED
+
+    # Soft delete
+    is_deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    deleted_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    original_file_path = db.Column(db.String(500), nullable=True)  # path before archive
+
     assigned_to = db.relationship("User", foreign_keys=[assigned_to_id], backref="assigned_results")
     locked_by   = db.relationship("User", foreign_keys=[locked_by_id],   backref="locked_results")
+    deleted_by  = db.relationship("User", foreign_keys=[deleted_by_id])
 
 
 class AssignmentLog(db.Model):

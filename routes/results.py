@@ -15,22 +15,35 @@ def _calc_stats(role, user_id):
     """Shared stat calculation for index() and api_stats()."""
     from datetime import date as date_cls
     _DONE = ("APPROVED", "FINALIZED", "COMPLETED")
-    base_q = ECGResult.query
+    base_q = ECGResult.query.filter(ECGResult.is_deleted == False)
     if role == "doctor":
-        base_q = base_q.filter(ECGResult.assigned_to_id == user_id)
+        # Include cases assigned to me OR cases I diagnosed
+        my_diagnosed_ids = db.session.query(AssignmentLog.ecg_result_id).filter(
+            AssignmentLog.actor_id == user_id,
+            AssignmentLog.action == "diagnosed",
+        )
+        base_q = base_q.filter(
+            db.or_(ECGResult.assigned_to_id == user_id, ECGResult.id.in_(my_diagnosed_ids))
+        )
 
     if role == "doctor":
         # Doctor: pending = assigned to me, not yet done
-        pending_count = base_q.filter(ECGResult.status.notin_(_DONE)).count()
+        pending_count = ECGResult.query.filter(
+            ECGResult.is_deleted == False,
+            ECGResult.assigned_to_id == user_id,
+            ECGResult.status.notin_(_DONE),
+        ).count()
     else:
         # Nurse/Admin: pending = currently assigned (active), not yet done
         pending_count = ECGResult.query.filter(
+            ECGResult.is_deleted == False,
             ECGResult.assigned_to_id.isnot(None),
             ECGResult.status.notin_(_DONE)
         ).count()
 
     return {
         "unassigned": ECGResult.query.filter(
+            ECGResult.is_deleted == False,
             ECGResult.assigned_to_id.is_(None),
             ECGResult.status.notin_(_DONE)
         ).count(),
@@ -67,7 +80,7 @@ def api_data():
     length = request.args.get("length", 25, type=int)
     search_value = request.args.get("search[value]", "").strip()
 
-    query = ECGResult.query.outerjoin(Patient, ECGResult.patient_db_id == Patient.id).outerjoin(WorklistItem, ECGResult.worklist_id == WorklistItem.id)
+    query = ECGResult.query.filter(ECGResult.is_deleted == False).outerjoin(Patient, ECGResult.patient_db_id == Patient.id).outerjoin(WorklistItem, ECGResult.worklist_id == WorklistItem.id)
 
     # Role-based visibility
     _DONE_STATUSES = ("APPROVED", "FINALIZED", "COMPLETED")
@@ -86,8 +99,17 @@ def api_data():
                 ECGResult.status.notin_(_DONE_STATUSES),
             )
         else:
-            # All: full history of cases assigned to me
-            query = query.filter(ECGResult.assigned_to_id == current_user.id)
+            # All: cases assigned to me OR cases I diagnosed
+            my_diagnosed_ids = db.session.query(AssignmentLog.ecg_result_id).filter(
+                AssignmentLog.actor_id == current_user.id,
+                AssignmentLog.action == "diagnosed",
+            )
+            query = query.filter(
+                db.or_(
+                    ECGResult.assigned_to_id == current_user.id,
+                    ECGResult.id.in_(my_diagnosed_ids),
+                )
+            )
     elif view_filter == "mine":
         query = query.filter(ECGResult.assigned_to_id == current_user.id)
     elif view_filter == "unassigned":
@@ -231,6 +253,8 @@ def api_data():
             "locked_by": r.locked_by.display_name if r.locked_by else None,
             "pacs_send_status": r.pacs_send_status,
             "pacs_sent_at": r.pacs_sent_at.strftime("%d/%m/%Y %H:%M") if r.pacs_sent_at else None,
+            "pdf_export_status": r.pdf_export_status,
+            "hl7_export_status": r.hl7_export_status,
         })
 
     return jsonify({
@@ -426,6 +450,7 @@ def compare(result_id):
     if result.patient_db_id:
         all_results = (
             ECGResult.query
+            .filter(ECGResult.is_deleted == False)
             .filter_by(patient_db_id=result.patient_db_id)
             .order_by(ECGResult.received_at.desc())
             .limit(10)
@@ -464,10 +489,25 @@ def save_diagnosis(result_id):
     if not current_user.can_diagnose:
         return jsonify({"success": False, "error": "Insufficient permissions"}), 403
 
-    # Concurrency guard: doctor must still hold the lock.
-    # If nurse unassigned/reassigned while doctor had the page open,
-    # locked_by_id will be None → this check blocks the save.
-    if result.locked_by_id != current_user.id:
+    # Allow the assigned doctor to revise APPROVED cases (typo fix, etc.)
+    # Block only FINALIZED/COMPLETED (sent to PACS or fully closed)
+    if result.status in ("FINALIZED", "COMPLETED"):
+        return jsonify({
+            "success": False,
+            "error": "Cannot modify diagnosis on finalized cases",
+            "error_th": "ไม่สามารถแก้ไขผลวินิจฉัยที่ส่งออกแล้วได้",
+        }), 400
+
+    # For APPROVED cases, only the assigned doctor can revise
+    if result.status == "APPROVED" and result.assigned_to_id != current_user.id:
+        return jsonify({
+            "success": False,
+            "error": "Only the assigned doctor can revise this diagnosis",
+            "error_th": "เฉพาะแพทย์เจ้าของเคสเท่านั้นที่สามารถแก้ไขได้",
+        }), 403
+
+    # Concurrency guard: doctor must still hold the lock (skip for APPROVED revision)
+    if result.status != "APPROVED" and result.locked_by_id != current_user.id:
         return jsonify({
             "success": False,
             "error": "Your session has expired. This case was unassigned or reassigned by the nurse.",
@@ -479,6 +519,7 @@ def save_diagnosis(result_id):
     diagnosis = data.get("diagnosis", "").strip()
     diagnosed_by = data.get("diagnosed_by", "").strip()
     action = data.get("action", "save")  # save, submit, submit_next
+    is_revision = result.status == "APPROVED"
 
     result.diagnosis = diagnosis
     result.diagnosed_by = diagnosed_by
@@ -492,7 +533,9 @@ def save_diagnosis(result_id):
         result.locked_by_id          = None
         result.locked_at             = None
         db.session.add(AssignmentLog(
-            ecg_result_id=result_id, action="diagnosed", actor_id=current_user.id
+            ecg_result_id=result_id,
+            action="revised" if is_revision else "diagnosed",
+            actor_id=current_user.id,
         ))
     elif action == "save":
         if result.status in ("RECEIVED", "IN_REVIEW"):
@@ -509,6 +552,7 @@ def save_diagnosis(result_id):
         .first()
     )
     nurse_id = last_assign_log.actor_id if last_assign_log else None
+    print(f"[Diagnosis] action={action}, is_revision={is_revision}, nurse_id={nurse_id}, result_id={result_id}")
 
     if action == "save" and nurse_id:
         push_notification(
@@ -520,13 +564,22 @@ def save_diagnosis(result_id):
         )
 
     if action in ("submit", "submit_next") and nurse_id:
-        push_notification(
-            user_id=nurse_id,
-            message=f"{current_user.display_name} has completed diagnosis for case {result.accession_number}.",
-            message_th=f"{current_user.display_name} วินิจฉัยเคส {result.accession_number} เสร็จแล้ว",
-            notif_type="diagnosed",
-            result_id=result_id,
-        )
+        if is_revision:
+            push_notification(
+                user_id=nurse_id,
+                message=f"{current_user.display_name} has revised diagnosis for case {result.accession_number}.",
+                message_th=f"{current_user.display_name} แก้ไขคำวินิจฉัยเคส {result.accession_number}",
+                notif_type="revised",
+                result_id=result_id,
+            )
+        else:
+            push_notification(
+                user_id=nurse_id,
+                message=f"{current_user.display_name} has completed diagnosis for case {result.accession_number}.",
+                message_th=f"{current_user.display_name} วินิจฉัยเคส {result.accession_number} เสร็จแล้ว",
+                notif_type="diagnosed",
+                result_id=result_id,
+            )
 
     response = {"success": True, "status": result.status}
 
@@ -534,6 +587,7 @@ def save_diagnosis(result_id):
     if action == "submit_next":
         next_result = (
             ECGResult.query
+            .filter(ECGResult.is_deleted == False)
             .filter(ECGResult.id != result_id)
             .filter(ECGResult.status.in_(["RECEIVED", "REVIEWED"]))
             .order_by(ECGResult.received_at.asc())
@@ -558,6 +612,113 @@ def send_to_pacs(result_id):
     return jsonify({"success": success, "message": message})
 
 
+@results_bp.route("/<int:result_id>/send-pdf", methods=["POST"])
+@login_required
+def send_pdf(result_id):
+    """Export PDF report to the configured folder."""
+    from models import get_setting
+    result = ECGResult.query.get_or_404(result_id)
+    if result.status not in ("APPROVED", "FINALIZED", "COMPLETED"):
+        return jsonify({"success": False, "error": "Only approved results can be exported"}), 400
+
+    export_path = get_setting("export_pdf_path", "")
+    if not export_path:
+        return jsonify({"success": False, "error": "Export PDF path not configured. Go to Settings > General."}), 400
+
+    if not os.path.isdir(export_path):
+        try:
+            os.makedirs(export_path, exist_ok=True)
+        except Exception as e:
+            result.pdf_export_status = "FAILED"
+            db.session.commit()
+            return jsonify({"success": False, "error": f"Cannot access folder: {e}"}), 500
+
+    if not result.file_path or not os.path.exists(result.file_path):
+        result.pdf_export_status = "FAILED"
+        db.session.commit()
+        return jsonify({"success": False, "error": "DICOM file not found"}), 404
+
+    try:
+        ecg_data = parse_dicom_ecg(result.file_path)
+        if not ecg_data:
+            raise ValueError("Cannot read ECG data")
+
+        from services.ecg_pdf import generate_ecg_pdf
+        pdf_buffer = generate_ecg_pdf(ecg_data, db_result=result)
+
+        acc = result.accession_number or "NOACC"
+        hn = result.patient.patient_id if result.patient else "unknown"
+        name = result.patient_name.replace("^", "_") if result.patient_name else "unknown"
+        filename = f"{acc}_{hn}_{name}.pdf"
+        # Sanitize filename
+        filename = "".join(c if c.isalnum() or c in "._-" else "_" for c in filename)
+
+        dest = os.path.join(export_path, filename)
+        with open(dest, "wb") as f:
+            f.write(pdf_buffer.read())
+
+        result.pdf_export_status = "SENT"
+        db.session.commit()
+        return jsonify({"success": True, "message": f"PDF exported to {dest}"})
+    except Exception as e:
+        result.pdf_export_status = "FAILED"
+        db.session.commit()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@results_bp.route("/<int:result_id>/send-hl7", methods=["POST"])
+@login_required
+def send_hl7(result_id):
+    """Export HL7 XML file to the configured folder."""
+    from models import get_setting
+    result = ECGResult.query.get_or_404(result_id)
+    if result.status not in ("APPROVED", "FINALIZED", "COMPLETED"):
+        return jsonify({"success": False, "error": "Only approved results can be exported"}), 400
+
+    export_path = get_setting("export_hl7_path", "")
+    if not export_path:
+        return jsonify({"success": False, "error": "Export HL7 path not configured. Go to Settings > General."}), 400
+
+    if not os.path.isdir(export_path):
+        try:
+            os.makedirs(export_path, exist_ok=True)
+        except Exception as e:
+            result.hl7_export_status = "FAILED"
+            db.session.commit()
+            return jsonify({"success": False, "error": f"Cannot access folder: {e}"}), 500
+
+    if not result.file_path or not os.path.exists(result.file_path):
+        result.hl7_export_status = "FAILED"
+        db.session.commit()
+        return jsonify({"success": False, "error": "DICOM file not found"}), 404
+
+    try:
+        ecg_data = parse_dicom_ecg(result.file_path)
+        if not ecg_data:
+            raise ValueError("Cannot read ECG data")
+
+        from services.ecg_hl7 import generate_ecg_hl7
+        xml_str = generate_ecg_hl7(ecg_data, db_result=result)
+
+        acc = result.accession_number or "NOACC"
+        hn = result.patient.patient_id if result.patient else "unknown"
+        name = result.patient_name.replace("^", "_") if result.patient_name else "unknown"
+        filename = f"{acc}_{hn}_{name}.xml"
+        filename = "".join(c if c.isalnum() or c in "._-" else "_" for c in filename)
+
+        dest = os.path.join(export_path, filename)
+        with open(dest, "w", encoding="utf-8") as f:
+            f.write(xml_str)
+
+        result.hl7_export_status = "SENT"
+        db.session.commit()
+        return jsonify({"success": True, "message": f"HL7 exported to {dest}"})
+    except Exception as e:
+        result.hl7_export_status = "FAILED"
+        db.session.commit()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @results_bp.route("/<int:result_id>/delete", methods=["POST"])
 @login_required
 def delete_result(result_id):
@@ -575,58 +736,56 @@ def delete_result(result_id):
             "error": "Nurses can only delete RECEIVED results | พยาบาลลบได้เฉพาะผลที่ยังไม่ถูกวินิจฉัย",
         }), 400
 
-    # Capture info for audit log BEFORE deleting
-    import json
     accession = result.accession_number or "-"
-    pacs_status = result.pacs_send_status
-    audit_detail = json.dumps({
-        "result_id": result_id,
-        "accession_number": accession,
-        "patient_id": result.patient.patient_id if result.patient else None,
-        "patient_name": result.patient.patient_name if result.patient else None,
-        "status": result.status,
-        "file_path": result.file_path,
-        "pacs_send_status": pacs_status,
-        "diagnosed_by": result.diagnosed_by,
-    }, ensure_ascii=False)
+    now = datetime.now()
 
-    # Write audit log (no FK to ecg_results — survives deletion)
-    from models import AuditLog
-    db.session.add(AuditLog(
-        action="delete_result",
-        actor_id=current_user.id,
-        detail=audit_detail,
-    ))
+    # Soft delete: mark as deleted, keep all records
+    result.is_deleted = True
+    result.deleted_at = now
+    result.deleted_by_id = current_user.id
 
-    # Reset linked worklist item back to SCHEDULED so it can receive new results
+    # Archive DICOM file (move to archive/ subfolder)
+    import shutil
+    file_archived = False
+    if result.file_path and os.path.exists(result.file_path):
+        archive_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dicom_archive")
+        os.makedirs(archive_dir, exist_ok=True)
+        archive_path = os.path.join(archive_dir, os.path.basename(result.file_path))
+        try:
+            shutil.move(result.file_path, archive_path)
+            result.original_file_path = result.file_path
+            result.file_path = archive_path
+            file_archived = True
+        except OSError:
+            pass  # archive is best-effort
+
+    # Release assignment/lock so it doesn't affect stats
+    result.locked_by_id = None
+    result.locked_at = None
+    result.assignment_expires_at = None
+
+    # Reset linked worklist item back to SCHEDULED
     if result.worklist_id:
         wl = WorklistItem.query.get(result.worklist_id)
         if wl and wl.status == "COMPLETED":
             wl.status = "SCHEDULED"
 
-    # Delete related records
-    AssignmentLog.query.filter_by(ecg_result_id=result_id).delete()
-    from models import Notification
-    Notification.query.filter_by(related_result_id=result_id).delete()
+    # Log the deletion in AssignmentLog (keep existing logs intact)
+    db.session.add(AssignmentLog(
+        ecg_result_id=result_id,
+        action="deleted",
+        actor_id=current_user.id,
+        notes=f"Status was {result.status}" + (" (PACS sent)" if result.pacs_send_status == "SENT" else ""),
+    ))
 
-    # Delete DICOM file from disk
-    file_deleted = False
-    if result.file_path and os.path.exists(result.file_path):
-        try:
-            os.remove(result.file_path)
-            file_deleted = True
-        except OSError:
-            pass  # file removal is best-effort
-
-    db.session.delete(result)
     db.session.commit()
 
     msg = f"Result {accession} deleted"
-    if file_deleted:
-        msg += " (DICOM file removed)"
-    if pacs_status == "SENT":
-        msg += " — Note: already sent to PACS"
+    if file_archived:
+        msg += " (DICOM archived)"
     msg += f" | ลบผลตรวจ {accession} แล้ว"
+    if file_archived:
+        msg += " (ไฟล์ถูกเก็บถาวร)"
 
     return jsonify({"success": True, "message": msg})
 
@@ -653,6 +812,80 @@ def reset_status(result_id):
     db.session.commit()
 
     return jsonify({"success": True, "message": "Case reset to RECEIVED | เคสถูกรีเซ็ตเป็น RECEIVED"})
+
+
+# ---------------------------------------------------------------------------
+# Deleted Results (Trash) — Admin only
+# ---------------------------------------------------------------------------
+@results_bp.route("/api/deleted")
+@login_required
+def api_deleted():
+    """Return deleted ECG results for admin trash view."""
+    if current_user.role not in ("admin", "it_admin"):
+        return jsonify([])
+
+    deleted = (
+        ECGResult.query
+        .filter(ECGResult.is_deleted == True)
+        .order_by(ECGResult.deleted_at.desc())
+        .all()
+    )
+
+    data = []
+    for r in deleted:
+        data.append({
+            "id": r.id,
+            "accession_number": r.accession_number or "-",
+            "patient_name": r.patient.patient_name if r.patient else "-",
+            "patient_id": r.patient.patient_id if r.patient else "-",
+            "status": r.status,
+            "deleted_at": r.deleted_at.strftime("%d/%m/%Y %H:%M") if r.deleted_at else "-",
+            "deleted_by": r.deleted_by.display_name if r.deleted_by else "-",
+            "diagnosed_by": r.diagnosed_by or "-",
+            "pacs_sent": r.pacs_send_status == "SENT",
+        })
+
+    return jsonify(data)
+
+
+@results_bp.route("/<int:result_id>/restore", methods=["POST"])
+@login_required
+def restore_result(result_id):
+    """Restore a soft-deleted ECG result (admin only)."""
+    if current_user.role not in ("admin", "it_admin"):
+        return jsonify({"success": False, "error": "Not authorised"}), 403
+
+    result = ECGResult.query.get_or_404(result_id)
+    if not result.is_deleted:
+        return jsonify({"success": False, "error": "Result is not deleted"}), 400
+
+    import shutil
+    # Restore DICOM file from archive if applicable
+    if result.original_file_path:
+        if result.file_path and os.path.exists(result.file_path):
+            os.makedirs(os.path.dirname(result.original_file_path), exist_ok=True)
+            try:
+                shutil.move(result.file_path, result.original_file_path)
+                result.file_path = result.original_file_path
+            except OSError:
+                pass
+        result.original_file_path = None
+
+    result.is_deleted = False
+    result.deleted_at = None
+    result.deleted_by_id = None
+
+    db.session.add(AssignmentLog(
+        ecg_result_id=result_id,
+        action="restored",
+        actor_id=current_user.id,
+    ))
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": f"Result {result.accession_number} restored | กู้คืนผลตรวจ {result.accession_number} แล้ว",
+    })
 
 
 @results_bp.route("/api/browse")
@@ -716,87 +949,88 @@ def _import_dicom_files(directory: str) -> int:
 
     storage_root = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dicom_storage")
 
-    for root, dirs, files in os.walk(directory):
-        for fname in files:
-            if not fname.lower().endswith(".dcm"):
-                continue
+    for fname in os.listdir(directory):
+        if not fname.lower().endswith(".dcm"):
+            continue
 
-            filepath = os.path.join(root, fname)
+        filepath = os.path.join(directory, fname)
+        if not os.path.isfile(filepath):
+            continue
 
-            # Check if already imported (by SOP Instance UID)
-            try:
-                ds = pydicom.dcmread(filepath, force=True)
-            except Exception:
-                continue
+        # Check if already imported (by SOP Instance UID)
+        try:
+            ds = pydicom.dcmread(filepath, force=True)
+        except Exception:
+            continue
 
-            sop_uid = str(getattr(ds, "SOPInstanceUID", ""))
-            if sop_uid and ECGResult.query.filter_by(sop_instance_uid=sop_uid).first():
-                continue  # Already imported
+        sop_uid = str(getattr(ds, "SOPInstanceUID", ""))
+        if sop_uid and ECGResult.query.filter_by(sop_instance_uid=sop_uid).first():
+            continue  # Already imported
 
-            patient_id_val = str(getattr(ds, "PatientID", "UNKNOWN"))
-            patient_name_val = str(getattr(ds, "PatientName", ""))
-            accession = str(getattr(ds, "AccessionNumber", ""))
-            study_uid = str(getattr(ds, "StudyInstanceUID", ""))
+        patient_id_val = str(getattr(ds, "PatientID", "UNKNOWN"))
+        patient_name_val = str(getattr(ds, "PatientName", ""))
+        accession = str(getattr(ds, "AccessionNumber", ""))
+        study_uid = str(getattr(ds, "StudyInstanceUID", ""))
 
-            # Copy file into dicom_storage/YYYYMMDD/PatientID/
-            today = datetime.now().strftime("%Y%m%d")
-            patient_dir = os.path.join(storage_root, today, patient_id_val)
-            os.makedirs(patient_dir, exist_ok=True)
+        # Copy file into dicom_storage/YYYYMMDD/PatientID/
+        today = datetime.now().strftime("%Y%m%d")
+        patient_dir = os.path.join(storage_root, today, patient_id_val)
+        os.makedirs(patient_dir, exist_ok=True)
 
-            dest_filename = f"{sop_uid}.dcm" if sop_uid else fname
-            dest_path = os.path.join(patient_dir, dest_filename)
-            shutil.copy2(filepath, dest_path)
+        dest_filename = f"{sop_uid}.dcm" if sop_uid else fname
+        dest_path = os.path.join(patient_dir, dest_filename)
+        shutil.copy2(filepath, dest_path)
 
-            # Find or create patient
-            patient = Patient.query.filter_by(patient_id=patient_id_val).first() if patient_id_val else None
-            if not patient and patient_id_val:
-                sex = str(getattr(ds, "PatientSex", "") or "").strip().upper()[:1]
-                if sex not in ("M", "F", "O"):
-                    sex = ""
-                birth_date = str(getattr(ds, "PatientBirthDate", "") or "").strip()
-                patient = Patient(
-                    patient_id=patient_id_val,
-                    patient_name=patient_name_val or patient_id_val,
-                    sex=sex,
-                    birth_date=birth_date if len(birth_date) == 8 else None,
-                )
-                db.session.add(patient)
-                db.session.flush()
-
-            # Extract study date/time from DICOM tags
-            study_dt = None
-            acq_dt_str = str(getattr(ds, "AcquisitionDateTime", "") or "").strip()
-            sd_str = str(getattr(ds, "StudyDate", "") or "").strip()
-            st_str = str(getattr(ds, "StudyTime", "") or "").strip()
-            try:
-                if acq_dt_str and len(acq_dt_str) >= 14:
-                    study_dt = datetime.strptime(acq_dt_str[:14], "%Y%m%d%H%M%S")
-                elif sd_str and len(sd_str) == 8:
-                    if st_str and len(st_str) >= 6:
-                        study_dt = datetime.strptime(sd_str + st_str[:6], "%Y%m%d%H%M%S")
-                    else:
-                        study_dt = datetime.strptime(sd_str, "%Y%m%d")
-            except (ValueError, TypeError):
-                study_dt = None
-
-            # Find matching worklist
-            worklist = None
-            if accession:
-                worklist = WorklistItem.query.filter_by(accession_number=accession).first()
-
-            result = ECGResult(
-                worklist_id=worklist.id if worklist else None,
-                patient_db_id=patient.id if patient else None,
-                accession_number=accession,
-                study_instance_uid=study_uid,
-                sop_instance_uid=sop_uid,
-                file_path=os.path.abspath(dest_path),
-                received_at=datetime.now(),
-                study_datetime=study_dt,
-                status="RECEIVED",
+        # Find or create patient
+        patient = Patient.query.filter_by(patient_id=patient_id_val).first() if patient_id_val else None
+        if not patient and patient_id_val:
+            sex = str(getattr(ds, "PatientSex", "") or "").strip().upper()[:1]
+            if sex not in ("M", "F", "O"):
+                sex = ""
+            birth_date = str(getattr(ds, "PatientBirthDate", "") or "").strip()
+            patient = Patient(
+                patient_id=patient_id_val,
+                patient_name=patient_name_val or patient_id_val,
+                sex=sex,
+                birth_date=birth_date if len(birth_date) == 8 else None,
             )
-            db.session.add(result)
-            count += 1
+            db.session.add(patient)
+            db.session.flush()
+
+        # Extract study date/time from DICOM tags
+        study_dt = None
+        acq_dt_str = str(getattr(ds, "AcquisitionDateTime", "") or "").strip()
+        sd_str = str(getattr(ds, "StudyDate", "") or "").strip()
+        st_str = str(getattr(ds, "StudyTime", "") or "").strip()
+        try:
+            if acq_dt_str and len(acq_dt_str) >= 14:
+                study_dt = datetime.strptime(acq_dt_str[:14], "%Y%m%d%H%M%S")
+            elif sd_str and len(sd_str) == 8:
+                if st_str and len(st_str) >= 6:
+                    study_dt = datetime.strptime(sd_str + st_str[:6], "%Y%m%d%H%M%S")
+                else:
+                    study_dt = datetime.strptime(sd_str, "%Y%m%d")
+        except (ValueError, TypeError):
+            study_dt = None
+
+        # Find matching worklist
+        worklist = None
+        if accession:
+            worklist = WorklistItem.query.filter_by(accession_number=accession).first()
+
+        result = ECGResult(
+            worklist_id=worklist.id if worklist else None,
+            patient_db_id=patient.id if patient else None,
+            accession_number=accession,
+            study_instance_uid=study_uid,
+            sop_instance_uid=sop_uid,
+            file_path=os.path.abspath(dest_path),
+            received_at=datetime.now(),
+            study_datetime=study_dt,
+            status="RECEIVED",
+        )
+        db.session.add(result)
+        count += 1
 
     db.session.commit()
     return count

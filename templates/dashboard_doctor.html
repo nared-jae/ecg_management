@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
     <h1 data-i18n="dd_title">My Dashboard</h1>
-    <p data-i18n="dd_subtitle">{{ current_user.display_name }}</p>
+    <p data-i18n="dd_subtitle">Case overview and activity summary</p>
 </div>
 
 <!-- Stats Cards -->
@@ -30,7 +30,7 @@
             </div>
             <div class="card-icon red"><i class="bi bi-alarm"></i></div>
         </div>
-        <div style="font-size:0.75rem;color:var(--apple-text-secondary);margin-top:0.5rem;" data-i18n="dd_expiring_sub">Cases expiring within 5 minutes</div>
+        <div style="font-size:0.75rem;color:var(--apple-text-secondary);margin-top:0.5rem;" data-i18n="dd_expiring_sub">Cases expiring within {{ expiring_minutes }} minutes</div>
     </div>
 
     <div class="apple-card">
@@ -117,11 +117,11 @@
 var DD_I18N = {
     en: {
         dd_title: 'My Dashboard',
-        dd_subtitle: '{{ current_user.display_name }}',
+        dd_subtitle: 'Case overview and activity summary',
         dd_pending: 'My Pending Cases',
         dd_pending_sub: 'Cases waiting for diagnosis',
         dd_expiring: 'Expiring Soon',
-        dd_expiring_sub: 'Cases expiring within 5 minutes',
+        dd_expiring_sub: 'Cases expiring within {{ expiring_minutes }} minutes',
         dd_completed_today: 'Completed Today',
         dd_completed_today_sub: 'Cases diagnosed today',
         dd_this_month: 'This Month',
@@ -139,11 +139,11 @@ var DD_I18N = {
     },
     th: {
         dd_title: 'แดชบอร์ดของฉัน',
-        dd_subtitle: '{{ current_user.display_name }}',
+        dd_subtitle: 'ภาพรวมเคสและกิจกรรมการวินิจฉัย',
         dd_pending: 'เคสที่รอวินิจฉัย',
         dd_pending_sub: 'เคสที่มอบหมายให้ฉันและรอดำเนินการ',
         dd_expiring: 'ใกล้หมดเวลา',
-        dd_expiring_sub: 'เคสที่จะหมดเวลาใน 5 นาที',
+        dd_expiring_sub: 'เคสที่จะหมดเวลาใน {{ expiring_minutes }} นาที',
         dd_completed_today: 'วินิจฉัยวันนี้',
         dd_completed_today_sub: 'เคสที่วินิจฉัยเสร็จแล้ววันนี้',
         dd_this_month: 'เดือนนี้',

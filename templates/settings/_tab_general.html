@@ -80,3 +80,117 @@
         {% endif %}
     </div>
 </form>
+
+{% if current_user.role in ['admin', 'it_admin'] %}
+<!-- ===== Export Paths ===== -->
+<form method="POST" action="{{ url_for('settings.index') }}">
+<div class="apple-table-wrapper mt-4" style="padding:1.5rem;">
+    <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
+        <i class="bi bi-folder-symlink me-2"></i><span data-i18n="export_title">Export Paths</span>
+    </h6>
+    <div class="alert d-flex align-items-start mb-3"
+         style="background:#f0f5ff;color:var(--apple-blue);border:none;border-radius:var(--apple-radius-sm);font-size:0.85rem;">
+        <i class="bi bi-info-circle me-2 mt-1"></i>
+        <span data-i18n="export_info">Configure folder paths for exporting PDF reports and HL7 files. Supports local paths and UNC network paths (e.g., \\server\share\folder).</span>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-md-6">
+            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
+                <label class="form-label fw-600" style="font-size:0.95rem;color:var(--apple-text);" data-i18n="export_lbl_pdf">
+                    PDF Export Path
+                </label>
+                <input type="text" class="form-control" name="export_pdf_path"
+                       value="{{ export_settings.export_pdf_path }}"
+                       placeholder="D:\ecg_export\pdf or \\server\share\pdf"
+                       style="font-family:monospace;font-size:0.9rem;">
+                <p class="mt-2 mb-0" style="font-size:0.82rem;color:var(--apple-text-secondary);">
+                    <i class="bi bi-info-circle me-1"></i><span data-i18n="export_hint_pdf">Folder for sending PDF report files (Send PDF button)</span>
+                </p>
+            </div>
+        </div>
+        <div class="col-12 col-md-6">
+            <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
+                <label class="form-label fw-600" style="font-size:0.95rem;color:var(--apple-text);" data-i18n="export_lbl_hl7">
+                    HL7 Export Path
+                </label>
+                <input type="text" class="form-control" name="export_hl7_path"
+                       value="{{ export_settings.export_hl7_path }}"
+                       placeholder="D:\ecg_export\hl7 or \\server\share\hl7"
+                       style="font-family:monospace;font-size:0.9rem;">
+                <p class="mt-2 mb-0" style="font-size:0.82rem;color:var(--apple-text-secondary);">
+                    <i class="bi bi-info-circle me-1"></i><span data-i18n="export_hint_hl7">Folder for sending HL7 XML files (Send HL7 button)</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-apple">
+            <i class="bi bi-floppy me-1"></i><span data-i18n="save_btn">Save Settings</span>
+        </button>
+    </div>
+</div>
+</form>
+
+<!-- ===== API Integration ===== -->
+<div class="apple-table-wrapper mt-4" style="padding:1.5rem;">
+    <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
+        <i class="bi bi-plug me-2"></i><span data-i18n="api_title">API Integration</span>
+    </h6>
+    <div class="alert d-flex align-items-start mb-3"
+         style="background:#f0f5ff;color:var(--apple-blue);border:none;border-radius:var(--apple-radius-sm);font-size:0.85rem;">
+        <i class="bi bi-info-circle me-2 mt-1"></i>
+        <span data-i18n="api_info">Use this API key for external system integration (e.g., Hospital Information System). Send it via the X-API-Key header.</span>
+    </div>
+
+    <div style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
+        <label class="form-label fw-600" style="font-size:0.95rem;color:var(--apple-text);" data-i18n="api_lbl_key">
+            API Key
+        </label>
+        <div class="input-group" style="max-width:500px;">
+            <input type="password" class="form-control" id="apiKeyInput" readonly
+                   style="font-family:monospace;font-size:0.9rem;letter-spacing:0.5px;">
+            <button class="btn btn-outline-secondary" type="button" id="btnToggleApiKey" onclick="toggleApiKeyVisibility()"
+                    title="Show/Hide" style="min-width:42px;">
+                <i class="bi bi-eye" id="apiKeyEyeIcon"></i>
+            </button>
+            <button class="btn btn-outline-secondary" type="button" onclick="copyApiKey()"
+                    title="Copy" style="min-width:42px;">
+                <i class="bi bi-clipboard"></i>
+            </button>
+        </div>
+
+        <div class="mt-3">
+            <button type="button" class="btn btn-apple-secondary" onclick="regenerateApiKey()">
+                <i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="api_btn_regenerate">Regenerate Key</span>
+            </button>
+            <span class="ms-2 text-muted" style="font-size:0.78rem;" data-i18n="api_regenerate_hint">
+                Warning: regenerating will invalidate the current key
+            </span>
+        </div>
+    </div>
+
+    <!-- Example cURL -->
+    <div class="mt-3" style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1.25rem;">
+        <label class="form-label fw-600" style="font-size:0.95rem;color:var(--apple-text);" data-i18n="api_lbl_example">
+            Example Usage
+        </label>
+        <div style="background:#1e1e2e;color:#cdd6f4;border-radius:8px;padding:1rem;font-family:monospace;font-size:0.82rem;overflow-x:auto;white-space:pre;line-height:1.5;">
+<span style="color:#89b4fa;">POST</span> /api/v1/create-test
+<span style="color:#a6adc8;">Header:</span> X-API-Key: &lt;your-api-key&gt;
+<span style="color:#a6adc8;">Content-Type:</span> application/json
+
+{
+  <span style="color:#a6e3a1;">"patient_id"</span>: <span style="color:#f9e2af;">"HN00001"</span>,
+  <span style="color:#a6e3a1;">"patient_name"</span>: <span style="color:#f9e2af;">"SMITH^JOHN"</span>,
+  <span style="color:#a6e3a1;">"sex"</span>: <span style="color:#f9e2af;">"M"</span>,
+  <span style="color:#a6e3a1;">"birth_date"</span>: <span style="color:#f9e2af;">"19800115"</span>,
+  <span style="color:#a6e3a1;">"priority"</span>: <span style="color:#f9e2af;">"ROUTINE"</span>,
+  <span style="color:#a6e3a1;">"ordering_physician"</span>: <span style="color:#f9e2af;">"Dr. Smith"</span>,
+  <span style="color:#a6e3a1;">"ordering_department"</span>: <span style="color:#f9e2af;">"Cardiology"</span>,
+  <span style="color:#a6e3a1;">"clinical_info"</span>: <span style="color:#f9e2af;">"Chest pain"</span>
+}</div>
+    </div>
+</div>
+{% endif %}

@@ -135,7 +135,16 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label" data-i18n="um_lbl_display_name">Display Name</label>
-                        <input type="text" class="form-control" name="display_name" required>
+                        <input type="text" class="form-control" name="display_name" required
+                               placeholder="ชื่อที่แสดงในระบบ">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" data-i18n="um_lbl_display_name_en">English Name (DICOM)</label>
+                        <input type="text" class="form-control" name="display_name_en"
+                               placeholder="LASTNAME^FIRSTNAME">
+                        <div class="form-text" data-i18n="um_hint_display_name_en" style="font-size:0.75rem;">
+                            Used in MWL/DICOM — e.g. JAIDEE^WICHAI
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" data-i18n="um_lbl_password">Password</label>
@@ -152,6 +161,17 @@
                             <option value="{{ r }}">{{ r | upper }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="can_be_assigned" id="chkAssignable" value="1">
+                            <label class="form-check-label" for="chkAssignable" data-i18n="um_lbl_assignable">
+                                Assignable (show in Assign Case)
+                            </label>
+                        </div>
+                        <div class="form-text" data-i18n="um_hint_assignable" style="font-size:0.75rem;">
+                            Enable to show this user in the Assign Case dropdown
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--apple-border);">
@@ -221,8 +241,12 @@ var PAGE_I18N = {
         um_modal_edit: 'Edit User',
         um_lbl_username: 'Username',
         um_lbl_display_name: 'Display Name',
+        um_lbl_display_name_en: 'English Name (DICOM)',
+        um_hint_display_name_en: 'Used in MWL/DICOM — e.g. JAIDEE^WICHAI',
         um_lbl_password: 'Password',
         um_lbl_role: 'Role',
+        um_lbl_assignable: 'Assignable (show in Assign Case)',
+        um_hint_assignable: 'Enable to show this user in the Assign Case dropdown',
         um_ph_password_edit: 'Leave blank to keep current password',
         um_btn_create: 'Create User',
         um_btn_save: 'Save Changes',
@@ -236,6 +260,23 @@ var PAGE_I18N = {
         at_filter_all: 'All Actions',
         at_btn_apply: 'Apply',
         at_btn_clear: 'Clear',
+        // Export Paths
+        export_title: 'Export Paths',
+        export_info: 'Configure folder paths for exporting PDF reports and HL7 files. Supports local paths and UNC network paths (e.g., \\\\server\\share\\folder).',
+        export_lbl_pdf: 'PDF Export Path',
+        export_lbl_hl7: 'HL7 Export Path',
+        export_hint_pdf: 'Folder for sending PDF report files (Send PDF button)',
+        export_hint_hl7: 'Folder for sending HL7 XML files (Send HL7 button)',
+        // API Integration
+        api_title: 'API Integration',
+        api_info: 'Use this API key for external system integration (e.g., Hospital Information System). Send it via the X-API-Key header.',
+        api_lbl_key: 'API Key',
+        api_btn_regenerate: 'Regenerate Key',
+        api_regenerate_hint: 'Warning: regenerating will invalidate the current key',
+        api_lbl_example: 'Example Usage',
+        api_copied: 'API key copied to clipboard',
+        api_regenerated: 'API key regenerated successfully',
+        api_confirm_regenerate: 'Are you sure? The current key will stop working immediately.',
     },
     th: {
         page_title: 'ตั้งค่าระบบ',
@@ -267,8 +308,12 @@ var PAGE_I18N = {
         um_modal_edit: 'แก้ไขผู้ใช้',
         um_lbl_username: 'ชื่อผู้ใช้',
         um_lbl_display_name: 'ชื่อที่แสดง',
+        um_lbl_display_name_en: 'ชื่อภาษาอังกฤษ (DICOM)',
+        um_hint_display_name_en: 'ใช้ใน MWL/DICOM — เช่น JAIDEE^WICHAI',
         um_lbl_password: 'รหัสผ่าน',
         um_lbl_role: 'บทบาท',
+        um_lbl_assignable: 'รับมอบหมายเคสได้ (แสดงใน Assign Case)',
+        um_hint_assignable: 'เปิดเพื่อแสดงผู้ใช้นี้ในรายการ Assign Case',
         um_ph_password_edit: 'เว้นว่างหากไม่ต้องการเปลี่ยน',
         um_btn_create: 'สร้างผู้ใช้',
         um_btn_save: 'บันทึกการเปลี่ยนแปลง',
@@ -281,6 +326,21 @@ var PAGE_I18N = {
         at_filter_all: 'ทั้งหมด',
         at_btn_apply: 'กรอง',
         at_btn_clear: 'ล้าง',
+        export_title: 'โฟลเดอร์ส่งออก',
+        export_info: 'กำหนดโฟลเดอร์สำหรับส่งออกไฟล์ PDF report และ HL7 รองรับ path ในเครื่องและ UNC path (เช่น \\\\server\\share\\folder)',
+        export_lbl_pdf: 'โฟลเดอร์ส่ง PDF',
+        export_lbl_hl7: 'โฟลเดอร์ส่ง HL7',
+        export_hint_pdf: 'โฟลเดอร์สำหรับส่งไฟล์ PDF report (ปุ่ม Send PDF)',
+        export_hint_hl7: 'โฟลเดอร์สำหรับส่งไฟล์ HL7 XML (ปุ่ม Send HL7)',
+        api_title: 'เชื่อมต่อ API',
+        api_info: 'ใช้ API Key สำหรับเชื่อมต่อระบบภายนอก (เช่น HIS) ส่งผ่าน Header X-API-Key',
+        api_lbl_key: 'API Key',
+        api_btn_regenerate: 'สร้าง Key ใหม่',
+        api_regenerate_hint: 'คำเตือน: การสร้างใหม่จะทำให้ Key เดิมใช้ไม่ได้',
+        api_lbl_example: 'ตัวอย่างการใช้งาน',
+        api_copied: 'คัดลอก API Key แล้ว',
+        api_regenerated: 'สร้าง API Key ใหม่สำเร็จ',
+        api_confirm_regenerate: 'คุณแน่ใจหรือไม่? Key ปัจจุบันจะใช้ไม่ได้ทันที',
     }
 };
 
@@ -417,7 +477,9 @@ function editUser(id) {
         document.querySelector('[name="username"]').value = data.username;
         document.querySelector('[name="username"]').readOnly = true;
         document.querySelector('[name="display_name"]').value = data.display_name;
+        document.querySelector('[name="display_name_en"]').value = data.display_name_en || '';
         document.querySelector('[name="role"]').value = data.role;
+        document.getElementById('chkAssignable').checked = data.can_be_assigned || false;
         document.getElementById('userPassword').value = '';
         document.getElementById('userPassword').required = false;
         document.getElementById('passwordHint').style.display = 'block';
@@ -506,6 +568,64 @@ function clearAuditFilters() {
     document.getElementById('auditDateTo').value = '';
     if (auditTable) auditTable.ajax.reload();
 }
+
+/* ===== API Key Management ===== */
+var _apiKeyValue = '';
+
+function loadApiKey() {
+    $.getJSON('/settings/api-key', function(resp) {
+        if (resp.success) {
+            _apiKeyValue = resp.api_key;
+            document.getElementById('apiKeyInput').value = '\u2022'.repeat(36);
+        }
+    });
+}
+
+function toggleApiKeyVisibility() {
+    var input = document.getElementById('apiKeyInput');
+    var icon = document.getElementById('apiKeyEyeIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        input.value = _apiKeyValue;
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        input.type = 'password';
+        input.value = '\u2022'.repeat(36);
+        icon.className = 'bi bi-eye';
+    }
+}
+
+function copyApiKey() {
+    if (!_apiKeyValue) return;
+    navigator.clipboard.writeText(_apiKeyValue).then(function() {
+        showToast('success', getLang('api_copied'));
+    });
+}
+
+function regenerateApiKey() {
+    if (!confirm(getLang('api_confirm_regenerate'))) return;
+    $.post('/settings/api-key/regenerate', {}, function(resp) {
+        if (resp.success) {
+            _apiKeyValue = resp.api_key;
+            var input = document.getElementById('apiKeyInput');
+            if (input.type === 'text') {
+                input.value = _apiKeyValue;
+            } else {
+                input.value = '\u2022'.repeat(36);
+            }
+            showToast('success', getLang('api_regenerated'));
+        } else {
+            showToast('error', resp.error || 'Error');
+        }
+    });
+}
+
+// Load API key on page load
+$(document).ready(function() {
+    if (document.getElementById('apiKeyInput')) {
+        loadApiKey();
+    }
+});
 
 function initAuditTable() {
     auditTableInited = true;

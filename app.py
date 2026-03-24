@@ -1,3 +1,4 @@
+import uuid
 from datetime import date, datetime, timedelta
 
 from flask import Flask
@@ -54,6 +55,7 @@ def _check_assignment_timeouts(flask_app):
         timeout_minutes = int(get_setting("assignment_timeout_minutes", 30))
         expired = (
             ECGResult.query
+            .filter(ECGResult.is_deleted == False)
             .filter(ECGResult.assigned_to_id.isnot(None))
             .filter(ECGResult.status == "RECEIVED")
             .filter(ECGResult.assignment_expires_at <= now)
@@ -173,6 +175,7 @@ def create_app():
     from routes.assignment import assignment_bp
     from routes.settings import settings_bp
     from routes.patients import patients_bp
+    from routes.api import api_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -183,6 +186,7 @@ def create_app():
     app.register_blueprint(assignment_bp)
     app.register_blueprint(settings_bp)
     app.register_blueprint(patients_bp)
+    app.register_blueprint(api_bp)
 
     # Create tables and seed data
     with app.app_context():
@@ -205,6 +209,36 @@ def _auto_migrate(db):
 
         # Backfill from DICOM files
         _backfill_study_datetime(db)
+
+    # Users: add display_name_en column
+    user_cols = [c["name"] for c in inspector.get_columns("users")]
+    if "display_name_en" not in user_cols:
+        db.session.execute(sqlalchemy.text("ALTER TABLE users ADD COLUMN display_name_en VARCHAR(120)"))
+        db.session.commit()
+        print("[Migrate] Added display_name_en column to users")
+    if "can_be_assigned" not in user_cols:
+        db.session.execute(sqlalchemy.text("ALTER TABLE users ADD COLUMN can_be_assigned BOOLEAN DEFAULT 0"))
+        # Auto-enable for existing doctors
+        db.session.execute(sqlalchemy.text("UPDATE users SET can_be_assigned = 1 WHERE role = 'doctor'"))
+        db.session.commit()
+        print("[Migrate] Added can_be_assigned column to users")
+
+    # ECG Results: add export status columns
+    result_cols = [c["name"] for c in inspector.get_columns("ecg_results")]
+    if "pdf_export_status" not in result_cols:
+        db.session.execute(sqlalchemy.text("ALTER TABLE ecg_results ADD COLUMN pdf_export_status VARCHAR(20)"))
+        db.session.execute(sqlalchemy.text("ALTER TABLE ecg_results ADD COLUMN hl7_export_status VARCHAR(20)"))
+        db.session.commit()
+        print("[Migrate] Added pdf_export_status, hl7_export_status columns to ecg_results")
+
+    # ECG Results: add soft delete columns
+    if "is_deleted" not in result_cols:
+        db.session.execute(sqlalchemy.text("ALTER TABLE ecg_results ADD COLUMN is_deleted BOOLEAN DEFAULT 0"))
+        db.session.execute(sqlalchemy.text("ALTER TABLE ecg_results ADD COLUMN deleted_at DATETIME"))
+        db.session.execute(sqlalchemy.text("ALTER TABLE ecg_results ADD COLUMN deleted_by_id INTEGER REFERENCES users(id)"))
+        db.session.execute(sqlalchemy.text("ALTER TABLE ecg_results ADD COLUMN original_file_path VARCHAR(500)"))
+        db.session.commit()
+        print("[Migrate] Added soft delete columns to ecg_results")
 
 
 def _backfill_study_datetime(db):
@@ -400,6 +434,11 @@ def _seed_default_data(stable_uid_from_text=None):
         {"key": "scp_store_ae_title", "value": "ECG_STORE", "label": "Store SCP AE Title", "description": "AE Title for the local Store SCP server (requires restart)"},
         {"key": "scp_store_port", "value": "6702", "label": "Store SCP Port", "description": "Port for the local Store SCP server (requires restart)"},
         {"key": "scp_storage_dir", "value": "", "label": "DICOM Storage Directory", "description": "Directory for storing received DICOM files (requires restart)"},
+        # Export to Folder
+        {"key": "export_pdf_path", "value": "", "label": "Export PDF Path", "description": "โฟลเดอร์สำหรับส่งไฟล์ PDF (เช่น D:\\ecg_export\\pdf หรือ \\\\server\\share\\pdf)"},
+        {"key": "export_hl7_path", "value": "", "label": "Export HL7 Path", "description": "โฟลเดอร์สำหรับส่งไฟล์ HL7 XML (เช่น D:\\ecg_export\\hl7 หรือ \\\\server\\share\\hl7)"},
+        # API Integration
+        {"key": "api_key", "value": str(uuid.uuid4()), "label": "API Key", "description": "API Key for external system integration (HIS)"},
     ]
     for d in defaults:
         if not SystemSetting.query.filter_by(key=d["key"]).first():

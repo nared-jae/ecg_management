@@ -14,10 +14,10 @@ assignment_bp = Blueprint("assignment", __name__, url_prefix="/api/assignment")
 @login_required
 @nurse_required
 def list_doctors():
-    """Return all active doctors for the nurse's assign dropdown."""
+    """Return active assignable users for the nurse's assign dropdown."""
     doctors = (
         User.query
-        .filter(User.role.in_(["doctor", "admin"]), User.is_active_user == True)
+        .filter(User.is_active_user == True, User.can_be_assigned == True)
         .order_by(User.display_name)
         .all()
     )
@@ -237,6 +237,15 @@ def accept(result_id):
 
     if result.assigned_to_id != current_user.id:
         return jsonify({"success": False, "error": "Not assigned to you"}), 403
+
+    # Already IN_REVIEW by this doctor — no-op to prevent timer reset
+    if result.status == "IN_REVIEW" and result.locked_by_id == current_user.id:
+        return jsonify({
+            "success": True,
+            "already_accepted": True,
+            "expires_at": result.assignment_expires_at.strftime("%d/%m/%Y %H:%M") if result.assignment_expires_at else "",
+            "expires_at_iso": result.assignment_expires_at.isoformat() if result.assignment_expires_at else "",
+        })
 
     timeout = int(get_setting("assignment_timeout_minutes", 30))
     now = datetime.now()

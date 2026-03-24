@@ -3,7 +3,7 @@ from datetime import datetime, date
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from flask_login import login_required
 
-from models import db, WorklistItem, Patient, ECGResult
+from models import db, WorklistItem, Patient, ECGResult, User
 from services.dicom_helpers import stable_uid_from_text
 
 ecg_tests_bp = Blueprint("ecg_tests", __name__, url_prefix="/ecg-tests")
@@ -22,7 +22,14 @@ def index():
         "total_today": WorklistItem.query.filter_by(scheduled_date=today_str).count(),
     }
 
-    return render_template("ecg_tests/index.html", stats=stats)
+    doctors = (
+        User.query
+        .filter_by(role="doctor", is_active_user=True)
+        .order_by(User.display_name)
+        .all()
+    )
+
+    return render_template("ecg_tests/index.html", stats=stats, doctors=doctors)
 
 
 @ecg_tests_bp.route("/api/data")

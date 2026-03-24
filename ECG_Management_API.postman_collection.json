@@ -1,0 +1,261 @@
+{
+	"info": {
+		"_postman_id": "ecg-mgmt-api-collection",
+		"name": "ECG Management API",
+		"description": "API สำหรับเชื่อมต่อระบบ ECG Management กับระบบ รพ. (HIS)\n\n## Authentication\nใช้ API Key ส่งผ่าน Header `X-API-Key`\n\nดู API Key ได้ที่: Settings > General > API Integration\n\n## Setup\n1. แก้ไข Variable `base_url` ให้ตรงกับ server\n2. แก้ไข Variable `api_key` ให้ตรงกับ API Key ในระบบ",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "b7e1b208-147e-447c-9c84-15309be6807c",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Create Test - Full Data",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"patient_id\": \"HN00100\",\n  \"patient_name\": \"JAIDEE^SOMCHAI\",\n  \"sex\": \"M\",\n  \"birth_date\": \"19800115\",\n  \"priority\": \"ROUTINE\",\n  \"ordering_physician\": \"Dr. Anupong\",\n  \"ordering_department\": \"Cardiology\",\n  \"patient_source\": \"Outpatient\",\n  \"clinical_info\": \"Chest pain, palpitation\",\n  \"phone\": \"0812345678\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/create-test",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "create-test"]
+				},
+				"description": "สร้าง ECG Test ใหม่ ส่งข้อมูลครบทุก field\n\n**Required fields:**\n- `patient_id` (HN)\n- `patient_name` (รูปแบบ DICOM: LASTNAME^FIRSTNAME)\n\n**Optional fields:**\n- `sex` — M, F, O\n- `birth_date` — YYYYMMDD\n- `accession_number` — ถ้าไม่ส่ง ระบบจะสร้างให้อัตโนมัติ\n- `scheduled_date` — YYYYMMDD (default: วันนี้)\n- `scheduled_time` — HHMMSS (default: เวลาปัจจุบัน)\n- `priority` — ROUTINE, URGENT\n- `ordering_physician`\n- `ordering_department`\n- `patient_source` — Outpatient, Inpatient, Emergency, Health Check\n- `bed_number`\n- `phone`\n- `clinical_info`\n- `procedure_desc`\n- `station_ae`\n- `station_name`"
+			},
+			"response": []
+		},
+		{
+			"name": "Create Test - Minimal (Required Only)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"patient_id\": \"HN00200\",\n  \"patient_name\": \"KAEWDEE^SOMPORN\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/create-test",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "create-test"]
+				},
+				"description": "สร้าง ECG Test ส่งแค่ข้อมูลที่จำเป็น (HN + ชื่อ)\nระบบจะ auto-generate: accession number, scheduled date/time, และค่า default อื่นๆ"
+			},
+			"response": []
+		},
+		{
+			"name": "Create Test - Urgent Inpatient",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"patient_id\": \"HN00300\",\n  \"patient_name\": \"BOONMA^WICHAI\",\n  \"sex\": \"M\",\n  \"birth_date\": \"19560218\",\n  \"priority\": \"URGENT\",\n  \"ordering_physician\": \"Dr. Somkiat\",\n  \"ordering_department\": \"ICU\",\n  \"patient_source\": \"Inpatient\",\n  \"bed_number\": \"ICU-5\",\n  \"clinical_info\": \"Post MI day 3, chest pain recurrence\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/create-test",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "create-test"]
+				},
+				"description": "สร้าง ECG Test แบบ Urgent สำหรับผู้ป่วยใน (Inpatient)"
+			},
+			"response": []
+		},
+		{
+			"name": "Create Test - With Custom Accession",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"patient_id\": \"HN00400\",\n  \"patient_name\": \"SRISUK^MANEE\",\n  \"sex\": \"F\",\n  \"birth_date\": \"19950310\",\n  \"accession_number\": \"HIS-2026-0001\",\n  \"scheduled_date\": \"20260325\",\n  \"scheduled_time\": \"140000\",\n  \"priority\": \"ROUTINE\",\n  \"ordering_physician\": \"Dr. Kamolwan\",\n  \"ordering_department\": \"OPD\",\n  \"patient_source\": \"Outpatient\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/create-test",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "create-test"]
+				},
+				"description": "สร้าง ECG Test โดยกำหนด Accession Number เอง (จากระบบ HIS)\nถ้า accession ซ้ำ จะได้ 409 Conflict"
+			},
+			"response": []
+		},
+		{
+			"name": "Error - Missing API Key (401)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"patient_id\": \"HN00100\",\n  \"patient_name\": \"TEST^PATIENT\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/create-test",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "create-test"]
+				},
+				"description": "ทดสอบ: ไม่ส่ง API Key → ได้ 401 Unauthorized"
+			},
+			"response": []
+		},
+		{
+			"name": "Error - Wrong API Key (401)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-API-Key",
+						"value": "wrong-api-key-12345"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"patient_id\": \"HN00100\",\n  \"patient_name\": \"TEST^PATIENT\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/create-test",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "create-test"]
+				},
+				"description": "ทดสอบ: ส่ง API Key ผิด → ได้ 401 Unauthorized"
+			},
+			"response": []
+		},
+		{
+			"name": "Error - Missing Patient ID (400)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"patient_name\": \"TEST^PATIENT\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/create-test",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "create-test"]
+				},
+				"description": "ทดสอบ: ไม่ส่ง patient_id → ได้ 400 Bad Request"
+			},
+			"response": []
+		},
+		{
+			"name": "Error - Missing Patient Name (400)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"patient_id\": \"HN00100\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/create-test",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "create-test"]
+				},
+				"description": "ทดสอบ: ไม่ส่ง patient_name → ได้ 400 Bad Request"
+			},
+			"response": []
+		},
+		{
+			"name": "Error - Duplicate Accession (409)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-API-Key",
+						"value": "{{api_key}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"patient_id\": \"HN00500\",\n  \"patient_name\": \"DUP^TEST\",\n  \"accession_number\": \"HIS-2026-0001\"\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/v1/create-test",
+					"host": ["{{base_url}}"],
+					"path": ["api", "v1", "create-test"]
+				},
+				"description": "ทดสอบ: ส่ง accession_number ที่มีอยู่แล้ว → ได้ 409 Conflict\n\n(ต้องรัน \"Create Test - With Custom Accession\" ก่อน)"
+			},
+			"response": []
+		}
+	]
+}

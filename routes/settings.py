@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 
 from flask import (
@@ -30,16 +31,18 @@ def index():
         flash("Settings saved successfully. | บันทึกการตั้งค่าเรียบร้อยแล้ว", "success")
         return redirect(url_for("settings.index"))
 
-    # Keys managed by the DICOM tab — exclude from General tab
-    _dicom_keys = {
+    # Keys managed by other tabs/sections — exclude from General tab
+    _excluded_keys = {
         "ext_mwl_host", "ext_mwl_port", "ext_mwl_ae", "ext_mwl_local_ae",
         "ext_mwl_auto_sync", "ext_mwl_sync_interval", "ext_mwl_last_sync_at",
         "pacs_host", "pacs_port", "pacs_ae", "pacs_local_ae",
         "scp_mwl_ae_title", "scp_mwl_port",
         "scp_store_ae_title", "scp_store_port", "scp_storage_dir",
+        "api_key",
+        "export_pdf_path", "export_hl7_path",
     }
     all_settings = SystemSetting.query.order_by(SystemSetting.key).all()
-    general_settings = [s for s in all_settings if s.key not in _dicom_keys]
+    general_settings = [s for s in all_settings if s.key not in _excluded_keys]
 
     dicom_config = {
         "MWL_AE_TITLE": current_app.config.get("MWL_AE_TITLE", "MWL"),
@@ -63,12 +66,18 @@ def index():
     ]
     setting_values = {k: get_setting(k, "") for k in dicom_keys}
 
+    export_settings = {
+        "export_pdf_path": get_setting("export_pdf_path", ""),
+        "export_hl7_path": get_setting("export_hl7_path", ""),
+    }
+
     return render_template(
         "settings/index.html",
         settings=general_settings,
         dicom_config=dicom_config,
         all_roles=all_roles,
         setting_values=setting_values,
+        export_settings=export_settings,
     )
 
 
@@ -144,8 +153,10 @@ def get_user(user_id):
         "id": user.id,
         "username": user.username,
         "display_name": user.display_name,
+        "display_name_en": user.display_name_en or "",
         "role": user.role,
         "is_active": user.is_active_user,
+        "can_be_assigned": user.can_be_assigned,
     })
 
 
@@ -172,7 +183,9 @@ def create_user():
     if User.query.filter_by(username=username).first():
         return jsonify({"success": False, "error": "Username already exists | ชื่อผู้ใช้นี้มีอยู่แล้ว"}), 409
 
-    user = User(username=username, display_name=display_name, role=role)
+    display_name_en = request.form.get("display_name_en", "").strip()
+    can_be_assigned = request.form.get("can_be_assigned") == "1"
+    user = User(username=username, display_name=display_name, display_name_en=display_name_en or None, role=role, can_be_assigned=can_be_assigned)
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
@@ -200,7 +213,10 @@ def edit_user(user_id):
     if role and role not in valid_roles:
         return jsonify({"success": False, "error": "Invalid role"}), 400
 
+    display_name_en = request.form.get("display_name_en", "").strip()
     user.display_name = display_name
+    user.display_name_en = display_name_en or None
+    user.can_be_assigned = request.form.get("can_be_assigned") == "1"
     if role:
         user.role = role
     if password:
@@ -400,3 +416,36 @@ def sync_mwl():
     from services.mwl_scu import sync_from_external_mwl
     result = sync_from_external_mwl(current_app._get_current_object())
     return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
+# API Key Management
+# ---------------------------------------------------------------------------
+@settings_bp.route("/api-key")
+@login_required
+@roles_required("admin", "it_admin")
+def get_api_key():
+    """Get current API key."""
+    key = get_setting("api_key", "")
+    return jsonify({"success": True, "api_key": key})
+
+
+@settings_bp.route("/api-key/regenerate", methods=["POST"])
+@login_required
+@roles_required("admin", "it_admin")
+def regenerate_api_key():
+    """Generate a new API key (invalidates the old one)."""
+    new_key = str(uuid.uuid4())
+    s = SystemSetting.query.filter_by(key="api_key").first()
+    if s:
+        s.value = new_key
+        s.updated_at = datetime.now()
+        s.updated_by_id = current_user.id
+    else:
+        db.session.add(SystemSetting(
+            key="api_key", value=new_key,
+            label="API Key",
+            description="API Key for external system integration (HIS)",
+        ))
+    db.session.commit()
+    return jsonify({"success": True, "api_key": new_key, "message": "API key regenerated | สร้าง API Key ใหม่สำเร็จ"})

@@ -98,6 +98,12 @@
                 <span data-i18n="rs_import">Import DICOM</span>
             </button>
             {% endif %}
+            {% if current_user.role in ['admin', 'it_admin'] %}
+            <button class="filter-toggle-btn" onclick="openTrashModal()" style="color:var(--apple-text-secondary);">
+                <i class="bi bi-trash3"></i>
+                <span data-i18n="rs_trash">Trash</span>
+            </button>
+            {% endif %}
             {% if current_user.role in ['doctor', 'admin'] %}
             <div class="d-flex gap-2" id="viewFilterTabs">
                 <button class="btn btn-apple-secondary btn-apple-sm view-tab" data-view="all" onclick="setView('all')">
@@ -211,6 +217,27 @@
 </div>
 {% endif %}
 
+<!-- Trash Modal (Admin) -->
+{% if current_user.role in ['admin', 'it_admin'] %}
+<div class="modal fade" id="trashModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius:var(--apple-radius);border:none;">
+            <div class="modal-header" style="border-bottom:1px solid var(--apple-border);">
+                <h5 class="modal-title" style="font-size:0.95rem;">
+                    <i class="bi bi-trash3 me-2"></i><span data-i18n="rs_trash_title">Deleted Results (Trash)</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+                <div id="trashList" class="text-center py-3" style="color:var(--apple-text-secondary);font-size:0.85rem;">
+                    <span class="spinner-border spinner-border-sm me-1"></span> Loading...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Import DICOM Modal -->
 {% if current_user.role not in ['doctor', 'viewer'] %}
 <div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
@@ -250,7 +277,7 @@
                 </div>
 
                 <p class="mt-2 mb-0" style="font-size:0.78rem;color:var(--apple-text-secondary);">
-                    <i class="bi bi-info-circle me-1"></i><span data-i18n="rs_import_hint">The system will scan all .dcm files in this folder (including subfolders) and import automatically.</span>
+                    <i class="bi bi-info-circle me-1"></i><span data-i18n="rs_import_hint">The system will scan .dcm files in this folder and import automatically (subfolders are not included).</span>
                 </p>
                 <div id="importResult" class="mt-3" style="display:none;"></div>
             </div>
@@ -432,10 +459,18 @@ var RS_I18N = {
         rs_confirm_reject: 'Reject this case and return it to the unassigned pool?',
         rs_alert_failed: 'Failed',
         rs_alert_error: 'Error',
+        // Trash
+        rs_trash: 'Trash',
+        rs_trash_title: 'Deleted Results (Trash)',
+        rs_trash_empty: 'No deleted results',
+        rs_trash_deleted_by: 'Deleted By',
+        rs_trash_deleted_at: 'Deleted At',
+        rs_trash_restore: 'Restore',
+        rs_trash_restore_confirm: 'Restore this result?',
         // Import modal
         rs_import_title: 'Import DICOM Files',
         rs_import_label: 'Folder path containing .dcm files',
-        rs_import_hint: 'The system will scan all .dcm files in this folder (including subfolders) and import automatically.',
+        rs_import_hint: 'The system will scan .dcm files in this folder and import automatically (subfolders are not included).',
         rs_import_btn: 'Import',
         rs_importing: 'Importing...',
         rs_import_success: 'Successfully imported {count} DICOM files.',
@@ -451,6 +486,12 @@ var RS_I18N = {
         rs_pacs_sending: 'Sending...',
         rs_pacs_sent: 'Sent to PACS successfully',
         rs_pacs_failed: 'Send to PACS failed',
+        rs_th_pdf: 'PDF',
+        rs_th_hl7: 'HL7',
+        rs_pdf_sent: 'PDF exported successfully',
+        rs_pdf_failed: 'PDF export failed',
+        rs_hl7_sent: 'HL7 exported successfully',
+        rs_hl7_failed: 'HL7 export failed',
     },
     th: {
         rs_title: 'ผลตรวจ ECG',
@@ -528,10 +569,18 @@ var RS_I18N = {
         rs_confirm_reject: 'ต้องการปฏิเสธเคสนี้และส่งกลับสู่คิวรอมอบหมายหรือไม่?',
         rs_alert_failed: 'ไม่สำเร็จ',
         rs_alert_error: 'เกิดข้อผิดพลาด',
+        // Trash
+        rs_trash: 'ถังขยะ',
+        rs_trash_title: 'ผลตรวจที่ลบแล้ว (ถังขยะ)',
+        rs_trash_empty: 'ไม่มีผลตรวจที่ถูกลบ',
+        rs_trash_deleted_by: 'ลบโดย',
+        rs_trash_deleted_at: 'ลบเมื่อ',
+        rs_trash_restore: 'กู้คืน',
+        rs_trash_restore_confirm: 'ต้องการกู้คืนผลตรวจนี้หรือไม่?',
         // Import modal
         rs_import_title: 'นำเข้าไฟล์ DICOM',
         rs_import_label: 'ที่อยู่โฟลเดอร์ที่มีไฟล์ .dcm',
-        rs_import_hint: 'ระบบจะค้นหาไฟล์ .dcm ทั้งหมดในโฟลเดอร์นี้ (รวม sub-folder) และนำเข้าอัตโนมัติ',
+        rs_import_hint: 'ระบบจะค้นหาไฟล์ .dcm ในโฟลเดอร์นี้และนำเข้าอัตโนมัติ (ไม่รวม sub-folder)',
         rs_import_btn: 'นำเข้า',
         rs_importing: 'กำลังนำเข้า...',
         rs_import_success: 'นำเข้าไฟล์ DICOM สำเร็จ {count} ไฟล์',
@@ -547,6 +596,12 @@ var RS_I18N = {
         rs_pacs_sending: 'กำลังส่ง...',
         rs_pacs_sent: 'ส่งไปยัง PACS สำเร็จ',
         rs_pacs_failed: 'ส่งไปยัง PACS ล้มเหลว',
+        rs_th_pdf: 'PDF',
+        rs_th_hl7: 'HL7',
+        rs_pdf_sent: 'ส่ง PDF สำเร็จ',
+        rs_pdf_failed: 'ส่ง PDF ล้มเหลว',
+        rs_hl7_sent: 'ส่ง HL7 สำเร็จ',
+        rs_hl7_failed: 'ส่ง HL7 ล้มเหลว',
     }
 };
 
@@ -583,6 +638,8 @@ var COL_VIS_NAMES = [
     { idx: 9,  key: 'rs_th_expires' },
     { idx: 10, key: 'rs_th_accession', defaultOff: true },
     { idx: 11, key: 'rs_th_pacs' },
+    { idx: 12, key: 'rs_th_pdf' },
+    { idx: 13, key: 'rs_th_hl7' },
 ];
 
 function buildColVisDropdown() {
@@ -804,7 +861,31 @@ function initResultsTable() {
                     return '<span style="color:var(--apple-text-secondary);font-size:0.78rem;">—</span>';
                 }
             },
-            // 12: Actions (always visible, not in picker)
+            // 12: PDF Export Status
+            {
+                data: 'pdf_export_status', title: getLang('rs_th_pdf'), width: '70px',
+                render: function(data, type, row) {
+                    var btnStyle = 'border:none;font-size:0.75rem;padding:0.25rem 0.6rem;border-radius:6px;';
+                    if (data === 'SENT') return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#e6f4ea;color:#1a7f37;" onclick="sendPdfExport(' + row.id + ',this)"><i class="bi bi-check-circle me-1"></i>Sent</button>';
+                    if (data === 'FAILED') return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#fff0f0;color:var(--apple-red);" onclick="sendPdfExport(' + row.id + ',this)" title="Retry"><i class="bi bi-arrow-clockwise me-1"></i>Retry</button>';
+                    var isDone = _DONE_STATUSES.indexOf((row.status || '').toUpperCase()) >= 0;
+                    if (isDone) return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#fef3e2;color:#e65100;" onclick="sendPdfExport(' + row.id + ',this)" title="Send PDF"><i class="bi bi-file-earmark-pdf me-1"></i>Send</button>';
+                    return '<span style="color:var(--apple-text-secondary);font-size:0.78rem;">—</span>';
+                }
+            },
+            // 13: HL7 Export Status
+            {
+                data: 'hl7_export_status', title: getLang('rs_th_hl7'), width: '70px',
+                render: function(data, type, row) {
+                    var btnStyle = 'border:none;font-size:0.75rem;padding:0.25rem 0.6rem;border-radius:6px;';
+                    if (data === 'SENT') return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#e6f4ea;color:#1a7f37;" onclick="sendHl7Export(' + row.id + ',this)"><i class="bi bi-check-circle me-1"></i>Sent</button>';
+                    if (data === 'FAILED') return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#fff0f0;color:var(--apple-red);" onclick="sendHl7Export(' + row.id + ',this)" title="Retry"><i class="bi bi-arrow-clockwise me-1"></i>Retry</button>';
+                    var isDone = _DONE_STATUSES.indexOf((row.status || '').toUpperCase()) >= 0;
+                    if (isDone) return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#e8f0fe;color:#1a73e8;" onclick="sendHl7Export(' + row.id + ',this)" title="Send HL7"><i class="bi bi-file-earmark-code me-1"></i>Send</button>';
+                    return '<span style="color:var(--apple-text-secondary);font-size:0.78rem;">—</span>';
+                }
+            },
+            // 14: Actions (always visible, not in picker)
             {
                 data: 'id', title: getLang('rs_th_actions'), orderable: false, width: '110px', className: 'text-start',
                 render: function(data, type, row) {
@@ -841,11 +922,16 @@ function initResultsTable() {
                         }
                     }
 
-                    // Doctor: Accept / Reject for assigned cases
-                    if (USER_ROLE === 'doctor' && row.assigned_to_id) {
-                        html += ' <button class="btn btn-apple-sm" style="background:#f0fdf4;color:var(--apple-green);border:none;" '
-                              + 'onclick="acceptCase(' + data + ')" title="' + getLang('rs_accept') + '">'
-                              + '<i class="bi bi-check-circle"></i></button>';
+                    // Doctor: Accept / Reject for assigned pending cases only
+                    var _isDone = _DONE_STATUSES.indexOf((row.status || '').toUpperCase()) >= 0;
+                    var _isInReview = (row.status || '').toUpperCase() === 'IN_REVIEW';
+                    if (USER_ROLE === 'doctor' && row.assigned_to_id && !_isDone) {
+                        // Hide Accept if already IN_REVIEW (doctor already reviewing)
+                        if (!_isInReview) {
+                            html += ' <button class="btn btn-apple-sm" style="background:#f0fdf4;color:var(--apple-green);border:none;" '
+                                  + 'onclick="acceptCase(' + data + ')" title="' + getLang('rs_accept') + '">'
+                                  + '<i class="bi bi-check-circle"></i></button>';
+                        }
                         html += ' <button class="btn btn-apple-sm" style="background:#fff0f0;color:var(--apple-red);border:none;" '
                               + 'onclick="rejectCase(' + data + ')" title="' + getLang('rs_reject') + '">'
                               + '<i class="bi bi-x-circle"></i></button>';
@@ -1083,6 +1169,55 @@ function confirmForceAction() {
     }
 }
 
+// ===== Trash Modal (Admin) =====
+function openTrashModal() {
+    var modal = new bootstrap.Modal(document.getElementById('trashModal'));
+    modal.show();
+    loadTrashList();
+}
+
+function loadTrashList() {
+    var container = document.getElementById('trashList');
+    fetch('/results/api/deleted')
+        .then(function(r) { return r.json(); })
+        .then(function(items) {
+            if (items.length === 0) {
+                container.innerHTML = '<div class="text-center py-4" style="color:var(--apple-text-secondary);"><i class="bi bi-trash3 d-block" style="font-size:2rem;opacity:0.3;"></i>' + getLang('rs_trash_empty') + '</div>';
+                return;
+            }
+            var html = '<table class="table table-sm" style="font-size:0.82rem;"><thead><tr><th>Accession</th><th>Patient</th><th>Status</th><th>' + getLang('rs_trash_deleted_by') + '</th><th>' + getLang('rs_trash_deleted_at') + '</th><th>PACS</th><th></th></tr></thead><tbody>';
+            items.forEach(function(item) {
+                html += '<tr>';
+                html += '<td>' + item.accession_number + '</td>';
+                html += '<td>' + item.patient_name + ' <span class="text-muted">(' + item.patient_id + ')</span></td>';
+                html += '<td>' + item.status + '</td>';
+                html += '<td>' + item.deleted_by + '</td>';
+                html += '<td>' + item.deleted_at + '</td>';
+                html += '<td>' + (item.pacs_sent ? '<i class="bi bi-check-circle text-success"></i>' : '—') + '</td>';
+                html += '<td><button class="btn btn-sm btn-outline-success" onclick="restoreResult(' + item.id + ')" title="' + getLang('rs_trash_restore') + '"><i class="bi bi-arrow-counterclockwise"></i></button></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        });
+}
+
+function restoreResult(resultId) {
+    if (!confirm(getLang('rs_trash_restore_confirm'))) return;
+    fetch('/results/' + resultId + '/restore', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showToast('success', data.message);
+                loadTrashList();
+                resultsTable.ajax.reload(null, false);
+                loadStats();
+            } else {
+                showToast('error', data.error);
+            }
+        });
+}
+
 // ===== Import DICOM (Modal) =====
 var _importModal = null;
 
@@ -1091,6 +1226,11 @@ function openImportModal() {
     if (resultEl) { resultEl.style.display = 'none'; resultEl.innerHTML = ''; }
     var btn = document.getElementById('importSubmitBtn');
     if (btn) btn.disabled = false;
+    // Restore last used path from localStorage
+    var savedPath = localStorage.getItem('dicom_import_path');
+    if (savedPath) {
+        document.getElementById('importPath').value = savedPath;
+    }
     // Reset folder browser
     _browserOpen = false;
     var browser = document.getElementById('folderBrowser');
@@ -1115,6 +1255,8 @@ function submitImport() {
     .then(function(res) {
         var resultEl = document.getElementById('importResult');
         if (res.ok && res.data.success) {
+            // Remember last successful import path
+            localStorage.setItem('dicom_import_path', pathInput.value.trim());
             var msg = getLang('rs_import_success').replace('{count}', res.data.count);
             resultEl.innerHTML = '<div class="alert alert-success d-flex align-items-center mb-0" style="font-size:0.85rem;border-radius:8px;"><i class="bi bi-check-circle me-2"></i>' + msg + '</div>';
             resultEl.style.display = 'block';
@@ -1230,6 +1372,76 @@ function rejectCase(resultId) {
         });
 }
 
+// ===== Send PDF Export =====
+function sendPdfExport(resultId, btnEl) {
+    if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; }
+
+    fetch('/results/' + resultId + '/send-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showToast('success', getLang('rs_pdf_sent'));
+            if (btnEl) {
+                btnEl.disabled = false;
+                btnEl.innerHTML = '<i class="bi bi-check-circle me-1"></i>Sent';
+                btnEl.style.background = '#e6f4ea';
+                btnEl.style.color = '#1a7f37';
+            }
+        } else {
+            showToast('error', data.error || getLang('rs_pdf_failed'));
+            if (btnEl) {
+                btnEl.disabled = false;
+                btnEl.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Retry';
+                btnEl.style.background = '#fff0f0';
+                btnEl.style.color = 'var(--apple-red)';
+            }
+        }
+        if (resultsTable) resultsTable.ajax.reload(null, false);
+    })
+    .catch(function() {
+        showToast('error', getLang('rs_pdf_failed'));
+        if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="bi bi-file-earmark-pdf me-1"></i>Send'; }
+    });
+}
+
+// ===== Send HL7 Export =====
+function sendHl7Export(resultId, btnEl) {
+    if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; }
+
+    fetch('/results/' + resultId + '/send-hl7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            showToast('success', getLang('rs_hl7_sent'));
+            if (btnEl) {
+                btnEl.disabled = false;
+                btnEl.innerHTML = '<i class="bi bi-check-circle me-1"></i>Sent';
+                btnEl.style.background = '#e6f4ea';
+                btnEl.style.color = '#1a7f37';
+            }
+        } else {
+            showToast('error', data.error || getLang('rs_hl7_failed'));
+            if (btnEl) {
+                btnEl.disabled = false;
+                btnEl.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Retry';
+                btnEl.style.background = '#fff0f0';
+                btnEl.style.color = 'var(--apple-red)';
+            }
+        }
+        if (resultsTable) resultsTable.ajax.reload(null, false);
+    })
+    .catch(function() {
+        showToast('error', getLang('rs_hl7_failed'));
+        if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="bi bi-file-earmark-code me-1"></i>Send'; }
+    });
+}
+
 // ===== Send to PACS =====
 function sendToPacs(resultId, btnEl) {
     if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; }
@@ -1242,8 +1454,22 @@ function sendToPacs(resultId, btnEl) {
     .then(function(data) {
         if (data.success) {
             showToast('success', getLang('rs_pacs_sent'));
+            // Update button immediately before table reload
+            if (btnEl) {
+                btnEl.disabled = false;
+                btnEl.innerHTML = '<i class="bi bi-check-circle me-1"></i>Sent';
+                btnEl.style.background = '#e6f4ea';
+                btnEl.style.color = '#1a7f37';
+                btnEl.onclick = null;
+            }
         } else {
             showToast('error', data.message || getLang('rs_pacs_failed'));
+            if (btnEl) {
+                btnEl.disabled = false;
+                btnEl.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Retry';
+                btnEl.style.background = '#fff0f0';
+                btnEl.style.color = 'var(--apple-red)';
+            }
         }
         if (resultsTable) resultsTable.ajax.reload(null, false);
     })

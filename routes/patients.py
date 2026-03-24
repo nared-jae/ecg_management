@@ -19,7 +19,7 @@ def index():
     total = Patient.query.count()
     with_results = (
         db.session.query(Patient.id)
-        .join(ECGResult, ECGResult.patient_db_id == Patient.id)
+        .join(ECGResult, db.and_(ECGResult.patient_db_id == Patient.id, ECGResult.is_deleted == False))
         .distinct()
         .count()
     )
@@ -57,6 +57,7 @@ def api_data():
             ECGResult.patient_db_id,
             db.func.count(ECGResult.id).label("cnt"),
         )
+        .filter(ECGResult.is_deleted == False)
         .group_by(ECGResult.patient_db_id)
         .subquery()
     )
@@ -226,7 +227,7 @@ def delete(patient_id):
     patient = Patient.query.get_or_404(patient_id)
 
     # Block if patient has ECG results
-    has_results = ECGResult.query.filter_by(patient_db_id=patient_id).first()
+    has_results = ECGResult.query.filter(ECGResult.patient_db_id == patient_id, ECGResult.is_deleted == False).first()
     if has_results:
         return jsonify({
             "success": False,
@@ -250,7 +251,7 @@ def delete(patient_id):
 def bulk_delete():
     # Find patients with 0 worklist items AND 0 ECG results
     patients_with_tests = db.session.query(WorklistItem.patient_id).distinct()
-    patients_with_results = db.session.query(ECGResult.patient_db_id).filter(ECGResult.patient_db_id.isnot(None)).distinct()
+    patients_with_results = db.session.query(ECGResult.patient_db_id).filter(ECGResult.patient_db_id.isnot(None), ECGResult.is_deleted == False).distinct()
 
     unused = (
         Patient.query

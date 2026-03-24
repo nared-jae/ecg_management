@@ -268,7 +268,12 @@
                                    required placeholder="HN Number">
                         </div>
                         <div class="col-12">
-                            <label class="form-label"><span data-i18n="pt_lbl_name">Patient Name</span> <span style="color:var(--apple-red);">*</span></label>
+                            <label class="form-label">
+                                <span data-i18n="pt_lbl_name">Patient Name</span> <span style="color:var(--apple-red);">*</span>
+                                <i class="bi bi-info-circle ms-1" style="color:var(--apple-blue);cursor:pointer;font-size:0.82rem;"
+                                   data-bs-toggle="tooltip" data-bs-placement="top"
+                                   data-bs-title="DICOM format: LASTNAME^FIRSTNAME e.g. KAEWDEE^SOMCHAI — ใช้ ^ คั่นนามสกุลและชื่อ"></i>
+                            </label>
                             <input type="text" class="form-control" name="patient_name" id="inputName"
                                    required placeholder="LASTNAME^FIRSTNAME">
                         </div>
@@ -568,6 +573,11 @@ function initPatientsTable() {
 }
 
 $(document).ready(function() {
+    // Init Bootstrap tooltips
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+        new bootstrap.Tooltip(el);
+    });
+
     initPatientsTable();
 
     // Row selection (like ECG Tests page)
@@ -827,6 +837,11 @@ function refreshStats() {
 
 // ===== Toast =====
 function showToast(type, message) {
+    var lang = localStorage.getItem('ecg_lang') || 'en';
+    if (message.indexOf(' | ') >= 0) {
+        var parts = message.split(' | ');
+        message = lang === 'th' ? parts[1] : parts[0];
+    }
     var icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
     var toast = $('<div class="alert alert-apple alert-' + (type === 'error' ? 'danger' : type) + ' alert-dismissible fade show" ' +
         'style="position:fixed;top:80px;right:20px;z-index:10000;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,0.15);">' +

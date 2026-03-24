@@ -498,8 +498,8 @@
 </div>
 {% endif %}
 
-<!-- Assignment Info Banner (for assigned doctor) -->
-{% if current_user.is_authenticated and current_user.can_diagnose and result.assigned_to_id == current_user.id %}
+<!-- Assignment Info Banner (for assigned doctor — only on active cases) -->
+{% if current_user.is_authenticated and current_user.can_diagnose and result.assigned_to_id == current_user.id and result.status not in ('APPROVED', 'FINALIZED', 'COMPLETED') %}
 <div class="d-flex align-items-center gap-2 mb-3 p-3"
      style="background:#e3f2fd;border-left:4px solid var(--apple-blue);border-radius:var(--apple-radius-sm);">
     <i class="bi bi-person-check" style="color:var(--apple-blue);font-size:1.1rem;"></i>
@@ -690,6 +690,26 @@
             <i class="bi bi-download"></i> DICOM
         </button>
         {% if result.status in ('APPROVED', 'FINALIZED', 'COMPLETED') %}
+        <button class="toolbar-btn" id="btnSendPdf" onclick="sendPdfExport()" title="Send PDF to folder"
+                style="{% if result.pdf_export_status == 'SENT' %}background:#e6f4ea;color:#1a7f37;border-color:#1a7f37;{% elif result.pdf_export_status == 'FAILED' %}background:#fff0f0;color:var(--apple-red);border-color:var(--apple-red);{% endif %}">
+            {% if result.pdf_export_status == 'SENT' %}
+            <i class="bi bi-check-circle"></i> PDF Sent
+            {% elif result.pdf_export_status == 'FAILED' %}
+            <i class="bi bi-x-circle"></i> Retry PDF
+            {% else %}
+            <i class="bi bi-file-earmark-pdf"></i> Send PDF
+            {% endif %}
+        </button>
+        <button class="toolbar-btn" id="btnSendHl7" onclick="sendHl7Export()" title="Send HL7 to folder"
+                style="{% if result.hl7_export_status == 'SENT' %}background:#e6f4ea;color:#1a7f37;border-color:#1a7f37;{% elif result.hl7_export_status == 'FAILED' %}background:#fff0f0;color:var(--apple-red);border-color:var(--apple-red);{% endif %}">
+            {% if result.hl7_export_status == 'SENT' %}
+            <i class="bi bi-check-circle"></i> HL7 Sent
+            {% elif result.hl7_export_status == 'FAILED' %}
+            <i class="bi bi-x-circle"></i> Retry HL7
+            {% else %}
+            <i class="bi bi-file-earmark-code"></i> Send HL7
+            {% endif %}
+        </button>
         <button class="toolbar-btn" id="btnSendPacs" onclick="sendToPacsDetail()" title="Send to PACS"
                 style="{% if result.pacs_send_status == 'SENT' %}background:#e6f4ea;color:#1a7f37;border-color:#1a7f37;{% endif %}">
             {% if result.pacs_send_status == 'SENT' %}
@@ -767,6 +787,9 @@
 </div>
 
 <!-- Diagnosis & Statement Library -->
+{% set _is_owner = current_user.is_authenticated and current_user.can_diagnose and result.assigned_to_id == current_user.id %}
+{% set _can_revise = _is_owner and result.status == 'APPROVED' %}
+{% set _is_locked = result.status in ('FINALIZED', 'COMPLETED') or (result.status == 'APPROVED' and not _is_owner) %}
 <div class="row g-4 mb-4">
     <!-- Diagnosis Panel -->
     <div class="col-lg-7">
@@ -774,7 +797,9 @@
             <div class="diagnosis-panel-header">
                 <h6><i class="bi bi-clipboard2-pulse me-2"></i><span data-i18n="diagnosis">Diagnosis</span></h6>
                 <div>
-                    {% if result.status == 'APPROVED' %}
+                    {% if result.status == 'APPROVED' and _can_revise %}
+                    <span class="diagnosis-status-badge draft"><i class="bi bi-pencil me-1"></i><span data-i18n="revising">Revising</span></span>
+                    {% elif result.status == 'APPROVED' %}
                     <span class="diagnosis-status-badge submitted"><i class="bi bi-check-circle me-1"></i><span data-i18n="submitted">Submitted</span></span>
                     {% elif result.diagnosis %}
                     <span class="diagnosis-status-badge draft"><i class="bi bi-pencil me-1"></i><span data-i18n="draft">Draft</span></span>
@@ -786,13 +811,15 @@
                 <div class="diagnosis-doctor">
                     <label data-i18n="diagnosed_by">Diagnosed by:</label>
                     <input type="text" id="diagnosedBy" value="{{ result.diagnosed_by or '' }}"
-                           placeholder="Enter physician name">
+                           placeholder="Enter physician name"
+                           {% if _is_locked %}readonly style="background:var(--apple-bg-secondary);"{% endif %}>
                 </div>
 
                 <!-- Diagnosis text -->
                 <textarea class="diagnosis-textarea" id="diagnosisText"
                           placeholder="Enter diagnosis results here. You can also click statements from the library on the right to add them."
-                          {% if not lock_status.success %}disabled title="Case is locked by {{ lock_status.locked_by }}"{% endif %}>{{ result.diagnosis or '' }}</textarea>
+                          {% if _is_locked %}readonly style="background:var(--apple-bg-secondary);"
+                          {% elif not lock_status.success %}disabled title="Case is locked by {{ lock_status.locked_by }}"{% endif %}>{{ result.diagnosis or '' }}</textarea>
 
                 <!-- DICOM Auto Interpretation - Tag (0070,0006) UnformattedTextValue only -->
                 {% if ecg_json and ecg_json.interpretation_texts %}
@@ -801,9 +828,11 @@
                         <span>
                             <i class="bi bi-robot me-1"></i><span data-i18n="auto_interpretation">Auto Interpretation (from device)</span>
                         </span>
+                        {% if not _is_locked %}
                         <button type="button" onclick="copyInterpretationToDiagnosis()" class="btn btn-sm btn-outline-secondary" style="font-size:0.72rem;padding:2px 8px;border-radius:4px;" title="Copy to Diagnosis">
                             <i class="bi bi-clipboard-plus me-1"></i><span data-i18n="copy_to_diagnosis">Copy to Diagnosis</span>
                         </button>
+                        {% endif %}
                     </div>
                     <div id="autoInterpretationText" style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:0.75rem 1rem;font-size:0.88rem;line-height:1.6;">
                         {% for text in ecg_json.interpretation_texts %}
@@ -814,6 +843,12 @@
                 {% endif %}
             </div>
             <div class="diagnosis-actions">
+                {% if not _is_locked %}
+                {% if _can_revise %}
+                <button class="btn-submit" onclick="saveDiagnosis('submit')">
+                    <i class="bi bi-pencil-square me-1"></i><span data-i18n="revise_submit">Revise & Submit</span>
+                </button>
+                {% else %}
                 <button class="btn-save-draft" onclick="saveDiagnosis('save')">
                     <i class="bi bi-save me-1"></i><span data-i18n="save_draft">Save Draft</span>
                 </button>
@@ -823,6 +858,8 @@
                 <button class="btn-submit-next" onclick="saveDiagnosis('submit_next')">
                     <i class="bi bi-arrow-right-circle me-1"></i><span data-i18n="submit_go_next">Submit & Go Next</span>
                 </button>
+                {% endif %}
+                {% endif %}
                 <div class="ms-auto" style="font-size:0.78rem;color:var(--apple-text-secondary);">
                     {% if result.diagnosed_at %}
                     <i class="bi bi-clock me-1"></i>{{ result.diagnosed_at.strftime('%d/%m/%Y %H:%M') }}
@@ -834,12 +871,13 @@
 
     <!-- Statement Library -->
     <div class="col-lg-5">
-        <div class="statement-library">
+        <div class="statement-library" {% if _is_locked %}style="opacity:0.6;pointer-events:none;"{% endif %}>
             <div class="statement-library-header">
                 <h6><i class="bi bi-journal-medical me-2"></i><span data-i18n="statement_library">Statement Library</span></h6>
             </div>
             <input type="text" class="stmt-search" id="stmtSearch"
-                   placeholder="Search statements..." oninput="filterStatements()">
+                   placeholder="Search statements..." oninput="filterStatements()"
+                   {% if _is_locked %}disabled{% endif %}>
             <div class="stmt-categories" id="stmtCategories">
                 <!-- Categories populated by JS -->
             </div>
@@ -934,6 +972,9 @@
 // ECG Data from server
 var ECG_DATA = {{ ecg_json | tojson }};
 var RESULT_ID = {{ result.id }};
+var RESULT_STATUS = '{{ result.status }}';
+var _CAN_REVISE = {{ 'true' if _can_revise else 'false' }};
+var _IS_READONLY = (['FINALIZED', 'COMPLETED'].indexOf(RESULT_STATUS) >= 0) || (RESULT_STATUS === 'APPROVED' && !_CAN_REVISE);
 
 // ===== Statement Library Data =====
 var STATEMENT_LIBRARY = {
@@ -1066,6 +1107,8 @@ var I18N = {
         save_draft: 'Save Draft',
         submit: 'Submit',
         submit_go_next: 'Submit & Go Next',
+        revise_submit: 'Revise & Submit',
+        revising: 'Revising',
         submitted: 'Submitted',
         draft: 'Draft',
         statement_library: 'Statement Library',
@@ -1099,6 +1142,8 @@ var I18N = {
         save_draft: 'บันทึกร่าง',
         submit: 'ยืนยัน',
         submit_go_next: 'ยืนยัน & ถัดไป',
+        revise_submit: 'แก้ไข & ยืนยัน',
+        revising: 'กำลังแก้ไข',
         submitted: 'ยืนยันแล้ว',
         draft: 'ร่าง',
         statement_library: 'คลังข้อความวินิจฉัย',
@@ -2114,6 +2159,7 @@ function toggleCategory(header) {
 }
 
 function addStatement(el) {
+    if (_IS_READONLY) return;  // Don't modify on completed cases
     var stmt = el.dataset.stmt;
     var textarea = document.getElementById('diagnosisText');
     var current = textarea.value.trim();
@@ -2163,6 +2209,7 @@ function filterStatements() {
 
 // ===== Copy Device Interpretation to Diagnosis =====
 function copyInterpretationToDiagnosis() {
+    if (_IS_READONLY) return;  // Don't modify on completed cases
     var container = document.getElementById('autoInterpretationText');
     if (!container) return;
     var divs = container.querySelectorAll('div');
@@ -2442,6 +2489,50 @@ function _updateCountdown() {
 setInterval(_updateCountdown, 1000);
 _updateCountdown();
 {% endif %}
+
+function sendPdfExport() {
+    var btn = document.getElementById('btnSendPdf');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...'; }
+
+    fetch('/results/{{ result.id }}/send-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (btn) { btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> PDF Sent'; btn.style.background = '#e6f4ea'; btn.style.color = '#1a7f37'; btn.style.borderColor = '#1a7f37'; btn.disabled = false; }
+        } else {
+            if (btn) { btn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Retry PDF'; btn.style.background = '#fff0f0'; btn.style.color = 'var(--apple-red)'; btn.style.borderColor = 'var(--apple-red)'; btn.disabled = false; }
+            alert(data.error || 'Send PDF failed');
+        }
+    })
+    .catch(function() {
+        if (btn) { btn.innerHTML = '<i class="bi bi-file-earmark-pdf me-1"></i> Send PDF'; btn.disabled = false; }
+    });
+}
+
+function sendHl7Export() {
+    var btn = document.getElementById('btnSendHl7');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...'; }
+
+    fetch('/results/{{ result.id }}/send-hl7', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (btn) { btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> HL7 Sent'; btn.style.background = '#e6f4ea'; btn.style.color = '#1a7f37'; btn.style.borderColor = '#1a7f37'; btn.disabled = false; }
+        } else {
+            if (btn) { btn.innerHTML = '<i class="bi bi-x-circle me-1"></i> Retry HL7'; btn.style.background = '#fff0f0'; btn.style.color = 'var(--apple-red)'; btn.style.borderColor = 'var(--apple-red)'; btn.disabled = false; }
+            alert(data.error || 'Send HL7 failed');
+        }
+    })
+    .catch(function() {
+        if (btn) { btn.innerHTML = '<i class="bi bi-file-earmark-code me-1"></i> Send HL7'; btn.disabled = false; }
+    });
+}
 
 function sendToPacsDetail() {
     var btn = document.getElementById('btnSendPacs');

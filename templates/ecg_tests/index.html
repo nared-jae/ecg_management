@@ -429,6 +429,9 @@
                             </div>
                             <div class="col-md-8">
                                 <label class="form-label" data-i18n="et_lbl_name">Full Name <span style="color:var(--apple-red);">*</span></label>
+                                <i class="bi bi-info-circle ms-1" style="color:var(--apple-blue);cursor:pointer;font-size:0.82rem;"
+                                   data-bs-toggle="tooltip" data-bs-placement="top"
+                                   data-bs-title="DICOM format: LASTNAME^FIRSTNAME e.g. SMITH^JOHN — ใช้ ^ คั่นนามสกุลและชื่อ"></i>
                                 <input type="text" class="form-control" name="patient_name" id="inputName"
                                        required placeholder="LASTNAME^FIRSTNAME">
                             </div>
@@ -513,8 +516,17 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" data-i18n="et_lbl_physician">Ordering Physician</label>
-                                <input type="text" class="form-control" name="ordering_physician"
-                                       data-i18n-placeholder="et_ph_physician" placeholder="Physician name">
+                                <select class="form-select" name="ordering_physician" id="selectPhysician">
+                                    <option value="" data-i18n="et_ph_physician">-- Select Physician --</option>
+                                    {% for doc in doctors %}
+                                    <option value="{{ doc.display_name_en or doc.display_name }}">
+                                        {{ doc.display_name }}{% if doc.display_name_en %} ({{ doc.display_name_en }}){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                    <option value="__other__" data-i18n="et_opt_other_physician">Other...</option>
+                                </select>
+                                <input type="text" class="form-control mt-2 d-none" id="inputPhysicianOther"
+                                       data-i18n-placeholder="et_ph_physician_other" placeholder="Enter physician name">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" data-i18n="et_lbl_priority">Priority</label>
@@ -635,7 +647,9 @@ var ET_I18N = {
         et_lbl_procedure: 'Procedure',
         et_lbl_dept: 'Ordering Department',
         et_lbl_physician: 'Ordering Physician',
-        et_ph_physician: 'Physician name',
+        et_ph_physician: '-- Select Physician --',
+        et_opt_other_physician: 'Other...',
+        et_ph_physician_other: 'Enter physician name',
         et_lbl_clinical: 'Clinical Information',
         et_ph_clinical: 'Symptoms, history, reason for examination',
         et_sec_station: 'Station Information',
@@ -748,7 +762,9 @@ var ET_I18N = {
         et_lbl_procedure: 'รายการตรวจ',
         et_lbl_dept: 'แผนกที่สั่ง',
         et_lbl_physician: 'แพทย์ผู้สั่ง',
-        et_ph_physician: 'ชื่อแพทย์ผู้สั่งตรวจ',
+        et_ph_physician: '-- เลือกแพทย์ --',
+        et_opt_other_physician: 'อื่นๆ...',
+        et_ph_physician_other: 'พิมพ์ชื่อแพทย์',
         et_lbl_clinical: 'ข้อมูลทางคลินิก',
         et_ph_clinical: 'อาการ, ประวัติ, เหตุผลในการส่งตรวจ',
         et_sec_station: 'ข้อมูลเครื่องตรวจ',
@@ -964,8 +980,23 @@ function initTestsTable() {
 }
 
 $(document).ready(function() {
+    // Initialize Bootstrap tooltips
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+        new bootstrap.Tooltip(el);
+    });
+
+    // Physician dropdown: show/hide "Other" text input
+    $('#selectPhysician').on('change', function() {
+        if ($(this).val() === '__other__') {
+            $('#inputPhysicianOther').removeClass('d-none').focus();
+        } else {
+            $('#inputPhysicianOther').addClass('d-none').val('');
+        }
+    });
+
     // Default filter to today + SCHEDULED/IN_PROGRESS
-    var _today = new Date().toISOString().split('T')[0];
+    function _localDateStr(d) { var y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+    var _today = _localDateStr(new Date());
     $('#filterDate').val(_today);
     $('.status-filter[value="SCHEDULED"]').prop('checked', true);
     $('.status-filter[value="IN_PROGRESS"]').prop('checked', true);
@@ -1120,10 +1151,11 @@ function openNewTestModal() {
     $('#btnSubmitTest span').text(getLang('et_btn_create'));
 
     var now = new Date();
-    $('#inputSchedDate').val(now.toISOString().split('T')[0]);
+    $('#inputSchedDate').val(_localDateStr(now));
     var hh = String(now.getHours()).padStart(2, '0');
     var mm = String(now.getMinutes()).padStart(2, '0');
     $('#inputSchedTime').val(hh + ':' + mm);
+    $('#inputPhysicianOther').addClass('d-none').val('');
 
     getTestModal().show();
 }
@@ -1131,6 +1163,7 @@ function openNewTestModal() {
 function editTest(id) {
     editingItemId = id;
     $('#newTestForm')[0].reset();
+    $('#inputPhysicianOther').addClass('d-none').val('');
     $('#hnStatus').text('').removeClass('found not-found');
     $('#modalTitleText').text(getLang('et_modal_edit_title'));
     $('#newTestModal .modal-title i').removeClass('bi-plus-circle').addClass('bi-pencil');
@@ -1150,7 +1183,22 @@ function editTest(id) {
         $('#inputSchedDate').val(data.scheduled_date);
         $('#inputSchedTime').val(data.scheduled_time);
         $('[name="ordering_department"]').val(data.ordering_department);
-        $('[name="ordering_physician"]').val(data.ordering_physician);
+        // Set physician dropdown or "Other" if not in list
+        var phySel = $('#selectPhysician');
+        var phyOther = $('#inputPhysicianOther');
+        var matched = phySel.find('option').filter(function() {
+            return this.value === data.ordering_physician && this.value !== '__other__' && this.value !== '';
+        }).length > 0;
+        if (matched) {
+            phySel.val(data.ordering_physician);
+            phyOther.addClass('d-none').val('');
+        } else if (data.ordering_physician) {
+            phySel.val('__other__');
+            phyOther.removeClass('d-none').val(data.ordering_physician);
+        } else {
+            phySel.val('');
+            phyOther.addClass('d-none').val('');
+        }
         $('[name="patient_source"]').val(data.patient_source);
         $('[name="bed_number"]').val(data.bed_number);
         $('[name="phone"]').val(data.phone);
@@ -1199,15 +1247,22 @@ function submitNewTest(e) {
     var submitLabel = isEdit ? getLang('et_btn_save') : getLang('et_btn_create');
     btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>' + getLang('et_btn_saving'));
 
+    // If "Other" selected, use the text input value
+    var formData = $('#newTestForm').serialize();
+    if ($('#selectPhysician').val() === '__other__') {
+        var otherName = encodeURIComponent($('#inputPhysicianOther').val().trim());
+        formData = formData.replace('ordering_physician=__other__', 'ordering_physician=' + otherName);
+    }
+
     var url = isEdit
         ? '/ecg-tests/' + editingItemId + '/edit'
         : '{{ url_for("ecg_tests.create") }}';
 
-    $.post(url, $('#newTestForm').serialize(), function(resp) {
+    $.post(url, formData, function(resp) {
         if (resp.success) {
             getTestModal().hide();
             // Reset date filter to today so newly created test is visible
-            $('#filterDate').val(new Date().toISOString().split('T')[0]);
+            $('#filterDate').val(_localDateStr(new Date()));
             testsTable.ajax.reload();
             showToast('success', resp.message);
         } else {

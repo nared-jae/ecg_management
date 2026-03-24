@@ -21,8 +21,8 @@ def index():
         "today_worklist": WorklistItem.query.filter_by(scheduled_date=today).count(),
         "pending_worklist": WorklistItem.query.filter_by(status="SCHEDULED").count(),
         "completed_today": WorklistItem.query.filter_by(status="COMPLETED", scheduled_date=today).count(),
-        "total_results": ECGResult.query.count(),
-        "pending_review": ECGResult.query.filter_by(status="RECEIVED").count(),
+        "total_results": ECGResult.query.filter(ECGResult.is_deleted == False).count(),
+        "pending_review": ECGResult.query.filter(ECGResult.is_deleted == False, ECGResult.status == "RECEIVED").count(),
     }
 
     recent_worklist = (
@@ -34,6 +34,7 @@ def index():
 
     recent_results = (
         ECGResult.query
+        .filter(ECGResult.is_deleted == False)
         .order_by(ECGResult.received_at.desc())
         .limit(10)
         .all()
@@ -58,8 +59,8 @@ def api_data():
         "today_worklist": WorklistItem.query.filter_by(scheduled_date=today).count(),
         "pending_worklist": WorklistItem.query.filter_by(status="SCHEDULED").count(),
         "completed_today": WorklistItem.query.filter_by(status="COMPLETED", scheduled_date=today).count(),
-        "total_results": ECGResult.query.count(),
-        "pending_review": ECGResult.query.filter_by(status="RECEIVED").count(),
+        "total_results": ECGResult.query.filter(ECGResult.is_deleted == False).count(),
+        "pending_review": ECGResult.query.filter(ECGResult.is_deleted == False, ECGResult.status == "RECEIVED").count(),
     }
 
     recent_worklist = (
@@ -71,6 +72,7 @@ def api_data():
 
     recent_results = (
         ECGResult.query
+        .filter(ECGResult.is_deleted == False)
         .order_by(ECGResult.received_at.desc())
         .limit(10)
         .all()
@@ -94,46 +96,53 @@ def api_data():
 
 
 def _doctor_dashboard():
+    from models import get_setting
     now = datetime.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     _DONE = ("APPROVED", "FINALIZED", "COMPLETED")
 
+    timeout_min = int(get_setting("assignment_timeout_minutes", "30"))
+
     pending = (
         ECGResult.query
-        .filter(ECGResult.assigned_to_id == current_user.id,
+        .filter(ECGResult.is_deleted == False,
+                ECGResult.assigned_to_id == current_user.id,
                 ECGResult.status.notin_(_DONE))
         .count()
     )
 
     completed_today = (
-        AssignmentLog.query
+        db.session.query(db.func.count(db.distinct(AssignmentLog.ecg_result_id)))
         .filter(AssignmentLog.actor_id == current_user.id,
                 AssignmentLog.action == "diagnosed",
                 AssignmentLog.timestamp >= today_start)
-        .count()
+        .scalar()
     )
 
     this_month = (
-        AssignmentLog.query
+        db.session.query(db.func.count(db.distinct(AssignmentLog.ecg_result_id)))
         .filter(AssignmentLog.actor_id == current_user.id,
                 AssignmentLog.action == "diagnosed",
                 AssignmentLog.timestamp >= month_start)
-        .count()
+        .scalar()
     )
 
     expiring_soon = (
         ECGResult.query
-        .filter(ECGResult.assigned_to_id == current_user.id,
+        .filter(ECGResult.is_deleted == False,
+                ECGResult.assigned_to_id == current_user.id,
+                ECGResult.status.notin_(_DONE),
                 ECGResult.assignment_expires_at.isnot(None),
                 ECGResult.assignment_expires_at > now,
-                ECGResult.assignment_expires_at <= now + timedelta(minutes=5))
+                ECGResult.assignment_expires_at <= now + timedelta(minutes=timeout_min))
         .count()
     )
 
     recent_pending = (
         ECGResult.query
-        .filter(ECGResult.assigned_to_id == current_user.id,
+        .filter(ECGResult.is_deleted == False,
+                ECGResult.assigned_to_id == current_user.id,
                 ECGResult.status.notin_(_DONE))
         .order_by(ECGResult.assignment_expires_at.asc())
         .limit(8)
@@ -146,6 +155,7 @@ def _doctor_dashboard():
         completed_today=completed_today,
         this_month=this_month,
         expiring_soon=expiring_soon,
+        expiring_minutes=timeout_min,
         recent_pending=recent_pending,
         now=now,
     )

@@ -47,17 +47,17 @@
                     </li>
                     {% if current_user.is_authenticated and current_user.role not in ['doctor', 'viewer'] %}
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('ecg_tests.') %}active{% endif %}"
-                           href="{{ url_for('ecg_tests.index') }}">
-                            <i class="bi bi-clipboard2-pulse me-1"></i><span data-nav-i18n="ecg_tests">ECG Tests</span>
+                        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('patients.') %}active{% endif %}"
+                           href="{{ url_for('patients.index') }}">
+                            <i class="bi bi-people me-1"></i><span data-nav-i18n="nav_patients">Patients</span>
                         </a>
                     </li>
                     {% endif %}
                     {% if current_user.is_authenticated and current_user.role not in ['doctor', 'viewer'] %}
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('patients.') %}active{% endif %}"
-                           href="{{ url_for('patients.index') }}">
-                            <i class="bi bi-people me-1"></i><span data-nav-i18n="nav_patients">Patients</span>
+                        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('ecg_tests.') %}active{% endif %}"
+                           href="{{ url_for('ecg_tests.index') }}">
+                            <i class="bi bi-clipboard2-pulse me-1"></i><span data-nav-i18n="ecg_tests">ECG Tests</span>
                         </a>
                     </li>
                     {% endif %}
@@ -227,7 +227,7 @@
     <script>
     var _socket = io({ transports: ['polling'] });
 
-    var _TABLE_RELOAD_TYPES = ['assignment', 'unassigned', 'timeout', 'accepted', 'rejected', 'in_review', 'diagnosed', 'new_result', 'draft_saved'];
+    var _TABLE_RELOAD_TYPES = ['assignment', 'unassigned', 'timeout', 'accepted', 'rejected', 'in_review', 'diagnosed', 'revised', 'new_result', 'draft_saved'];
 
     _socket.on('notification', function(data) {
         _showNavToast(data);
