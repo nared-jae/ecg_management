@@ -720,6 +720,16 @@
             <i class="bi bi-cloud-upload"></i> Send to PACS
             {% endif %}
         </button>
+        {% if result.status == 'APPROVED' and current_user.role in ('admin', 'it_admin', 'nurse') %}
+        <button class="toolbar-btn" id="btnFinalize" onclick="finalizeResult()" title="Finalize"
+                style="background:#fff8e0;color:#b45309;border-color:#b45309;">
+            <i class="bi bi-lock"></i> Finalize
+        </button>
+        {% elif result.status == 'FINALIZED' %}
+        <button class="toolbar-btn" disabled style="background:#e6f4ea;color:#1a7f37;border-color:#1a7f37;cursor:default;">
+            <i class="bi bi-lock-fill"></i> Finalized
+        </button>
+        {% endif %}
         {% endif %}
     </div>
     {% endif %}
@@ -797,7 +807,9 @@
             <div class="diagnosis-panel-header">
                 <h6><i class="bi bi-clipboard2-pulse me-2"></i><span data-i18n="diagnosis">Diagnosis</span></h6>
                 <div>
-                    {% if result.status == 'APPROVED' and _can_revise %}
+                    {% if result.status == 'FINALIZED' %}
+                    <span class="diagnosis-status-badge" style="background:#e0f2f1;color:#00695c;"><i class="bi bi-lock me-1"></i><span data-i18n="finalized">Finalized</span></span>
+                    {% elif result.status == 'APPROVED' and _can_revise %}
                     <span class="diagnosis-status-badge draft"><i class="bi bi-pencil me-1"></i><span data-i18n="revising">Revising</span></span>
                     {% elif result.status == 'APPROVED' %}
                     <span class="diagnosis-status-badge submitted"><i class="bi bi-check-circle me-1"></i><span data-i18n="submitted">Submitted</span></span>
@@ -973,7 +985,7 @@
 var ECG_DATA = {{ ecg_json | tojson }};
 var RESULT_ID = {{ result.id }};
 var RESULT_STATUS = '{{ result.status }}';
-var _CAN_REVISE = {{ 'true' if _can_revise else 'false' }};
+var _CAN_REVISE = {{ 'true' if current_user.is_authenticated and current_user.can_diagnose and result.assigned_to_id == current_user.id and result.status == 'APPROVED' else 'false' }};
 var _IS_READONLY = (['FINALIZED', 'COMPLETED'].indexOf(RESULT_STATUS) >= 0) || (RESULT_STATUS === 'APPROVED' && !_CAN_REVISE);
 
 // ===== Statement Library Data =====
@@ -2553,6 +2565,37 @@ function sendToPacsDetail() {
     })
     .catch(function() {
         if (btn) { btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i> Send to PACS'; btn.disabled = false; }
+    });
+}
+
+function finalizeResult() {
+    var lang = localStorage.getItem('app_language') || 'en';
+    var msg = lang === 'th'
+        ? 'ยืนยันการ Finalize? หลังจากนี้แพทย์จะแก้ไขผลตรวจไม่ได้อีก'
+        : 'Confirm Finalize? After this, the doctor cannot revise the diagnosis.';
+    if (!confirm(msg)) return;
+
+    var btn = document.getElementById('btnFinalize');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Finalizing...'; }
+
+    fetch('/results/{{ result.id }}/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (btn) { btn.innerHTML = '<i class="bi bi-lock-fill me-1"></i> Finalized'; btn.style.background = '#e6f4ea'; btn.style.color = '#1a7f37'; btn.disabled = true; }
+            // Update status badge on page
+            var statusBadge = document.querySelector('.status-badge, .badge');
+            if (statusBadge) { statusBadge.textContent = 'FINALIZED'; statusBadge.className = 'status-badge status-finalized'; }
+        } else {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-lock me-1"></i> Finalize'; }
+            alert(data.error || 'Finalize failed');
+        }
+    })
+    .catch(function() {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-lock me-1"></i> Finalize'; }
     });
 }
 </script>

@@ -44,6 +44,8 @@
 .action-locked     { background: #e0f2fe; color: #0284c7; }
 .action-unlocked   { background: #f5f5f5; color: #666; }
 .action-diagnosed  { background: #e8fff0; color: #059669; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spin-icon { animation: spin 1s linear infinite; }
 </style>
 {% endblock %}
 
@@ -92,6 +94,12 @@
             <i class="bi bi-journal-text me-1"></i><span data-i18n="tab_audit">Audit Trail</span>
         </button>
     </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs"
+                type="button" role="tab">
+            <i class="bi bi-file-text me-1"></i><span data-i18n="tab_logs">System Logs</span>
+        </button>
+    </li>
     {% endif %}
 </ul>
 
@@ -115,6 +123,33 @@
     <!-- Tab 4: Audit -->
     <div class="tab-pane fade" id="audit" role="tabpanel">
         {% include 'settings/_tab_audit.html' %}
+    </div>
+
+    <!-- Tab 5: System Logs -->
+    <div class="tab-pane fade" id="logs" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="mb-1" data-i18n="log_title">MWL Sync Log</h5>
+                <small class="text-muted" data-i18n="log_info">Log file: logs/mwl_sync.log — shows MWL synchronization activity</small>
+            </div>
+            <div class="d-flex gap-2">
+                <select id="logLines" class="form-select form-select-sm" style="width:auto;">
+                    <option value="50">50 lines</option>
+                    <option value="100">100 lines</option>
+                    <option value="200" selected>200 lines</option>
+                    <option value="500">500 lines</option>
+                    <option value="1000">1000 lines</option>
+                </select>
+                <button class="btn btn-apple-secondary btn-sm" onclick="loadMwlLog()" id="btnRefreshLog">
+                    <i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="log_btn_refresh">Refresh</span>
+                </button>
+            </div>
+        </div>
+        <div id="logStatus" class="mb-2" style="font-size:0.8rem;color:var(--apple-text-secondary);"></div>
+        <pre id="logContent" style="background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:var(--apple-radius-sm);
+             font-size:0.78rem;line-height:1.5;max-height:600px;overflow:auto;white-space:pre-wrap;word-break:break-all;">
+(click Refresh to load log)
+        </pre>
     </div>
     {% endif %}
 </div>
@@ -277,6 +312,14 @@ var PAGE_I18N = {
         api_copied: 'API key copied to clipboard',
         api_regenerated: 'API key regenerated successfully',
         api_confirm_regenerate: 'Are you sure? The current key will stop working immediately.',
+        // Logs
+        tab_logs: 'System Logs',
+        log_title: 'MWL Sync Log',
+        log_info: 'Log file: logs/mwl_sync.log — shows MWL synchronization activity',
+        log_btn_refresh: 'Refresh',
+        log_status: 'Showing {showing} of {total} lines',
+        log_empty: '(no log data)',
+        log_error: 'Error loading log',
     },
     th: {
         page_title: 'ตั้งค่าระบบ',
@@ -341,6 +384,13 @@ var PAGE_I18N = {
         api_copied: 'คัดลอก API Key แล้ว',
         api_regenerated: 'สร้าง API Key ใหม่สำเร็จ',
         api_confirm_regenerate: 'คุณแน่ใจหรือไม่? Key ปัจจุบันจะใช้ไม่ได้ทันที',
+        tab_logs: 'ล็อกระบบ',
+        log_title: 'ล็อก MWL Sync',
+        log_info: 'ไฟล์ล็อก: logs/mwl_sync.log — แสดงกิจกรรมการ sync MWL',
+        log_btn_refresh: 'รีเฟรช',
+        log_status: 'แสดง {showing} จาก {total} บรรทัด',
+        log_empty: '(ไม่มีข้อมูลล็อก)',
+        log_error: 'เกิดข้อผิดพลาดในการโหลดล็อก',
     }
 };
 
@@ -378,12 +428,14 @@ document.addEventListener('DOMContentLoaded', function() {
             var target = e.target.getAttribute('data-bs-target');
             if (target === '#users' && !usersTableInited) initUsersTable();
             if (target === '#audit' && !auditTableInited) initAuditTable();
+            if (target === '#logs' && !logsInited) { logsInited = true; loadMwlLog(); }
         });
     });
 
-    // Auto-init if hash points to users or audit
+    // Auto-init if hash points to users or audit or logs
     if (hash === '#users') setTimeout(function(){ if (!usersTableInited) initUsersTable(); }, 100);
     if (hash === '#audit') setTimeout(function(){ if (!auditTableInited) initAuditTable(); }, 100);
+    if (hash === '#logs') setTimeout(function(){ if (!logsInited) { logsInited = true; loadMwlLog(); } }, 100);
 });
 
 /* ===== Toast ===== */
@@ -626,6 +678,38 @@ $(document).ready(function() {
         loadApiKey();
     }
 });
+
+/* ===== System Logs ===== */
+var logsInited = false;
+
+function loadMwlLog() {
+    var lines = document.getElementById('logLines').value;
+    var btn = document.getElementById('btnRefreshLog');
+    btn.disabled = true;
+    btn.querySelector('i').className = 'bi bi-arrow-repeat spin-icon';
+
+    $.getJSON('/settings/api/logs/mwl-sync?lines=' + lines, function(resp) {
+        btn.disabled = false;
+        btn.querySelector('i').className = 'bi bi-arrow-clockwise';
+        if (resp.success) {
+            var content = resp.content || getLang('log_empty');
+            document.getElementById('logContent').textContent = content;
+            var status = getLang('log_status')
+                .replace('{showing}', resp.showing || 0)
+                .replace('{total}', resp.total_lines || 0);
+            document.getElementById('logStatus').textContent = status;
+            // Auto-scroll to bottom
+            var pre = document.getElementById('logContent');
+            pre.scrollTop = pre.scrollHeight;
+        } else {
+            document.getElementById('logContent').textContent = getLang('log_error') + ': ' + (resp.error || '');
+        }
+    }).fail(function() {
+        btn.disabled = false;
+        btn.querySelector('i').className = 'bi bi-arrow-clockwise';
+        document.getElementById('logContent').textContent = getLang('log_error');
+    });
+}
 
 function initAuditTable() {
     auditTableInited = true;

@@ -107,15 +107,30 @@ class MWLServer:
         print(query)
 
         with self.flask_app.app_context():
-            from models import WorklistItem as WLModel
+            from models import db, WorklistItem as WLModel
 
-            # Only return SCHEDULED items
+            # Only return SCHEDULED / IN_PROGRESS items
             items = WLModel.query.filter(
                 WLModel.status.in_(["SCHEDULED", "IN_PROGRESS"])
             ).all()
 
             matches = [it for it in items if _match_item(it, query)]
             print(f"Matched items: {len(matches)}")
+
+            # Auto IN_PROGRESS: when ECG machine queries a specific patient
+            # (not a wildcard/broad query), mark matched SCHEDULED items as IN_PROGRESS
+            q_pid = get_first(query, "PatientID")
+            is_specific_query = bool(q_pid and "*" not in q_pid)
+            if is_specific_query and matches:
+                for it in matches:
+                    if it.status == "SCHEDULED":
+                        it.status = "IN_PROGRESS"
+                        print(f"[MWL] Auto IN_PROGRESS: {it.accession_number} (patient={q_pid})")
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    print(f"[MWL] Error updating status: {e}")
+                    db.session.rollback()
 
             for it in matches:
                 full = _worklist_item_to_dataset(it)

@@ -5,7 +5,9 @@ Callable functions (not a daemon thread) — invoked from routes or APScheduler.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import date, datetime
+from logging.handlers import RotatingFileHandler
 from typing import List, Optional, Tuple
 
 from pydicom.dataset import Dataset
@@ -13,7 +15,22 @@ from pydicom.uid import ExplicitVRLittleEndian, ImplicitVRLittleEndian
 from pynetdicom import AE
 from pynetdicom.sop_class import ModalityWorklistInformationFind
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("mwl_sync")
+
+# --- File-based logging for MWL sync ---
+_LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
+os.makedirs(_LOG_DIR, exist_ok=True)
+_log_file = os.path.join(_LOG_DIR, "mwl_sync.log")
+_file_handler = RotatingFileHandler(_log_file, maxBytes=2 * 1024 * 1024, backupCount=5, encoding="utf-8")
+_file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
+_file_handler.setLevel(logging.DEBUG)
+logger.addHandler(_file_handler)
+logger.setLevel(logging.DEBUG)
+# Also output to console
+_console_handler = logging.StreamHandler()
+_console_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S"))
+_console_handler.setLevel(logging.INFO)
+logger.addHandler(_console_handler)
 
 
 def build_cfind_query(scheduled_date: str = "", modality: str = "") -> Dataset:
@@ -207,12 +224,16 @@ def upsert_worklist_item(ds: Dataset, flask_app) -> str:
     parsed = _parse_mwl_response(ds)
 
     if not parsed["accession_number"]:
-        logger.warning("[MWL SCU] Skipping item with no accession number")
+        logger.warning("SKIP - no accession number | data=%s", {k: parsed[k] for k in ("patient_id", "patient_name")})
         return "skipped"
 
     if not parsed["patient_id"]:
-        logger.warning(f"[MWL SCU] Skipping item {parsed['accession_number']} with no Patient ID")
+        logger.warning("SKIP - no patient_id | accession=%s", parsed["accession_number"])
         return "skipped"
+
+    logger.debug("PROCESSING accession=%s | patient_id=%s | name=%s | procedure=%s | date=%s",
+                 parsed["accession_number"], parsed["patient_id"], parsed["patient_name"],
+                 parsed["requested_procedure_desc"], parsed["scheduled_date"])
 
     with flask_app.app_context():
         from models import db, Patient, WorklistItem
@@ -229,7 +250,9 @@ def upsert_worklist_item(ds: Dataset, flask_app) -> str:
             )
             db.session.add(patient)
             db.session.flush()
+            logger.info("  PATIENT CREATED: id=%s, name=%s (db_id=%d)", parsed["patient_id"], parsed["patient_name"], patient.id)
         else:
+            logger.debug("  PATIENT EXISTS: id=%s, name=%s (db_id=%d)", parsed["patient_id"], patient.patient_name, patient.id)
             # Update patient info if new data is richer
             if parsed["patient_name"] and not patient.patient_name:
                 patient.patient_name = parsed["patient_name"]
@@ -242,6 +265,8 @@ def upsert_worklist_item(ds: Dataset, flask_app) -> str:
         existing = WorklistItem.query.filter_by(accession_number=parsed["accession_number"]).first()
 
         if existing:
+            logger.info("  WORKLIST UPDATE: accession=%s already exists (db_id=%d, status=%s) -> updating fields",
+                        parsed["accession_number"], existing.id, existing.status)
             # Update existing item
             existing.patient_id = patient.id
             existing.requested_procedure_id = parsed["requested_procedure_id"] or existing.requested_procedure_id
@@ -286,6 +311,9 @@ def upsert_worklist_item(ds: Dataset, flask_app) -> str:
             )
             db.session.add(wl)
             action = "created"
+            logger.info("  WORKLIST CREATED: accession=%s | patient=%s | procedure=%s | date=%s",
+                        parsed["accession_number"], parsed["patient_name"],
+                        parsed["requested_procedure_desc"], parsed["scheduled_date"])
 
         db.session.commit()
         return action
@@ -313,26 +341,43 @@ def sync_from_external_mwl(
         local_ae = get_setting("ext_mwl_local_ae", "ECG_SCU")
 
     if not host:
+        logger.warning("SYNC ABORTED - MWL host not configured")
         return {"success": False, "error": "MWL server host not configured", "created": 0, "updated": 0, "skipped": 0, "total": 0}
 
     if not scheduled_date:
         scheduled_date = date.today().strftime("%Y%m%d")
 
-    logger.info(f"[MWL SCU] Syncing from {remote_ae}@{host}:{port} (local AE: {local_ae}), date={scheduled_date}")
+    logger.info("=" * 60)
+    logger.info("SYNC START | server=%s@%s:%d | local_ae=%s | date=%s",
+                remote_ae, host, port, local_ae, scheduled_date)
 
     # Query MWL
     datasets, error = query_mwl(host, port, remote_ae, local_ae, scheduled_date=scheduled_date)
 
     if error and not datasets:
+        logger.error("SYNC FAILED | error=%s", error)
         return {"success": False, "error": error, "created": 0, "updated": 0, "skipped": 0, "total": 0}
+
+    logger.info("C-FIND RESULT | received %d items from server%s",
+                len(datasets), f" (warning: {error})" if error else "")
+
+    # Log all accession numbers received
+    if datasets:
+        acc_list = []
+        for ds_item in datasets:
+            acc = str(getattr(ds_item, "AccessionNumber", "?") or "?").strip()
+            pid = str(getattr(ds_item, "PatientID", "?") or "?").strip()
+            acc_list.append(f"{acc}({pid})")
+        logger.info("RECEIVED ITEMS: %s", ", ".join(acc_list))
 
     # Upsert each item
     created = 0
     updated = 0
     skipped = 0
 
-    for ds in datasets:
+    for i, ds in enumerate(datasets, 1):
         try:
+            logger.debug("--- Item %d/%d ---", i, len(datasets))
             action = upsert_worklist_item(ds, flask_app)
             if action == "created":
                 created += 1
@@ -341,7 +386,7 @@ def sync_from_external_mwl(
             else:
                 skipped += 1
         except Exception as e:
-            logger.error(f"[MWL SCU] Upsert error: {e}")
+            logger.error("UPSERT ERROR | item %d | error=%s", i, e, exc_info=True)
             skipped += 1
 
     # Update last sync timestamp
@@ -352,7 +397,9 @@ def sync_from_external_mwl(
             s.value = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             db.session.commit()
 
-    logger.info(f"[MWL SCU] Sync complete: {created} created, {updated} updated, {skipped} skipped")
+    logger.info("SYNC COMPLETE | created=%d, updated=%d, skipped=%d, total=%d",
+                created, updated, skipped, len(datasets))
+    logger.info("=" * 60)
 
     return {
         "success": True,

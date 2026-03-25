@@ -979,6 +979,8 @@ function initTestsTable() {
     });
 }
 
+function _localDateStr(d) { var y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+
 $(document).ready(function() {
     // Initialize Bootstrap tooltips
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
@@ -995,7 +997,6 @@ $(document).ready(function() {
     });
 
     // Default filter to today + SCHEDULED/IN_PROGRESS
-    function _localDateStr(d) { var y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
     var _today = _localDateStr(new Date());
     $('#filterDate').val(_today);
     $('.status-filter[value="SCHEDULED"]').prop('checked', true);
@@ -1042,6 +1043,12 @@ $(document).ready(function() {
             if (testsTable) testsTable.columns.adjust();
         }, 200);
     });
+
+    // Auto-refresh table + stats every 30 seconds
+    setInterval(function() {
+        if (testsTable) testsTable.ajax.reload(null, false);
+        refreshStats();
+    }, 30000);
 });
 
 function getCheckedValues(className) {
@@ -1054,6 +1061,15 @@ function getCheckedValues(className) {
 
 function applyFilters() {
     if (testsTable) testsTable.ajax.reload();
+}
+
+function refreshStats() {
+    $.getJSON('{{ url_for("ecg_tests.api_stats") }}', function(data) {
+        $('#statAwaiting').text(data.awaiting);
+        $('#statInProgress').text(data.in_progress);
+        $('#statCompleted').text(data.completed);
+        $('#statTotal').text(data.total_today);
+    });
 }
 
 function clearDateFilter() {
@@ -1264,6 +1280,7 @@ function submitNewTest(e) {
             // Reset date filter to today so newly created test is visible
             $('#filterDate').val(_localDateStr(new Date()));
             testsTable.ajax.reload();
+            refreshStats();
             showToast('success', resp.message);
         } else {
             showToast('error', resp.error || getLang('et_error'));
@@ -1291,6 +1308,7 @@ $(document).on('click', '#confirmDeleteBtn', function() {
         if (resp.success) {
             $('#deleteModal').modal('hide');
             testsTable.ajax.reload();
+            refreshStats();
             showToast('success', getLang('et_deleted'));
         }
     }).fail(function() {
@@ -1355,6 +1373,7 @@ function updateSelectedStatus() {
         success: function(resp) {
             if (resp.success) {
                 reloadAndReselect();
+                refreshStats();
                 showToast('success', getLang('et_status_updated'));
                 $('#statusSelect').val('');
             }
@@ -1382,6 +1401,7 @@ function syncWorklist() {
             showToast('success', getLang('et_sync_success') + ' (' + msg + ')');
             // Reload table with current filters preserved
             testsTable.ajax.reload();
+            refreshStats();
         } else {
             showToast('error', data.error || getLang('et_sync_error'));
         }

@@ -937,6 +937,14 @@ function initResultsTable() {
                               + '<i class="bi bi-x-circle"></i></button>';
                     }
 
+                    // Finalize button: nurse/admin on APPROVED only
+                    if ((USER_ROLE === 'admin' || USER_ROLE === 'it_admin' || USER_ROLE === 'nurse')
+                        && (row.status || '').toUpperCase() === 'APPROVED') {
+                        html += ' <button class="btn btn-apple-sm" style="background:#fff8e0;color:#b45309;border:none;" '
+                              + 'onclick="finalizeFromList(' + data + ',\'' + (row.accession_number || '-').replace(/'/g, "\\'") + '\')" title="Finalize">'
+                              + '<i class="bi bi-lock"></i></button>';
+                    }
+
                     // Delete button: admin/it_admin = all, nurse = RECEIVED only
                     var canDelete = false;
                     var st = (row.status || '').toUpperCase();
@@ -1140,6 +1148,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// ===== Finalize from List =====
+function finalizeFromList(resultId, accession) {
+    var lang = localStorage.getItem('app_language') || 'en';
+    var msg = lang === 'th'
+        ? 'ยืนยันการ Finalize เคส ' + accession + '?\nหลังจากนี้แพทย์จะแก้ไขผลตรวจไม่ได้อีก'
+        : 'Confirm Finalize case ' + accession + '?\nAfter this, the doctor cannot revise the diagnosis.';
+    if (!confirm(msg)) return;
+
+    fetch('/results/' + resultId + '/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            resultsTable.ajax.reload(null, false);
+            refreshStats();
+            showToast('success', data.message);
+        } else {
+            showToast('error', data.error);
+        }
+    });
+}
+
 // ===== Force Action Modal =====
 var _forceActionModal = null;
 var _forceActionCallback = null;
@@ -1211,7 +1243,7 @@ function restoreResult(resultId) {
                 showToast('success', data.message);
                 loadTrashList();
                 resultsTable.ajax.reload(null, false);
-                loadStats();
+                refreshStats();
             } else {
                 showToast('error', data.error);
             }
@@ -1499,10 +1531,11 @@ $(document).ready(function() {
         resultsTable.search(urlSearch).draw();
     }
 
-    // Fallback sync every 60s (safety net — SocketIO handles real-time updates)
+    // Fallback sync every 30s (safety net — SocketIO handles real-time updates)
     setInterval(function() {
         if (resultsTable) resultsTable.ajax.reload(null, false);
-    }, 60000);
+        refreshStats();
+    }, 30000);
     // Re-align columns on window resize
     var _resizeTimer;
     $(window).on('resize', function() {

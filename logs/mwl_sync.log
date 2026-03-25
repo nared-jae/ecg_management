@@ -1,0 +1,955 @@
+2026-03-25 22:15:37 [INFO] ============================================================
+2026-03-25 22:15:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:15:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:15:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:15:38 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:15:38 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:15:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:15:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:15:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:15:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:15:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:15:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:15:38 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:15:38 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:15:38 [INFO] ============================================================
+2026-03-25 22:15:38 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:16:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:15:38
+2026-03-25 22:17:37 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:15:38
+2026-03-25 22:17:37 [INFO] ============================================================
+2026-03-25 22:17:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:17:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:17:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:17:37 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:17:37 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:17:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:17:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:17:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:17:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:17:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:17:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:17:38 [INFO]   WORKLIST CREATED: accession=13122013 | patient=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:17:38 [INFO] SYNC COMPLETE | created=1, updated=0, skipped=0, total=1
+2026-03-25 22:17:38 [INFO] ============================================================
+2026-03-25 22:17:38 [INFO] AUTO-SYNC DONE | created=1, updated=0, skipped=0
+2026-03-25 22:18:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:17:38
+2026-03-25 22:19:37 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:17:38
+2026-03-25 22:19:37 [INFO] ============================================================
+2026-03-25 22:19:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:19:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:19:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:19:38 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:19:38 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:19:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:19:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:19:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:19:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:19:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:19:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:19:38 [INFO]   WORKLIST CREATED: accession=13122013 | patient=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:19:38 [INFO] SYNC COMPLETE | created=1, updated=0, skipped=0, total=1
+2026-03-25 22:19:38 [INFO] ============================================================
+2026-03-25 22:19:38 [INFO] AUTO-SYNC DONE | created=1, updated=0, skipped=0
+2026-03-25 22:20:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:19:38
+2026-03-25 22:21:37 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:19:38
+2026-03-25 22:21:37 [INFO] ============================================================
+2026-03-25 22:21:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:21:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:21:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:21:38 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:21:38 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:21:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:21:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:21:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:21:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:21:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:21:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:21:38 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:21:38 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:21:38 [INFO] ============================================================
+2026-03-25 22:21:38 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:22:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:21:38
+2026-03-25 22:23:37 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:21:38
+2026-03-25 22:23:37 [INFO] ============================================================
+2026-03-25 22:23:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:23:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:23:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:23:38 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:23:38 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:23:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:23:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:23:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:23:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:23:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:23:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:23:38 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:23:38 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:23:38 [INFO] ============================================================
+2026-03-25 22:23:38 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:24:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:23:38
+2026-03-25 22:25:37 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:23:38
+2026-03-25 22:25:37 [INFO] ============================================================
+2026-03-25 22:25:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:25:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:25:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:25:38 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:25:38 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:25:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:25:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:25:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:25:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:25:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:25:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:25:38 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:25:38 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:25:38 [INFO] ============================================================
+2026-03-25 22:25:38 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:26:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:25:38
+2026-03-25 22:27:37 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:25:38
+2026-03-25 22:27:37 [INFO] ============================================================
+2026-03-25 22:27:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:27:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:27:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:27:38 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:27:38 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:27:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:27:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:27:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:27:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:27:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:27:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:27:38 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:27:38 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:27:38 [INFO] ============================================================
+2026-03-25 22:27:38 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:28:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:27:38
+2026-03-25 22:29:37 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:27:38
+2026-03-25 22:29:37 [INFO] ============================================================
+2026-03-25 22:29:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:29:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:29:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:29:38 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:29:38 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:29:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:29:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:29:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:29:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:29:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:29:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:29:38 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:29:38 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:29:38 [INFO] ============================================================
+2026-03-25 22:29:38 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:30:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:29:38
+2026-03-25 22:31:37 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:29:38
+2026-03-25 22:31:37 [INFO] ============================================================
+2026-03-25 22:31:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:31:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:31:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:31:38 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:31:38 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:31:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:31:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:31:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:31:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:31:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:31:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:31:38 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:31:38 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:31:38 [INFO] ============================================================
+2026-03-25 22:31:38 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:32:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:31:38
+2026-03-25 22:33:37 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:31:38
+2026-03-25 22:33:37 [INFO] ============================================================
+2026-03-25 22:33:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:33:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:33:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:33:38 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:33:38 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:33:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:33:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:33:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:33:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:33:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:33:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:33:38 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:33:38 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:33:38 [INFO] ============================================================
+2026-03-25 22:33:38 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:34:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:33:38
+2026-03-25 22:35:37 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:33:38
+2026-03-25 22:35:37 [INFO] ============================================================
+2026-03-25 22:35:37 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:35:37 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:35:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:35:38 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:35:38 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:35:38 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:35:38 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:35:38 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:35:38 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:35:38 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:35:38 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:35:38 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:35:38 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:35:38 [INFO] ============================================================
+2026-03-25 22:35:38 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:36:37 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:35:38
+2026-03-25 22:38:02 [INFO] ============================================================
+2026-03-25 22:38:02 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:38:02 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:38:02 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:38:02 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:38:02 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:38:02 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:38:02 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:38:02 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:38:02 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:38:02 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:38:02 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:38:02 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:38:02 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:38:02 [INFO] ============================================================
+2026-03-25 22:38:02 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:39:02 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:38:02
+2026-03-25 22:39:02 [INFO] ============================================================
+2026-03-25 22:39:02 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:39:02 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:39:02 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:39:02 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:39:02 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:39:02 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:39:02 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:39:02 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:39:02 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:39:02 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:39:02 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:39:02 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:39:02 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:39:02 [INFO] ============================================================
+2026-03-25 22:39:02 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:40:19 [INFO] ============================================================
+2026-03-25 22:40:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:40:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:40:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:40:20 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:40:20 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:40:20 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:40:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:40:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:40:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:40:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:40:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:40:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:40:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:40:20 [INFO] ============================================================
+2026-03-25 22:40:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:41:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:40:20
+2026-03-25 22:42:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:40:20
+2026-03-25 22:42:19 [INFO] ============================================================
+2026-03-25 22:42:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:42:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:42:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:42:19 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:42:19 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:42:19 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:42:19 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:42:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:42:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:42:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:42:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:42:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:42:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:42:20 [INFO] ============================================================
+2026-03-25 22:42:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:43:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:42:20
+2026-03-25 22:44:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:42:20
+2026-03-25 22:44:19 [INFO] ============================================================
+2026-03-25 22:44:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:44:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:44:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:44:19 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:44:19 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:44:20 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:44:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:44:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:44:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:44:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:44:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:44:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:44:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:44:20 [INFO] ============================================================
+2026-03-25 22:44:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:45:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:44:20
+2026-03-25 22:46:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:44:20
+2026-03-25 22:46:19 [INFO] ============================================================
+2026-03-25 22:46:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:46:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:46:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:46:19 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:46:19 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:46:19 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:46:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:46:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:46:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:46:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:46:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:46:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:46:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:46:20 [INFO] ============================================================
+2026-03-25 22:46:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:47:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:46:20
+2026-03-25 22:48:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:46:20
+2026-03-25 22:48:19 [INFO] ============================================================
+2026-03-25 22:48:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:48:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:48:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:48:20 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:48:20 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:48:20 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:48:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:48:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:48:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:48:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:48:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:48:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:48:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:48:20 [INFO] ============================================================
+2026-03-25 22:48:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:49:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:48:20
+2026-03-25 22:50:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:48:20
+2026-03-25 22:50:19 [INFO] ============================================================
+2026-03-25 22:50:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:50:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:50:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:50:19 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:50:19 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:50:20 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:50:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:50:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:50:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:50:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:50:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:50:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:50:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:50:20 [INFO] ============================================================
+2026-03-25 22:50:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:51:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:50:20
+2026-03-25 22:52:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:50:20
+2026-03-25 22:52:19 [INFO] ============================================================
+2026-03-25 22:52:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:52:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:52:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:52:20 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:52:20 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:52:20 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:52:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:52:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:52:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:52:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:52:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:52:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:52:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:52:20 [INFO] ============================================================
+2026-03-25 22:52:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:53:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:52:20
+2026-03-25 22:54:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:52:20
+2026-03-25 22:54:19 [INFO] ============================================================
+2026-03-25 22:54:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:54:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:54:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:54:19 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:54:19 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:54:20 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:54:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:54:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:54:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:54:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:54:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:54:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:54:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:54:20 [INFO] ============================================================
+2026-03-25 22:54:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:55:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:54:20
+2026-03-25 22:56:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:54:20
+2026-03-25 22:56:19 [INFO] ============================================================
+2026-03-25 22:56:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:56:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:56:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:56:19 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:56:19 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:56:19 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:56:19 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:56:19 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:56:19 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:56:19 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:56:19 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:56:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:56:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:56:20 [INFO] ============================================================
+2026-03-25 22:56:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:57:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:56:20
+2026-03-25 22:58:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:56:20
+2026-03-25 22:58:19 [INFO] ============================================================
+2026-03-25 22:58:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 22:58:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 22:58:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 22:58:19 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 22:58:19 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 22:58:20 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 22:58:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 22:58:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 22:58:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 22:58:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 22:58:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 22:58:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 22:58:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 22:58:20 [INFO] ============================================================
+2026-03-25 22:58:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 22:59:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 22:58:20
+2026-03-25 23:00:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 22:58:20
+2026-03-25 23:00:19 [INFO] ============================================================
+2026-03-25 23:00:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:00:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:00:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 23:00:20 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:00:20 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:00:20 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 23:00:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:00:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:00:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:00:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:00:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:00:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 23:00:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:00:20 [INFO] ============================================================
+2026-03-25 23:00:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 23:01:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 23:00:20
+2026-03-25 23:02:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:00:20
+2026-03-25 23:02:19 [INFO] ============================================================
+2026-03-25 23:02:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:02:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:02:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 23:02:19 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:02:19 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:02:20 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 23:02:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:02:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:02:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:02:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:02:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:02:20 [INFO]   WORKLIST CREATED: accession=13122013 | patient=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:02:20 [INFO] SYNC COMPLETE | created=1, updated=0, skipped=0, total=1
+2026-03-25 23:02:20 [INFO] ============================================================
+2026-03-25 23:02:20 [INFO] AUTO-SYNC DONE | created=1, updated=0, skipped=0
+2026-03-25 23:03:19 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=1 min | last_sync=2026-03-25 23:02:20
+2026-03-25 23:04:19 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:02:20
+2026-03-25 23:04:19 [INFO] ============================================================
+2026-03-25 23:04:19 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:04:19 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:04:19 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 23:04:20 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:04:20 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:04:20 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 23:04:20 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:04:20 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:04:20 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:04:20 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:04:20 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:04:20 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 23:04:20 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:04:20 [INFO] ============================================================
+2026-03-25 23:04:20 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 23:05:33 [INFO] ============================================================
+2026-03-25 23:05:33 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:05:33 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:05:33 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 23:05:33 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:05:33 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:05:33 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 23:05:33 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:05:33 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:05:33 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:05:33 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:05:33 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:05:33 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 23:05:33 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:05:33 [INFO] ============================================================
+2026-03-25 23:05:33 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 23:06:33 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:05:33
+2026-03-25 23:06:33 [INFO] ============================================================
+2026-03-25 23:06:33 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:06:33 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:06:33 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 23:06:33 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:06:33 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:06:33 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 23:06:33 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:06:33 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:06:33 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:06:33 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:06:33 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:06:33 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 23:06:33 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:06:33 [INFO] ============================================================
+2026-03-25 23:06:33 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 23:07:33 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:06:33
+2026-03-25 23:07:33 [INFO] ============================================================
+2026-03-25 23:07:33 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:07:33 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:07:33 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 23:07:33 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:07:33 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:07:34 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 23:07:34 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:07:34 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:07:34 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:07:34 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:07:34 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:07:34 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 23:07:34 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:07:34 [INFO] ============================================================
+2026-03-25 23:07:34 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 23:07:36 [INFO] ============================================================
+2026-03-25 23:07:36 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:07:36 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:07:37 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 23:07:37 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:07:37 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:07:37 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 23:07:37 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:07:37 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:07:37 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:07:37 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:07:37 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:07:37 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 23:07:37 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:07:37 [INFO] ============================================================
+2026-03-25 23:08:52 [INFO] ============================================================
+2026-03-25 23:08:52 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:08:52 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:08:52 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 23:08:52 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:08:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:08:52 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 23:08:52 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:08:52 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:08:52 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:08:52 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:08:52 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:08:52 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=9, status=SCHEDULED) -> updating fields
+2026-03-25 23:08:53 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:08:53 [INFO] ============================================================
+2026-03-25 23:09:04 [INFO] MANUAL SYNC requested by user=admin
+2026-03-25 23:09:04 [INFO] ============================================================
+2026-03-25 23:09:04 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:09:04 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:09:04 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 23:09:04 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:09:04 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:09:04 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 23:09:04 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:09:04 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:09:04 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:09:04 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:09:04 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:09:04 [INFO]   WORKLIST CREATED: accession=13122013 | patient=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:09:04 [INFO] SYNC COMPLETE | created=1, updated=0, skipped=0, total=1
+2026-03-25 23:09:04 [INFO] ============================================================
+2026-03-25 23:15:52 [INFO] MANUAL SYNC requested by user=admin
+2026-03-25 23:15:52 [INFO] ============================================================
+2026-03-25 23:15:52 [INFO] SYNC START | server=LIST@192.168.1.106:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:15:52 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:15:52 [INFO] [MWL SCU] Sending C-FIND to LIST@192.168.1.106:11131
+2026-03-25 23:15:52 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:15:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:15:52 [INFO] [MWL SCU] Received 1 worklist items from LIST@192.168.1.106:11131
+2026-03-25 23:15:52 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:15:52 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:15:52 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:15:52 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:15:52 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:15:52 [INFO]   WORKLIST CREATED: accession=13122013 | patient=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:15:52 [INFO] SYNC COMPLETE | created=1, updated=0, skipped=0, total=1
+2026-03-25 23:15:52 [INFO] ============================================================
+2026-03-25 23:51:22 [INFO] ============================================================
+2026-03-25 23:51:22 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:51:22 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:51:22 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-25 23:51:22 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:51:22 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:51:22 [INFO] [MWL SCU] Received 1 worklist items from LIST@10.190.160.240:11131
+2026-03-25 23:51:22 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:51:22 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:51:22 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:51:22 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:51:22 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:51:22 [INFO]   WORKLIST CREATED: accession=13122013 | patient=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:51:22 [INFO] SYNC COMPLETE | created=1, updated=0, skipped=0, total=1
+2026-03-25 23:51:22 [INFO] ============================================================
+2026-03-25 23:51:52 [DEBUG] AUTO-SYNC SKIP | elapsed=0.5 min < interval=1 min | last_sync=2026-03-25 23:51:22
+2026-03-25 23:52:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:51:22
+2026-03-25 23:52:52 [INFO] ============================================================
+2026-03-25 23:52:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:52:52 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:52:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-25 23:52:52 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:52:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:52:52 [INFO] [MWL SCU] Received 1 worklist items from LIST@10.190.160.240:11131
+2026-03-25 23:52:52 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:52:52 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:52:52 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:52:52 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:52:52 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:52:52 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=5, status=SCHEDULED) -> updating fields
+2026-03-25 23:52:52 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:52:52 [INFO] ============================================================
+2026-03-25 23:52:52 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 23:53:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:52:52
+2026-03-25 23:53:52 [INFO] ============================================================
+2026-03-25 23:53:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:53:52 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:53:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-25 23:53:52 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:53:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:53:52 [INFO] [MWL SCU] Received 1 worklist items from LIST@10.190.160.240:11131
+2026-03-25 23:53:52 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:53:52 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:53:52 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:53:52 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:53:52 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:53:52 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=5, status=SCHEDULED) -> updating fields
+2026-03-25 23:53:52 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:53:52 [INFO] ============================================================
+2026-03-25 23:53:52 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 23:54:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:53:52
+2026-03-25 23:54:52 [INFO] ============================================================
+2026-03-25 23:54:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:54:52 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:54:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-25 23:54:52 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:54:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:54:52 [INFO] [MWL SCU] Received 1 worklist items from LIST@10.190.160.240:11131
+2026-03-25 23:54:52 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:54:52 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:54:52 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:54:52 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:54:52 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:54:52 [INFO]   WORKLIST CREATED: accession=13122013 | patient=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:54:52 [INFO] SYNC COMPLETE | created=1, updated=0, skipped=0, total=1
+2026-03-25 23:54:52 [INFO] ============================================================
+2026-03-25 23:54:52 [INFO] AUTO-SYNC DONE | created=1, updated=0, skipped=0
+2026-03-25 23:55:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:54:52
+2026-03-25 23:55:52 [INFO] ============================================================
+2026-03-25 23:55:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:55:52 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:55:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-25 23:55:52 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:55:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:55:52 [INFO] [MWL SCU] Received 1 worklist items from LIST@10.190.160.240:11131
+2026-03-25 23:55:52 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:55:52 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:55:52 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:55:52 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:55:52 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:55:52 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=5, status=SCHEDULED) -> updating fields
+2026-03-25 23:55:52 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:55:52 [INFO] ============================================================
+2026-03-25 23:55:52 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 23:56:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:55:52
+2026-03-25 23:56:52 [INFO] ============================================================
+2026-03-25 23:56:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:56:52 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:56:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-25 23:56:52 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:56:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:56:52 [INFO] [MWL SCU] Received 1 worklist items from LIST@10.190.160.240:11131
+2026-03-25 23:56:52 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:56:52 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:56:52 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:56:52 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:56:52 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:56:52 [INFO]   WORKLIST CREATED: accession=13122013 | patient=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:56:52 [INFO] SYNC COMPLETE | created=1, updated=0, skipped=0, total=1
+2026-03-25 23:56:52 [INFO] ============================================================
+2026-03-25 23:56:52 [INFO] AUTO-SYNC DONE | created=1, updated=0, skipped=0
+2026-03-25 23:57:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:56:52
+2026-03-25 23:57:52 [INFO] ============================================================
+2026-03-25 23:57:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:57:52 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:57:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-25 23:57:52 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:57:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:57:52 [INFO] [MWL SCU] Received 1 worklist items from LIST@10.190.160.240:11131
+2026-03-25 23:57:52 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:57:52 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:57:52 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:57:52 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:57:52 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:57:52 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=7, status=SCHEDULED) -> updating fields
+2026-03-25 23:57:52 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:57:52 [INFO] ============================================================
+2026-03-25 23:57:52 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 23:58:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:57:52
+2026-03-25 23:58:52 [INFO] ============================================================
+2026-03-25 23:58:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:58:52 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:58:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-25 23:58:52 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:58:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:58:52 [INFO] [MWL SCU] Received 1 worklist items from LIST@10.190.160.240:11131
+2026-03-25 23:58:52 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:58:52 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:58:52 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:58:52 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:58:52 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:58:52 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=7, status=SCHEDULED) -> updating fields
+2026-03-25 23:58:52 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:58:52 [INFO] ============================================================
+2026-03-25 23:58:52 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-25 23:59:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:58:52
+2026-03-25 23:59:52 [INFO] ============================================================
+2026-03-25 23:59:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260325
+2026-03-25 23:59:52 [INFO] [MWL SCU] C-FIND query: date='20260325', modality=''
+2026-03-25 23:59:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-25 23:59:52 [DEBUG] [MWL SCU] Got item: PatientID=000001, AccessionNumber=13122013
+2026-03-25 23:59:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-25 23:59:52 [INFO] [MWL SCU] Received 1 worklist items from LIST@10.190.160.240:11131
+2026-03-25 23:59:52 [INFO] C-FIND RESULT | received 1 items from server
+2026-03-25 23:59:52 [INFO] RECEIVED ITEMS: 13122013(000001)
+2026-03-25 23:59:52 [DEBUG] --- Item 1/1 ---
+2026-03-25 23:59:52 [DEBUG] PROCESSING accession=13122013 | patient_id=000001 | name=ONE^DEE | procedure= | date=20260325
+2026-03-25 23:59:52 [DEBUG]   PATIENT EXISTS: id=000001, name=ONE^DEE (db_id=8)
+2026-03-25 23:59:52 [INFO]   WORKLIST UPDATE: accession=13122013 already exists (db_id=7, status=SCHEDULED) -> updating fields
+2026-03-25 23:59:52 [INFO] SYNC COMPLETE | created=0, updated=1, skipped=0, total=1
+2026-03-25 23:59:52 [INFO] ============================================================
+2026-03-25 23:59:52 [INFO] AUTO-SYNC DONE | created=0, updated=1, skipped=0
+2026-03-26 00:00:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-25 23:59:52
+2026-03-26 00:00:52 [INFO] ============================================================
+2026-03-26 00:00:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:00:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:00:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:00:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:00:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:00:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:00:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:00:52 [INFO] ============================================================
+2026-03-26 00:00:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:01:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:00:52
+2026-03-26 00:01:52 [INFO] ============================================================
+2026-03-26 00:01:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:01:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:01:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:01:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:01:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:01:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:01:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:01:52 [INFO] ============================================================
+2026-03-26 00:01:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:02:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:01:52
+2026-03-26 00:02:52 [INFO] ============================================================
+2026-03-26 00:02:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:02:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:02:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:02:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:02:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:02:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:02:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:02:52 [INFO] ============================================================
+2026-03-26 00:02:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:03:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:02:52
+2026-03-26 00:03:52 [INFO] ============================================================
+2026-03-26 00:03:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:03:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:03:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:03:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:03:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:03:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:03:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:03:52 [INFO] ============================================================
+2026-03-26 00:03:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:04:52 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=3 min | last_sync=2026-03-26 00:03:52
+2026-03-26 00:05:52 [DEBUG] AUTO-SYNC SKIP | elapsed=2.0 min < interval=3 min | last_sync=2026-03-26 00:03:52
+2026-03-26 00:06:52 [INFO] AUTO-SYNC TRIGGERED | interval=3 min | last_sync=2026-03-26 00:03:52
+2026-03-26 00:06:52 [INFO] ============================================================
+2026-03-26 00:06:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:06:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:06:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:06:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:06:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:06:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:06:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:06:52 [INFO] ============================================================
+2026-03-26 00:06:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:07:52 [DEBUG] AUTO-SYNC SKIP | elapsed=1.0 min < interval=3 min | last_sync=2026-03-26 00:06:52
+2026-03-26 00:08:52 [DEBUG] AUTO-SYNC SKIP | elapsed=2.0 min < interval=3 min | last_sync=2026-03-26 00:06:52
+2026-03-26 00:09:52 [INFO] AUTO-SYNC TRIGGERED | interval=3 min | last_sync=2026-03-26 00:06:52
+2026-03-26 00:09:52 [INFO] ============================================================
+2026-03-26 00:09:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:09:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:09:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:09:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:09:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:09:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:09:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:09:52 [INFO] ============================================================
+2026-03-26 00:09:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:10:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:09:52
+2026-03-26 00:10:52 [INFO] ============================================================
+2026-03-26 00:10:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:10:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:10:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:10:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:10:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:10:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:10:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:10:52 [INFO] ============================================================
+2026-03-26 00:10:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:11:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:10:52
+2026-03-26 00:11:52 [INFO] ============================================================
+2026-03-26 00:11:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:11:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:11:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:11:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:11:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:11:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:11:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:11:52 [INFO] ============================================================
+2026-03-26 00:11:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:12:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:11:52
+2026-03-26 00:12:52 [INFO] ============================================================
+2026-03-26 00:12:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:12:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:12:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:12:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:12:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:12:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:12:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:12:52 [INFO] ============================================================
+2026-03-26 00:12:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:13:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:12:52
+2026-03-26 00:13:52 [INFO] ============================================================
+2026-03-26 00:13:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:13:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:13:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:13:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:13:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:13:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:13:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:13:52 [INFO] ============================================================
+2026-03-26 00:13:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:14:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:13:52
+2026-03-26 00:14:52 [INFO] ============================================================
+2026-03-26 00:14:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:14:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:14:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:14:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:14:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:14:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:14:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:14:52 [INFO] ============================================================
+2026-03-26 00:14:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:15:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:14:52
+2026-03-26 00:15:52 [INFO] ============================================================
+2026-03-26 00:15:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:15:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:15:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:15:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:15:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:15:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:15:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:15:52 [INFO] ============================================================
+2026-03-26 00:15:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:16:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:15:52
+2026-03-26 00:16:52 [INFO] ============================================================
+2026-03-26 00:16:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:16:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:16:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:16:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:16:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:16:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:16:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:16:52 [INFO] ============================================================
+2026-03-26 00:16:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:17:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:16:52
+2026-03-26 00:17:52 [INFO] ============================================================
+2026-03-26 00:17:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:17:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:17:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:17:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:17:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:17:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:17:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:17:52 [INFO] ============================================================
+2026-03-26 00:17:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:18:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:17:52
+2026-03-26 00:18:52 [INFO] ============================================================
+2026-03-26 00:18:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:18:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:18:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:18:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:18:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:18:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:18:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:18:52 [INFO] ============================================================
+2026-03-26 00:18:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:19:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:18:52
+2026-03-26 00:19:52 [INFO] ============================================================
+2026-03-26 00:19:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:19:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:19:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:19:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:19:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:19:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:19:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:19:52 [INFO] ============================================================
+2026-03-26 00:19:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:20:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:19:52
+2026-03-26 00:20:52 [INFO] ============================================================
+2026-03-26 00:20:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:20:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:20:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:20:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:20:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:20:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:20:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:20:52 [INFO] ============================================================
+2026-03-26 00:20:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:21:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:20:52
+2026-03-26 00:21:52 [INFO] ============================================================
+2026-03-26 00:21:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:21:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:21:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:21:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:21:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:21:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:21:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:21:52 [INFO] ============================================================
+2026-03-26 00:21:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:22:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:21:52
+2026-03-26 00:22:52 [INFO] ============================================================
+2026-03-26 00:22:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:22:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:22:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:22:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:22:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:22:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:22:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:22:52 [INFO] ============================================================
+2026-03-26 00:22:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:23:52 [INFO] AUTO-SYNC TRIGGERED | interval=1 min | last_sync=2026-03-26 00:22:52
+2026-03-26 00:23:52 [INFO] ============================================================
+2026-03-26 00:23:52 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:23:52 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:23:52 [INFO] [MWL SCU] Sending C-FIND to LIST@10.190.160.240:11131
+2026-03-26 00:23:52 [INFO] [MWL SCU] C-FIND completed successfully
+2026-03-26 00:23:52 [INFO] [MWL SCU] Received 0 worklist items from LIST@10.190.160.240:11131
+2026-03-26 00:23:52 [INFO] C-FIND RESULT | received 0 items from server
+2026-03-26 00:23:52 [INFO] SYNC COMPLETE | created=0, updated=0, skipped=0, total=0
+2026-03-26 00:23:52 [INFO] ============================================================
+2026-03-26 00:23:52 [INFO] AUTO-SYNC DONE | created=0, updated=0, skipped=0
+2026-03-26 00:25:02 [INFO] ============================================================
+2026-03-26 00:25:02 [INFO] SYNC START | server=LIST@10.190.160.240:11131 | local_ae=CP150 | date=20260326
+2026-03-26 00:25:02 [INFO] [MWL SCU] C-FIND query: date='20260326', modality=''
+2026-03-26 00:25:23 [ERROR] SYNC FAILED | error=Association rejected by LIST@10.190.160.240:11131
+2026-03-26 00:25:23 [ERROR] AUTO-SYNC ERROR | Association rejected by LIST@10.190.160.240:11131

@@ -3,6 +3,7 @@ External API for hospital system (HIS) integration.
 Authentication: API Key via X-API-Key header.
 """
 
+import hmac
 import uuid
 from datetime import datetime, date
 from functools import wraps
@@ -25,7 +26,7 @@ def api_key_required(f):
     def decorated(*args, **kwargs):
         key = request.headers.get("X-API-Key", "")
         stored_key = get_setting("api_key", "")
-        if not key or not stored_key or key != stored_key:
+        if not key or not stored_key or not hmac.compare_digest(key, stored_key):
             return jsonify({"success": False, "error": "Invalid or missing API key"}), 401
         return f(*args, **kwargs)
     return decorated

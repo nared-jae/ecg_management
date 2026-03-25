@@ -15,6 +15,9 @@ def _auto_sync_mwl(flask_app):
     Checks if auto-sync is enabled and if the configured interval has elapsed,
     then triggers MWL synchronization.
     """
+    import logging
+    logger = logging.getLogger("mwl_sync")
+
     from models import get_setting, SystemSetting, db
 
     with flask_app.app_context():
@@ -31,16 +34,21 @@ def _auto_sync_mwl(flask_app):
                 last_sync = datetime.strptime(last_sync_str, "%Y-%m-%d %H:%M:%S")
                 elapsed = (datetime.now() - last_sync).total_seconds() / 60
                 if elapsed < interval:
+                    logger.debug("AUTO-SYNC SKIP | elapsed=%.1f min < interval=%d min | last_sync=%s",
+                                 elapsed, interval, last_sync_str)
                     return  # Not yet time to sync
             except ValueError:
-                pass  # Invalid timestamp, proceed with sync
+                logger.warning("AUTO-SYNC | invalid last_sync_at=%r, proceeding with sync", last_sync_str)
+
+        logger.info("AUTO-SYNC TRIGGERED | interval=%d min | last_sync=%s", interval, last_sync_str or "(never)")
 
     from services.mwl_scu import sync_from_external_mwl
     result = sync_from_external_mwl(flask_app)
     if result.get("success"):
-        print(f"[Auto-Sync MWL] {result['created']} created, {result['updated']} updated")
+        logger.info("AUTO-SYNC DONE | created=%d, updated=%d, skipped=%d",
+                     result["created"], result["updated"], result.get("skipped", 0))
     elif result.get("error"):
-        print(f"[Auto-Sync MWL] Error: {result['error']}")
+        logger.error("AUTO-SYNC ERROR | %s", result["error"])
 
 
 def _check_assignment_timeouts(flask_app):

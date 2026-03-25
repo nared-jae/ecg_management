@@ -648,7 +648,7 @@ def send_pdf(result_id):
 
         acc = result.accession_number or "NOACC"
         hn = result.patient.patient_id if result.patient else "unknown"
-        name = result.patient_name.replace("^", "_") if result.patient_name else "unknown"
+        name = result.patient.patient_name.replace("^", "_") if result.patient and result.patient.patient_name else "unknown"
         filename = f"{acc}_{hn}_{name}.pdf"
         # Sanitize filename
         filename = "".join(c if c.isalnum() or c in "._-" else "_" for c in filename)
@@ -702,7 +702,7 @@ def send_hl7(result_id):
 
         acc = result.accession_number or "NOACC"
         hn = result.patient.patient_id if result.patient else "unknown"
-        name = result.patient_name.replace("^", "_") if result.patient_name else "unknown"
+        name = result.patient.patient_name.replace("^", "_") if result.patient and result.patient.patient_name else "unknown"
         filename = f"{acc}_{hn}_{name}.xml"
         filename = "".join(c if c.isalnum() or c in "._-" else "_" for c in filename)
 
@@ -812,6 +812,42 @@ def reset_status(result_id):
     db.session.commit()
 
     return jsonify({"success": True, "message": "Case reset to RECEIVED | เคสถูกรีเซ็ตเป็น RECEIVED"})
+
+
+@results_bp.route("/<int:result_id>/finalize", methods=["POST"])
+@login_required
+def finalize_result(result_id):
+    """Finalize an APPROVED case — locks it permanently (nurse/admin only)."""
+    if current_user.role not in ("admin", "it_admin", "nurse"):
+        return jsonify({"success": False, "error": "Not authorised | ไม่มีสิทธิ์"}), 403
+
+    result = ECGResult.query.get_or_404(result_id)
+    if result.is_deleted:
+        return jsonify({"success": False, "error": "Result is deleted"}), 400
+
+    if result.status != "APPROVED":
+        return jsonify({
+            "success": False,
+            "error": "Only APPROVED results can be finalized | Finalize ได้เฉพาะผลที่ Approved แล้ว",
+        }), 400
+
+    result.status = "FINALIZED"
+    result.locked_by_id = None
+    result.locked_at = None
+    result.assignment_expires_at = None
+
+    db.session.add(AssignmentLog(
+        ecg_result_id=result_id,
+        action="finalized",
+        actor_id=current_user.id,
+        notes=f"Finalized by {current_user.display_name}",
+    ))
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": f"Result finalized | ผลตรวจ {result.accession_number} ถูก Finalize แล้ว",
+    })
 
 
 # ---------------------------------------------------------------------------

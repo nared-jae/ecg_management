@@ -1,10 +1,11 @@
 from datetime import datetime, date
 
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from models import db, WorklistItem, Patient, ECGResult, User
 from services.dicom_helpers import stable_uid_from_text
+from utils.decorators import roles_required
 
 ecg_tests_bp = Blueprint("ecg_tests", __name__, url_prefix="/ecg-tests")
 
@@ -30,6 +31,19 @@ def index():
     )
 
     return render_template("ecg_tests/index.html", stats=stats, doctors=doctors)
+
+
+@ecg_tests_bp.route("/api/stats")
+@login_required
+def api_stats():
+    """Return worklist stats for live refresh."""
+    today_str = datetime.now().strftime("%Y%m%d")
+    return jsonify({
+        "awaiting": WorklistItem.query.filter_by(status="SCHEDULED").count(),
+        "in_progress": WorklistItem.query.filter_by(status="IN_PROGRESS").count(),
+        "completed": WorklistItem.query.filter_by(status="COMPLETED").count(),
+        "total_today": WorklistItem.query.filter_by(scheduled_date=today_str).count(),
+    })
 
 
 @ecg_tests_bp.route("/api/data")
@@ -143,8 +157,12 @@ def api_data():
 
 @ecg_tests_bp.route("/api/sync-mwl", methods=["POST"])
 @login_required
+@roles_required("admin", "it_admin", "nurse")
 def sync_mwl():
     """Trigger MWL sync from ECG Tests page."""
+    import logging
+    logger = logging.getLogger("mwl_sync")
+    logger.info("MANUAL SYNC requested by user=%s", current_user.username)
     from flask import current_app
     from services.mwl_scu import sync_from_external_mwl
     result = sync_from_external_mwl(current_app._get_current_object())
@@ -153,6 +171,7 @@ def sync_mwl():
 
 @ecg_tests_bp.route("/create", methods=["POST"])
 @login_required
+@roles_required("admin", "it_admin", "nurse")
 def create():
     """Create a new ECG test (AJAX)."""
     f = request.form
@@ -235,6 +254,7 @@ def create():
 
 @ecg_tests_bp.route("/<int:item_id>/update-status", methods=["POST"])
 @login_required
+@roles_required("admin", "it_admin", "nurse")
 def update_status(item_id):
     """Update test status (AJAX)."""
     item = WorklistItem.query.get_or_404(item_id)
@@ -252,6 +272,7 @@ def update_status(item_id):
 
 @ecg_tests_bp.route("/<int:item_id>/update-priority", methods=["POST"])
 @login_required
+@roles_required("admin", "it_admin", "nurse")
 def update_priority(item_id):
     """Toggle priority to URGENT (AJAX)."""
     item = WorklistItem.query.get_or_404(item_id)
@@ -296,6 +317,7 @@ def view_report(item_id):
 
 @ecg_tests_bp.route("/<int:item_id>/delete", methods=["POST"])
 @login_required
+@roles_required("admin", "it_admin", "nurse")
 def delete(item_id):
     """Delete a worklist item (AJAX)."""
     item = WorklistItem.query.get_or_404(item_id)
@@ -334,6 +356,7 @@ def get_item(item_id):
 
 @ecg_tests_bp.route("/<int:item_id>/edit", methods=["POST"])
 @login_required
+@roles_required("admin", "it_admin", "nurse")
 def edit(item_id):
     """Edit an existing worklist item (AJAX)."""
     item = WorklistItem.query.get_or_404(item_id)

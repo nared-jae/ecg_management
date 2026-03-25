@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import datetime, timedelta
 
@@ -21,7 +22,12 @@ settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 @roles_required("admin", "it_admin", "nurse")
 def index():
     if request.method == "POST":
+        # Only allow updating known settings, not API key via form injection
+        _protected_keys = {"api_key"}
+
         for key, value in request.form.items():
+            if key in _protected_keys:
+                continue
             s = SystemSetting.query.filter_by(key=key).first()
             if s:
                 s.value = value.strip()
@@ -449,3 +455,33 @@ def regenerate_api_key():
         ))
     db.session.commit()
     return jsonify({"success": True, "api_key": new_key, "message": "API key regenerated | สร้าง API Key ใหม่สำเร็จ"})
+
+
+# ---------------------------------------------------------------------------
+# Log Viewer API
+# ---------------------------------------------------------------------------
+@settings_bp.route("/api/logs/mwl-sync")
+@login_required
+@roles_required("admin", "it_admin")
+def view_mwl_log():
+    """Return the MWL sync log file contents (last N lines)."""
+    lines = request.args.get("lines", 200, type=int)
+    lines = min(lines, 2000)  # cap at 2000
+
+    log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs", "mwl_sync.log")
+    if not os.path.exists(log_path):
+        return jsonify({"success": True, "content": "(log file not found)", "lines": 0})
+
+    try:
+        with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+            all_lines = f.readlines()
+
+        tail = all_lines[-lines:] if len(all_lines) > lines else all_lines
+        return jsonify({
+            "success": True,
+            "content": "".join(tail),
+            "total_lines": len(all_lines),
+            "showing": len(tail),
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
