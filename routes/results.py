@@ -4,33 +4,58 @@ from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, jsonify, send_file, current_app, flash, redirect, url_for, abort
 from flask_login import login_required, current_user
 
-from models import db, ECGResult, Patient, WorklistItem, AssignmentLog, User, get_setting
+from models import db, ECGResult, Patient, WorklistItem, AssignmentLog, User, get_setting, has_permission
 from services.ecg_parser import parse_dicom_ecg, ecg_data_to_json, extract_dicom_tags
 from utils.decorators import doctor_required
 
 results_bp = Blueprint("results", __name__, url_prefix="/results")
 
 
+def _find_nurse_for_case(result_id):
+    from routes.notifications import find_nurse_for_case
+    return find_nurse_for_case(result_id)
+
+
+def _notify_nurses_case_update(result_id, nurse_id, message, message_th, notif_type):
+    from routes.notifications import notify_nurses_case_update
+    notify_nurses_case_update(result_id, nurse_id, message, message_th, notif_type)
+
+
 def _calc_stats(role, user_id):
-    """Shared stat calculation for index() and api_stats()."""
+    """Shared stat calculation for index() and api_stats().
+
+    Admin/Nurse (can_assign): global counts.
+    Doctor/Cardio (can_diagnose only): personal counts.
+    """
     from datetime import date as date_cls
     _DONE = ("APPROVED", "FINALIZED", "COMPLETED")
     base_q = ECGResult.query.filter(ECGResult.is_deleted == False)
 
-    # Pending = currently assigned (active), not yet done
-    pending_count = ECGResult.query.filter(
-        ECGResult.is_deleted == False,
-        ECGResult.assigned_to_id.isnot(None),
-        ECGResult.status.notin_(_DONE)
-    ).count()
+    is_personal = has_permission(role, "can_diagnose") and not has_permission(role, "can_assign")
+
+    if is_personal:
+        my_q = base_q.filter(ECGResult.assigned_to_id == user_id)
+        return {
+            "unassigned": base_q.filter(
+                ECGResult.assigned_to_id.is_(None),
+                ECGResult.status.notin_(_DONE)
+            ).count(),
+            "pending": my_q.filter(ECGResult.status.notin_(_DONE)).count(),
+            "completed": my_q.filter(ECGResult.status.in_(_DONE)).count(),
+            "today": my_q.filter(
+                db.func.date(db.func.coalesce(ECGResult.study_datetime, ECGResult.received_at)) == date_cls.today()
+            ).count(),
+        }
 
     return {
-        "unassigned": ECGResult.query.filter(
-            ECGResult.is_deleted == False,
+        "unassigned": base_q.filter(
             ECGResult.assigned_to_id.is_(None),
             ECGResult.status.notin_(_DONE)
         ).count(),
-        "pending": pending_count,
+        "pending": base_q.filter(
+            ECGResult.assigned_to_id.isnot(None),
+            ECGResult.status.notin_(_DONE)
+        ).count(),
         "completed": base_q.filter(ECGResult.status.in_(_DONE)).count(),
         "today": base_q.filter(
             db.func.date(db.func.coalesce(ECGResult.study_datetime, ECGResult.received_at)) == date_cls.today()
@@ -91,6 +116,10 @@ def api_data():
             ECGResult.assigned_to_id.is_(None),
             ECGResult.status.notin_(_DONE_STATUSES),
         )
+
+    # Urgent filter
+    if request.args.get("urgent_only") == "1":
+        query = query.filter(WorklistItem.requested_procedure_priority == "URGENT")
 
     # Sidebar filters
     date_from     = request.args.get("date_from", "").strip()
@@ -306,23 +335,15 @@ def detail(result_id):
                 ecg_result_id=result_id, action="locked", actor_id=current_user.id
             ))
             db.session.commit()
-            # Notify the nurse who assigned this case that doctor has started reviewing
+            # Notify nurse/admin that doctor has started reviewing
             if status_changed:
-                from routes.notifications import push_notification
-                last_log = (
-                    AssignmentLog.query
-                    .filter_by(ecg_result_id=result_id, action="assigned")
-                    .order_by(AssignmentLog.timestamp.desc())
-                    .first()
+                _notify_nurses_case_update(
+                    result_id=result_id,
+                    nurse_id=_find_nurse_for_case(result_id),
+                    message=f"{current_user.display_name} has started reviewing case {result.accession_number}.",
+                    message_th=f"{current_user.display_name} กำลังวินิจฉัยเคส {result.accession_number}",
+                    notif_type="in_review",
                 )
-                if last_log and last_log.actor_id:
-                    push_notification(
-                        user_id=last_log.actor_id,
-                        message=f"{current_user.display_name} has started reviewing case {result.accession_number}.",
-                        message_th=f"{current_user.display_name} กำลังวินิจฉัยเคส {result.accession_number}",
-                        notif_type="in_review",
-                        result_id=result_id,
-                    )
 
     # Parse ECG waveform if file exists
     ecg_json = None
@@ -548,42 +569,32 @@ def save_diagnosis(result_id):
 
     db.session.commit()
 
-    # Notify the nurse who assigned this case
-    from routes.notifications import push_notification
-    last_assign_log = (
-        AssignmentLog.query
-        .filter_by(ecg_result_id=result_id, action="assigned")
-        .order_by(AssignmentLog.timestamp.desc())
-        .first()
-    )
-    nurse_id = last_assign_log.actor_id if last_assign_log else None
+    # Notify nurse/admin about diagnosis progress
+    nurse_id = _find_nurse_for_case(result_id)
     print(f"[Diagnosis] action={action}, is_revision={is_revision}, nurse_id={nurse_id}, result_id={result_id}")
 
-    if action == "save" and nurse_id:
-        push_notification(
-            user_id=nurse_id,
+    if action == "save":
+        _notify_nurses_case_update(
+            result_id=result_id, nurse_id=nurse_id,
             message=f"{current_user.display_name} saved a draft for case {result.accession_number}.",
             message_th=f"{current_user.display_name} บันทึกฉบับร่างเคส {result.accession_number}",
             notif_type="draft_saved",
-            result_id=result_id,
         )
 
-    if action in ("submit", "submit_next") and nurse_id:
+    if action in ("submit", "submit_next"):
         if is_revision:
-            push_notification(
-                user_id=nurse_id,
+            _notify_nurses_case_update(
+                result_id=result_id, nurse_id=nurse_id,
                 message=f"{current_user.display_name} has revised diagnosis for case {result.accession_number}.",
                 message_th=f"{current_user.display_name} แก้ไขคำวินิจฉัยเคส {result.accession_number}",
                 notif_type="revised",
-                result_id=result_id,
             )
         else:
-            push_notification(
-                user_id=nurse_id,
+            _notify_nurses_case_update(
+                result_id=result_id, nurse_id=nurse_id,
                 message=f"{current_user.display_name} has completed diagnosis for case {result.accession_number}.",
                 message_th=f"{current_user.display_name} วินิจฉัยเคส {result.accession_number} เสร็จแล้ว",
                 notif_type="diagnosed",
-                result_id=result_id,
             )
 
     response = {"success": True, "status": result.status}
@@ -856,6 +867,14 @@ def finalize_result(result_id):
     ))
     db.session.commit()
 
+    _notify_nurses_case_update(
+        result_id=result_id,
+        nurse_id=_find_nurse_for_case(result_id),
+        message=f"{current_user.display_name} has finalized case {result.accession_number}.",
+        message_th=f"{current_user.display_name} Finalize เคส {result.accession_number} แล้ว",
+        notif_type="finalized",
+    )
+
     return jsonify({
         "success": True,
         "message": f"Result finalized | ผลตรวจ {result.accession_number} ถูก Finalize แล้ว",
@@ -889,6 +908,14 @@ def reopen_result(result_id):
         notes=f"Reopened by {current_user.display_name}",
     ))
     db.session.commit()
+
+    _notify_nurses_case_update(
+        result_id=result_id,
+        nurse_id=_find_nurse_for_case(result_id),
+        message=f"{current_user.display_name} has reopened case {result.accession_number}.",
+        message_th=f"{current_user.display_name} Reopen เคส {result.accession_number} แล้ว",
+        notif_type="reopened",
+    )
 
     return jsonify({
         "success": True,

@@ -130,6 +130,42 @@ def push_broadcast_to_roles(roles: list, message: str, message_th: str,
             print(f"[SocketIO] broadcast to role_{role} failed: {e}")
 
 
+def find_nurse_for_case(result_id):
+    """Find the nurse who manually assigned/reassigned this case.
+    Returns None for auto-assigned cases (no nurse involved)."""
+    from models import AssignmentLog
+    log = (
+        AssignmentLog.query
+        .filter(
+            AssignmentLog.ecg_result_id == result_id,
+            AssignmentLog.action.in_(("assigned", "reassigned")),
+        )
+        .order_by(AssignmentLog.timestamp.desc())
+        .first()
+    )
+    return log.actor_id if log else None
+
+
+def notify_nurses_case_update(result_id, nurse_id, message, message_th, notif_type):
+    """Notify the specific nurse, or broadcast to all nurse/admin if no nurse found."""
+    if nurse_id:
+        push_notification(
+            user_id=nurse_id,
+            message=message,
+            message_th=message_th,
+            notif_type=notif_type,
+            result_id=result_id,
+        )
+    else:
+        push_broadcast_to_roles(
+            roles=["nurse", "admin"],
+            message=message,
+            message_th=message_th,
+            notif_type=notif_type,
+            result_id=result_id,
+        )
+
+
 def push_case_unassigned(user_id: int, result_id: int, message: str, message_th: str):
     """Emit a special SocketIO event telling the doctor's detail page
     that their case has been unassigned/reassigned. The detail page JS

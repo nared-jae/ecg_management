@@ -118,6 +118,9 @@
                     <i class="bi bi-person-check me-1"></i><span data-i18n="rs_view_pending">My Pending</span>
                 </button>
                 {% endif %}
+                <button class="btn btn-apple-secondary btn-apple-sm" id="btnUrgentFilter" onclick="toggleUrgentFilter()">
+                    <i class="bi bi-exclamation-triangle me-1"></i><span data-i18n="rs_urgent_filter">Urgent</span>
+                </button>
             </div>
             <div class="col-vis-wrapper ms-auto">
                 <button class="btn btn-apple-secondary btn-apple-sm" onclick="toggleColVisDropdown()" type="button">
@@ -446,6 +449,7 @@ var RS_I18N = {
         rs_view_mine: 'My Cases',
         rs_view_pending: 'My Pending',
         rs_view_unassigned: 'Unassigned Pool',
+        rs_urgent_filter: 'Urgent',
         rs_filters: 'Filters',
         rs_stat_unassigned: 'Unassigned', rs_stat_pending: 'Pending',
         rs_stat_completed: 'Completed',  rs_stat_today: 'Today',
@@ -565,6 +569,7 @@ var RS_I18N = {
         rs_view_mine: 'เคสของฉัน',
         rs_view_pending: 'รอดำเนินการ',
         rs_view_unassigned: 'คิวรอมอบหมาย',
+        rs_urgent_filter: 'เร่งด่วน',
         rs_filters: 'ตัวกรอง',
         rs_stat_unassigned: 'ยังไม่มอบหมาย', rs_stat_pending: 'รอดำเนินการ',
         rs_stat_completed: 'เสร็จสิ้น',      rs_stat_today: 'วันนี้',
@@ -662,7 +667,7 @@ var COL_VIS_NAMES = [
     { idx: 4,  key: 'rs_th_procedure', defaultOff: true },
     { idx: 5,  key: 'rs_th_received' },
     { idx: 6,  key: 'rs_th_status' },
-    { idx: 7,  key: 'rs_th_urgent', defaultOff: true },
+    { idx: 7,  key: 'rs_th_urgent' },
     { idx: 8,  key: 'rs_th_type', defaultOff: true },
     { idx: 9,  key: 'rs_th_ordering_physician' },
     { idx: 10, key: 'rs_th_technician', defaultOff: true },
@@ -771,6 +776,7 @@ var _assignModal = null;
 // ===== View Filter Tabs =====
 var _defaultView = CAN_VIEW_ALL ? 'all' : 'mine';
 var _currentView = (new URLSearchParams(window.location.search)).get('view') || _defaultView;
+var _urgentOnly = false;
 
 function setView(view) {
     _currentView = view;
@@ -783,6 +789,16 @@ function setView(view) {
     var url = new URL(window.location);
     url.searchParams.set('view', view);
     window.history.replaceState({}, '', url);
+}
+
+function toggleUrgentFilter() {
+    _urgentOnly = !_urgentOnly;
+    var btn = document.getElementById('btnUrgentFilter');
+    if (btn) {
+        btn.classList.toggle('btn-apple', _urgentOnly);
+        btn.classList.toggle('btn-apple-secondary', !_urgentOnly);
+    }
+    if (resultsTable) resultsTable.ajax.reload(null, false);
 }
 
 // ===== Sidebar Filter Functions =====
@@ -829,12 +845,13 @@ function initResultsTable() {
         ajax: {
             url: '{{ url_for("results.api_data") }}',
             data: function(d) {
-                d.view       = _currentView;
-                d.date_from  = document.getElementById('filterDateFrom') ? document.getElementById('filterDateFrom').value : '';
-                d.date_to    = document.getElementById('filterDateTo')   ? document.getElementById('filterDateTo').value   : '';
-                d.status     = getCheckedValues('status-filter');
-                d.source     = getCheckedValues('source-filter');
-                d.assignment = getCheckedValues('assignment-filter');
+                d.view        = _currentView;
+                d.date_from   = document.getElementById('filterDateFrom') ? document.getElementById('filterDateFrom').value : '';
+                d.date_to     = document.getElementById('filterDateTo')   ? document.getElementById('filterDateTo').value   : '';
+                d.status      = getCheckedValues('status-filter');
+                d.source      = getCheckedValues('source-filter');
+                d.assignment  = getCheckedValues('assignment-filter');
+                d.urgent_only = _urgentOnly ? '1' : '';
             }
         },
         columns: [
@@ -1615,12 +1632,13 @@ function showToast(type, message) {
 $(document).ready(function() {
     setView(_currentView);
 
-    // Default date filter to today
-    var today = new Date().toISOString().slice(0, 10);
+    // Always default date filter to today (local time, not UTC)
+    var _now = new Date();
+    var today = _now.getFullYear() + '-' + String(_now.getMonth()+1).padStart(2,'0') + '-' + String(_now.getDate()).padStart(2,'0');
     var elFrom = document.getElementById('filterDateFrom');
     var elTo   = document.getElementById('filterDateTo');
-    if (elFrom && !elFrom.value) elFrom.value = today;
-    if (elTo   && !elTo.value)   elTo.value   = today;
+    if (elFrom) elFrom.value = today;
+    if (elTo)   elTo.value   = today;
 
     initResultsTable();
 

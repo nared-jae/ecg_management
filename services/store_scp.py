@@ -166,8 +166,9 @@ class StoreSCP:
 
             # Notify
             try:
+                from routes.notifications import push_notification, push_broadcast_to_roles
                 if auto_assigned:
-                    from routes.notifications import push_notification
+                    # Notify the assigned doctor
                     push_notification(
                         user_id=doctor.id,
                         message=f"ECG {accession or 'N/A'} auto-assigned to you (ordering physician).",
@@ -175,8 +176,15 @@ class StoreSCP:
                         notif_type="assignment",
                         result_id=result.id,
                     )
+                    # Also notify nurse/admin so they know a new ECG arrived
+                    push_broadcast_to_roles(
+                        roles=["nurse", "admin"],
+                        message=f"New ECG received: {patient_name or patient_id} (Acc: {accession or 'N/A'}) — auto-assigned to {doctor.display_name}",
+                        message_th=f"ผล ECG ใหม่: {patient_name or patient_id} (Acc: {accession or 'N/A'}) — มอบหมายอัตโนมัติให้ {doctor.display_name}",
+                        notif_type="new_result",
+                        result_id=result.id,
+                    )
                 else:
-                    from routes.notifications import push_broadcast_to_roles
                     push_broadcast_to_roles(
                         roles=["nurse", "admin"],
                         message=f"New ECG received: {patient_name or patient_id} (Acc: {accession or 'N/A'})",

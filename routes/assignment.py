@@ -274,21 +274,15 @@ def accept(result_id):
     ))
     db.session.commit()
 
-    # Notify the nurse who assigned this case
-    last_log = (
-        AssignmentLog.query
-        .filter_by(ecg_result_id=result_id, action="assigned")
-        .order_by(AssignmentLog.timestamp.desc())
-        .first()
+    # Notify nurse/admin that doctor accepted the case
+    from routes.notifications import find_nurse_for_case, notify_nurses_case_update
+    notify_nurses_case_update(
+        result_id=result_id,
+        nurse_id=find_nurse_for_case(result_id),
+        message=f"{current_user.display_name} has accepted case {result.accession_number}.",
+        message_th=f"{current_user.display_name} รับเคส {result.accession_number} แล้ว",
+        notif_type="accepted",
     )
-    if last_log and last_log.actor_id:
-        push_notification(
-            user_id=last_log.actor_id,
-            message=f"{current_user.display_name} has accepted case {result.accession_number}.",
-            message_th=f"{current_user.display_name} รับเคส {result.accession_number} แล้ว",
-            notif_type="accepted",
-            result_id=result_id,
-        )
 
     return jsonify({
         "success": True,
@@ -307,14 +301,9 @@ def reject(result_id):
     if result.assigned_to_id != current_user.id:
         return jsonify({"success": False, "error": "Not assigned to you"}), 403
 
-    # Find the nurse who assigned this case
-    last_log = (
-        AssignmentLog.query
-        .filter_by(ecg_result_id=result_id, action="assigned")
-        .order_by(AssignmentLog.timestamp.desc())
-        .first()
-    )
-    assigner_id = last_log.actor_id if last_log else None
+    # Find the nurse before clearing assignment
+    from routes.notifications import find_nurse_for_case, notify_nurses_case_update
+    nurse_id = find_nurse_for_case(result_id)
 
     result.assigned_to_id        = None
     result.assigned_at           = None
@@ -331,14 +320,13 @@ def reject(result_id):
     ))
     db.session.commit()
 
-    if assigner_id:
-        push_notification(
-            user_id=assigner_id,
-            message=f"{current_user.display_name} rejected case {result.accession_number}. Please reassign.",
-            message_th=f"{current_user.display_name} ปฏิเสธเคส {result.accession_number} กรุณามอบหมายใหม่",
-            notif_type="rejected",
-            result_id=result_id,
-        )
+    notify_nurses_case_update(
+        result_id=result_id,
+        nurse_id=nurse_id,
+        message=f"{current_user.display_name} rejected case {result.accession_number}. Please reassign.",
+        message_th=f"{current_user.display_name} ปฏิเสธเคส {result.accession_number} กรุณามอบหมายใหม่",
+        notif_type="rejected",
+    )
 
     return jsonify({"success": True})
 

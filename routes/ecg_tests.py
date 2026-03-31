@@ -25,7 +25,7 @@ def index():
 
     doctors = (
         User.query
-        .filter_by(role="doctor", is_active_user=True)
+        .filter(User.is_active_user == True, User.can_be_assigned == True)
         .order_by(User.display_name)
         .all()
     )
