@@ -31,7 +31,7 @@ def _get_dicom_status():
 @dashboard_bp.route("/")
 @login_required
 def index():
-    if current_user.role == "doctor":
+    if not current_user.can_assign and current_user.can_diagnose:
         return _doctor_dashboard()
 
     today = datetime.now().strftime("%Y%m%d")

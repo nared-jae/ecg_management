@@ -60,6 +60,7 @@ RHYTHM_LEAD = 'II'
 CONCEPT_MAP = {
     'Heart Rate': 'hr',
     'Ventricular Heart Rate': 'hr',
+    'HR': 'hr',                         # Lepu Medical uses abbreviated name
     'PR Interval': 'pr',
     'QRS Duration': 'qrs',
     'QT Interval': 'qt',

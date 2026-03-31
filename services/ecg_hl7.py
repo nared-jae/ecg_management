@@ -38,6 +38,7 @@ LEAD_MDC_CODES = {
 CONCEPT_TO_MDC = {
     'Heart Rate': ('MDC_ECG_HEART_RATE', 'bpm'),
     'Ventricular Heart Rate': ('MDC_ECG_HEART_RATE', 'bpm'),
+    'HR': ('MDC_ECG_HEART_RATE', 'bpm'),    # Lepu Medical uses abbreviated name
     'PR Interval': ('MDC_ECG_TIME_PD_PR', 'ms'),
     'QRS Duration': ('MDC_ECG_TIME_PD_QRS', 'ms'),
     'QT Interval': ('MDC_ECG_TIME_PD_QT', 'ms'),

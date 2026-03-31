@@ -152,10 +152,11 @@
                 <tbody id="permsBody"></tbody>
             </table>
         </div>
-        <button class="btn btn-primary mt-2" onclick="savePermissions()">
+        <button id="btnSavePerms" class="btn btn-primary mt-2" onclick="savePermissions()">
             <i class="bi bi-save me-1"></i><span data-i18n="perms_save">Save Permissions</span>
         </button>
         <span id="permsSaveStatus" class="ms-2 text-success" style="display:none;"><i class="bi bi-check-circle me-1"></i><span data-i18n="perms_saved">Saved</span></span>
+        <span id="permsSaveError" class="ms-2 text-danger" style="display:none;"><i class="bi bi-exclamation-triangle me-1"></i><span data-i18n="perms_save_error">Save failed — please check connection and try again</span></span>
     </div>
 
     <!-- Tab 4: Audit -->
@@ -396,6 +397,7 @@ var PAGE_I18N = {
         perms_delete: 'Delete Cases',
         perms_save: 'Save Permissions',
         perms_saved: 'Saved',
+        perms_save_error: 'Save failed — please check connection and try again',
         // General tab
         gen_group_workflow: 'Workflow Settings',
         gen_workflow_info: 'Settings that control ECG workflow behavior. Changes take effect immediately.',
@@ -512,6 +514,7 @@ var PAGE_I18N = {
         perms_delete: 'ลบเคส',
         perms_save: 'บันทึกสิทธิ์',
         perms_saved: 'บันทึกแล้ว',
+        perms_save_error: 'บันทึกไม่สำเร็จ — กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่',
         gen_group_workflow: 'การตั้งค่าขั้นตอนการทำงาน',
         gen_workflow_info: 'การตั้งค่าที่ควบคุมการทำงานของระบบ ECG เปลี่ยนแปลงมีผลทันที',
         gen_no_restart: 'เปลี่ยนแปลงมีผลทันที (ไม่ต้อง restart)',
@@ -958,18 +961,36 @@ function savePermissions() {
         if (!payload[role]) payload[role] = {};
         payload[role][perm] = cb.checked;
     });
+
+    var btn = document.getElementById('btnSavePerms');
+    var stOk  = document.getElementById('permsSaveStatus');
+    var stErr = document.getElementById('permsSaveError');
+    btn.disabled = true;
+    stOk.style.display = 'none';
+    stErr.style.display = 'none';
+
     fetch('/settings/api/permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
     .then(function(data) {
         if (data.success) {
-            var st = document.getElementById('permsSaveStatus');
-            st.style.display = 'inline';
-            setTimeout(function() { st.style.display = 'none'; }, 3000);
+            stOk.style.display = 'inline';
+            setTimeout(function() { stOk.style.display = 'none'; }, 3000);
+        } else {
+            stErr.style.display = 'inline';
         }
+    })
+    .catch(function() {
+        stErr.style.display = 'inline';
+    })
+    .finally(function() {
+        btn.disabled = false;
     });
 }
 

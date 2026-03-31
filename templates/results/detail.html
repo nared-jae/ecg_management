@@ -621,22 +621,28 @@
         <div class="toolbar-group">
             <label data-i18n="layout">Layout:</label>
             <select id="ecgLayout" onchange="redrawECG()">
-                <option value="3x4" selected>3x4 + Rhythm</option>
+                <option value="3x4" selected>3x4 + 1</option>
+                <option value="3x4+3">3x4 + 3</option>
                 <option value="6x2">6x2</option>
+                <option value="6x2+1">6x2 + 1</option>
                 <option value="12x1">12x1</option>
             </select>
 
             <label class="ms-2">Speed:</label>
             <select id="ecgSpeed" onchange="redrawECG()">
+                <option value="6.25">6.25 mm/s</option>
+                <option value="12.5">12.5 mm/s</option>
                 <option value="25" selected>25 mm/s</option>
                 <option value="50">50 mm/s</option>
             </select>
 
             <label class="ms-2">Gain:</label>
             <select id="ecgGain" onchange="redrawECG()">
+                <option value="2.5">2.5 mm/mV</option>
                 <option value="5">5 mm/mV</option>
                 <option value="10" selected>10 mm/mV</option>
                 <option value="20">20 mm/mV</option>
+                <option value="40">40 mm/mV</option>
             </select>
         </div>
         <div class="toolbar-group">
@@ -1245,8 +1251,8 @@ var SEPARATOR_COLOR  = '#a08080';
 
 function redrawECG() {
     var layout = document.getElementById('ecgLayout').value;
-    var speed  = parseInt(document.getElementById('ecgSpeed').value);
-    var gain   = parseInt(document.getElementById('ecgGain').value);
+    var speed  = parseFloat(document.getElementById('ecgSpeed').value);
+    var gain   = parseFloat(document.getElementById('ecgGain').value);
 
     if (!ECG_DATA.waveforms || ECG_DATA.waveforms.length === 0) return;
     var wf       = ECG_DATA.waveforms[0];
@@ -1279,8 +1285,18 @@ function redrawECG() {
         numCols = 4;
         colDuration = 2.5;
         rowBigBoxes = 6;
+    } else if (layout === '3x4+3') {
+        numRows = 6;        // 3 main rows + 3 rhythm strips
+        numCols = 4;
+        colDuration = 2.5;
+        rowBigBoxes = 6;
     } else if (layout === '6x2') {
         numRows = 6;
+        numCols = 2;
+        colDuration = 5.0;
+        rowBigBoxes = 5;
+    } else if (layout === '6x2+1') {
+        numRows = 7;        // 6 main rows + 1 rhythm strip
         numCols = 2;
         colDuration = 5.0;
         rowBigBoxes = 5;
@@ -1363,8 +1379,12 @@ function redrawECG() {
     // 9. Draw waveforms
     if (layout === '3x4') {
         drawLayout3x4(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration);
+    } else if (layout === '3x4+3') {
+        drawLayout3x4_3(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration);
     } else if (layout === '6x2') {
         drawLayout6x2(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration);
+    } else if (layout === '6x2+1') {
+        drawLayout6x2_1(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration);
     } else {
         drawLayout12x1(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration);
     }
@@ -1506,6 +1526,62 @@ function drawLayout3x4(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeigh
     }
 }
 
+function drawLayout3x4_3(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration) {
+    // 3x4 main grid (same as drawLayout3x4)
+    var colDuration = duration / 4;
+    var samplesPerCol = Math.floor(colDuration * fs);
+
+    for (var row = 0; row < 3; row++) {
+        for (var col = 0; col < 4; col++) {
+            var leadName = LEAD_GROUPS_3x4[row][col];
+            var data = leads[leadName];
+            if (!data) continue;
+            var x0 = marginLeft + col * colWidth;
+            var y0 = marginTop + row * rowHeight + rowHeight / 2;
+            var startSample = col * samplesPerCol;
+            var endSample   = startSample + samplesPerCol;
+            drawLeadLabel(ctx, leadName, x0 + 3, marginTop + row * rowHeight + 13);
+            drawLeadWaveform(ctx, data, fs, startSample, endSample, x0, y0, pxPerSecond, pxPerMv);
+        }
+    }
+
+    // 3 rhythm strips: V5, V1, II (rows 3-5, full 10s each)
+    var rhythmLeads = ['V5', 'V1', 'II'];
+    for (var i = 0; i < rhythmLeads.length; i++) {
+        var rLeadName = rhythmLeads[i];
+        var rY = marginTop + (3 + i) * rowHeight + rowHeight / 2;
+        drawLeadLabel(ctx, rLeadName + ' (Rhythm)', marginLeft + 3, marginTop + (3 + i) * rowHeight + 13);
+        if (leads[rLeadName]) {
+            drawLeadWaveform(ctx, leads[rLeadName], fs, 0, leads[rLeadName].length, marginLeft, rY, pxPerSecond, pxPerMv);
+        }
+    }
+}
+
+function drawLayout6x2_1(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration) {
+    // 6x2 main grid (same as drawLayout6x2)
+    var colDuration = duration / 2;
+    var samplesPerCol = Math.floor(colDuration * fs);
+
+    for (var row = 0; row < 6; row++) {
+        for (var col = 0; col < 2; col++) {
+            var leadName = LEAD_ORDER_6x2[row][col];
+            var data = leads[leadName];
+            if (!data) continue;
+            var x0 = marginLeft + col * colWidth;
+            var y0 = marginTop + row * rowHeight + rowHeight / 2;
+            drawLeadLabel(ctx, leadName, x0 + 3, marginTop + row * rowHeight + 13);
+            drawLeadWaveform(ctx, data, fs, col * samplesPerCol, (col + 1) * samplesPerCol, x0, y0, pxPerSecond, pxPerMv);
+        }
+    }
+
+    // Rhythm strip (Lead II, full 10s) at row 6
+    var rY = marginTop + 6 * rowHeight + rowHeight / 2;
+    drawLeadLabel(ctx, 'II (Rhythm)', marginLeft + 3, marginTop + 6 * rowHeight + 13);
+    if (leads['II']) {
+        drawLeadWaveform(ctx, leads['II'], fs, 0, leads['II'].length, marginLeft, rY, pxPerSecond, pxPerMv);
+    }
+}
+
 function drawLayout6x2(ctx, leads, fs, marginLeft, marginTop, colWidth, rowHeight, pxPerSecond, pxPerMv, duration) {
     var colDuration = duration / 2;
     var samplesPerCol = Math.floor(colDuration * fs);
@@ -1566,7 +1642,7 @@ function populateMeasurements(wf) {
     }
 
     // Update measurement strip
-    var hrVal = measMap['Heart Rate'] ? measMap['Heart Rate'].value : hr;
+    var hrVal = (measMap['Heart Rate'] || measMap['Ventricular Heart Rate'] || measMap['HR'] || {value: hr}).value;
     var prVal = measMap['PR Interval'] ? measMap['PR Interval'].value : '--';
     var qrsVal = measMap['QRS Duration'] ? measMap['QRS Duration'].value : '--';
     var qtVal = measMap['QT Interval'] ? measMap['QT Interval'].value : '--';

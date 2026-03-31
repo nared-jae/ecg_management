@@ -388,6 +388,7 @@
 <script>
 var USER_ROLE = '{{ current_user.role }}';
 var USER_ID = {{ current_user.id }};
+var CAN_DIAGNOSE = {{ 'true' if can_diagnose else 'false' }};
 var CAN_FINALIZE = {{ 'true' if can_finalize else 'false' }};
 var CAN_REOPEN = {{ 'true' if can_reopen else 'false' }};
 var CAN_VIEW_ALL = {{ 'true' if can_view_all else 'false' }};
@@ -984,7 +985,7 @@ function initResultsTable() {
                     // Doctor: Accept / Reject for assigned pending cases only
                     var _isDone = _DONE_STATUSES.indexOf((row.status || '').toUpperCase()) >= 0;
                     var _isInReview = (row.status || '').toUpperCase() === 'IN_REVIEW';
-                    if (USER_ROLE === 'doctor' && row.assigned_to_id && !_isDone) {
+                    if (CAN_DIAGNOSE && row.assigned_to_id && !_isDone) {
                         // Hide Accept if already IN_REVIEW (doctor already reviewing)
                         if (!_isInReview) {
                             html += ' <button class="btn btn-apple-sm" style="background:#f0fdf4;color:var(--apple-green);border:none;" '
