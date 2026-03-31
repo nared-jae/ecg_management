@@ -224,6 +224,87 @@
 
     <hr class="my-4">
 
+    <!-- ===== Section 5: Export Paths ===== -->
+    <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
+        <i class="bi bi-folder2-open me-2"></i><span data-i18n="export_title">Export Paths</span>
+        <span class="badge bg-success ms-2" style="font-size:0.7rem;font-weight:500;">
+            <i class="bi bi-lightning me-1"></i>No Restart Required
+        </span>
+    </h6>
+    <div class="alert d-flex align-items-start mb-3"
+         style="background:#f0fff4;color:#1a7f37;border:none;border-radius:var(--apple-radius-sm);font-size:0.85rem;">
+        <i class="bi bi-info-circle me-2 mt-1"></i>
+        <span data-i18n="export_info">Configure folder paths for exporting PDF reports and HL7 files. Supports local paths and UNC network paths (e.g., \\server\share\folder).</span>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6">
+            <label class="form-label fw-600" style="font-size:0.82rem;" data-i18n="export_lbl_pdf">PDF Export Path</label>
+            <input type="text" class="form-control" id="export_pdf_path"
+                   value="{{ export_settings.export_pdf_path or '' }}"
+                   placeholder="e.g. C:\ecg_exports\pdf or \\server\share\pdf">
+            <div class="form-text" style="font-size:0.75rem;" data-i18n="export_hint_pdf">Folder for sending PDF report files (Send PDF button)</div>
+        </div>
+        <div class="col-12 col-md-6">
+            <label class="form-label fw-600" style="font-size:0.82rem;" data-i18n="export_lbl_hl7">HL7 Export Path</label>
+            <input type="text" class="form-control" id="export_hl7_path"
+                   value="{{ export_settings.export_hl7_path or '' }}"
+                   placeholder="e.g. C:\ecg_exports\hl7 or \\server\share\hl7">
+            <div class="form-text" style="font-size:0.75rem;" data-i18n="export_hint_hl7">Folder for sending HL7 XML files (Send HL7 button)</div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <button class="btn btn-sm btn-primary" onclick="saveExportPaths()">
+            <i class="bi bi-check-lg me-1"></i>Save
+        </button>
+        <span id="exportStatus" class="ms-2 align-self-center" style="font-size:0.85rem;"></span>
+    </div>
+
+    <hr class="my-4">
+
+    <!-- ===== Section 6: API Integration ===== -->
+    {% if current_user.role in ['admin', 'it_admin'] %}
+    <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
+        <i class="bi bi-key me-2"></i><span data-i18n="api_title">API Integration</span>
+    </h6>
+    <div class="alert d-flex align-items-start mb-3"
+         style="background:#f0f5ff;color:var(--apple-blue);border:none;border-radius:var(--apple-radius-sm);font-size:0.85rem;">
+        <i class="bi bi-info-circle me-2 mt-1"></i>
+        <span data-i18n="api_info">Use this API key for external system integration (e.g., Hospital Information System). Send it via the X-API-Key header.</span>
+    </div>
+
+    <div class="mb-3" style="max-width:600px;">
+        <label class="form-label fw-600" style="font-size:0.82rem;" data-i18n="api_lbl_key">API Key</label>
+        <div class="input-group">
+            <input type="password" class="form-control" id="apiKeyInput" readonly
+                   style="font-family:monospace;font-size:0.9rem;letter-spacing:1px;">
+            <button class="btn btn-outline-secondary" type="button" onclick="toggleApiKeyVisibility()" title="Show/Hide">
+                <i class="bi bi-eye" id="apiKeyEyeIcon"></i>
+            </button>
+            <button class="btn btn-outline-secondary" type="button" onclick="copyApiKey()" title="Copy">
+                <i class="bi bi-clipboard"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-3">
+        <button class="btn btn-sm btn-outline-warning" onclick="regenerateApiKey()">
+            <i class="bi bi-arrow-repeat me-1"></i><span data-i18n="api_btn_regenerate">Regenerate Key</span>
+        </button>
+        <span class="text-muted align-self-center" style="font-size:0.78rem;" data-i18n="api_regenerate_hint">
+            Warning: regenerating will invalidate the current key
+        </span>
+    </div>
+
+    <div class="mb-4" style="background:var(--apple-bg-secondary);border-radius:var(--apple-radius-sm);padding:1rem;max-width:600px;">
+        <label class="form-label fw-600" style="font-size:0.82rem;" data-i18n="api_lbl_example">Example Usage</label>
+        <pre style="background:#1e1e1e;color:#d4d4d4;padding:12px;border-radius:8px;font-size:0.78rem;margin:0;overflow-x:auto;">curl -H "X-API-Key: YOUR_KEY" {{ request.host_url }}api/worklist</pre>
+    </div>
+
+    <hr class="my-4">
+    {% endif %}
+
     <!-- ===== Summary Table: Settings & Restart Requirements ===== -->
     <h6 class="fw-600 mb-3" style="color:var(--apple-text);">
         <i class="bi bi-list-check me-2"></i>Settings Reference
@@ -461,6 +542,21 @@ function testPacsConnection() {
         showStatus('pacsStatus', false, 'Request failed');
         document.getElementById('btnTestPacs').disabled = false;
     });
+}
+
+/* ---------- Export Paths ---------- */
+function saveExportPaths() {
+    const formData = new FormData();
+    formData.append('export_pdf_path', document.getElementById('export_pdf_path').value.trim());
+    formData.append('export_hl7_path', document.getElementById('export_hl7_path').value.trim());
+
+    fetch('{{ url_for("settings.index") }}', { method: 'POST', body: formData })
+        .then(r => {
+            if (r.redirected) {
+                showStatus('exportStatus', true, 'Saved');
+            }
+        })
+        .catch(() => showStatus('exportStatus', false, 'Save failed'));
 }
 
 /* ---------- Helper ---------- */

@@ -45,7 +45,10 @@ def _worklist_item_to_dataset(item) -> Dataset:
 
     ds.AdmissionID = item.admission_id or ""
     ds.RequestedProcedurePriority = item.requested_procedure_priority or "ROUTINE"
+    ds.ReferringPhysicianName = item.ordering_physician or ""
     ds.RequestingPhysician = ""
+    ds.InstitutionalDepartmentName = item.ordering_department or ""
+    ds.CurrentPatientLocation = item.bed_number or ""
 
     sps = Dataset()
     sps.ScheduledStationAETitle = item.scheduled_station_ae or ""

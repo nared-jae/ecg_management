@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, jsonify, send_file, current_app, flash, redirect, url_for, abort
 from flask_login import login_required, current_user
 
-from models import db, ECGResult, Patient, WorklistItem, AssignmentLog
+from models import db, ECGResult, Patient, WorklistItem, AssignmentLog, User, get_setting
 from services.ecg_parser import parse_dicom_ecg, ecg_data_to_json, extract_dicom_tags
 from utils.decorators import doctor_required
 
@@ -16,30 +16,13 @@ def _calc_stats(role, user_id):
     from datetime import date as date_cls
     _DONE = ("APPROVED", "FINALIZED", "COMPLETED")
     base_q = ECGResult.query.filter(ECGResult.is_deleted == False)
-    if role == "doctor":
-        # Include cases assigned to me OR cases I diagnosed
-        my_diagnosed_ids = db.session.query(AssignmentLog.ecg_result_id).filter(
-            AssignmentLog.actor_id == user_id,
-            AssignmentLog.action == "diagnosed",
-        )
-        base_q = base_q.filter(
-            db.or_(ECGResult.assigned_to_id == user_id, ECGResult.id.in_(my_diagnosed_ids))
-        )
 
-    if role == "doctor":
-        # Doctor: pending = assigned to me, not yet done
-        pending_count = ECGResult.query.filter(
-            ECGResult.is_deleted == False,
-            ECGResult.assigned_to_id == user_id,
-            ECGResult.status.notin_(_DONE),
-        ).count()
-    else:
-        # Nurse/Admin: pending = currently assigned (active), not yet done
-        pending_count = ECGResult.query.filter(
-            ECGResult.is_deleted == False,
-            ECGResult.assigned_to_id.isnot(None),
-            ECGResult.status.notin_(_DONE)
-        ).count()
+    # Pending = currently assigned (active), not yet done
+    pending_count = ECGResult.query.filter(
+        ECGResult.is_deleted == False,
+        ECGResult.assigned_to_id.isnot(None),
+        ECGResult.status.notin_(_DONE)
+    ).count()
 
     return {
         "unassigned": ECGResult.query.filter(
@@ -58,10 +41,21 @@ def _calc_stats(role, user_id):
 @results_bp.route("/")
 @login_required
 def index():
+    from models import has_permission
     default_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dicom")
+    expiry_enabled = get_setting("assignment_expiry_enabled", "true") == "true"
+    can_finalize = has_permission(current_user.role, "can_finalize")
+    can_reopen = has_permission(current_user.role, "can_reopen")
+    can_view_all = has_permission(current_user.role, "can_view_all")
+    can_diagnose = current_user.can_diagnose
     return render_template("results/index.html",
                            stats=_calc_stats(current_user.role, current_user.id),
-                           import_default_path=default_path)
+                           import_default_path=default_path,
+                           expiry_enabled=expiry_enabled,
+                           can_finalize=can_finalize,
+                           can_reopen=can_reopen,
+                           can_view_all=can_view_all,
+                           can_diagnose=can_diagnose)
 
 
 @results_bp.route("/api/stats")
@@ -80,38 +74,18 @@ def api_data():
     length = request.args.get("length", 25, type=int)
     search_value = request.args.get("search[value]", "").strip()
 
-    query = ECGResult.query.filter(ECGResult.is_deleted == False).outerjoin(Patient, ECGResult.patient_db_id == Patient.id).outerjoin(WorklistItem, ECGResult.worklist_id == WorklistItem.id)
+    query = ECGResult.query.filter(ECGResult.is_deleted == False).outerjoin(Patient, ECGResult.patient_db_id == Patient.id).outerjoin(WorklistItem, ECGResult.worklist_id == WorklistItem.id).outerjoin(User, ECGResult.assigned_to_id == User.id)
 
-    # Role-based visibility
+    # Role-based visibility — all roles see all results, filtered by view tab
     _DONE_STATUSES = ("APPROVED", "FINALIZED", "COMPLETED")
     view_filter = request.args.get("view", "all")
-    if current_user.role == "doctor":
-        if view_filter == "mine":
-            # My Cases: pending cases assigned to me
-            query = query.filter(
-                ECGResult.assigned_to_id == current_user.id,
-                ECGResult.status.notin_(_DONE_STATUSES),
-            )
-        elif view_filter == "unassigned":
-            # Unassigned pool: pending cases not yet assigned to anyone
-            query = query.filter(
-                ECGResult.assigned_to_id.is_(None),
-                ECGResult.status.notin_(_DONE_STATUSES),
-            )
-        else:
-            # All: cases assigned to me OR cases I diagnosed
-            my_diagnosed_ids = db.session.query(AssignmentLog.ecg_result_id).filter(
-                AssignmentLog.actor_id == current_user.id,
-                AssignmentLog.action == "diagnosed",
-            )
-            query = query.filter(
-                db.or_(
-                    ECGResult.assigned_to_id == current_user.id,
-                    ECGResult.id.in_(my_diagnosed_ids),
-                )
-            )
-    elif view_filter == "mine":
+    if view_filter == "mine":
         query = query.filter(ECGResult.assigned_to_id == current_user.id)
+    elif view_filter == "my_pending":
+        query = query.filter(
+            ECGResult.assigned_to_id == current_user.id,
+            ECGResult.status.notin_(_DONE_STATUSES),
+        )
     elif view_filter == "unassigned":
         query = query.filter(
             ECGResult.assigned_to_id.is_(None),
@@ -199,15 +173,32 @@ def api_data():
     )
 
     sort_map = {
-        "0": Patient.patient_id,
-        "1": Patient.patient_name,
-        "5": _exam_dt,
-        "7": status_order,
-        "10": ECGResult.accession_number,
+        "0": Patient.patient_id,                        # HN
+        "1": Patient.patient_name,                      # Patient Name
+        "2": Patient.sex,                               # Sex
+        "3": Patient.birth_date,                        # Age (sort by DOB)
+        "4": WorklistItem.requested_procedure_desc,     # Procedure
+        "5": _exam_dt,                                  # Exam Date
+        "6": status_order,                              # Status
+        # 7: Urgent — orderable: false
+        "8": WorklistItem.patient_source,               # Type
+        "9": WorklistItem.ordering_physician,           # Physician
+        "10": WorklistItem.performing_physician,        # Technician
+        "11": WorklistItem.scheduled_station_name,      # Station
+        "12": User.display_name,                        # Assigned To
+        # 13: Expires — orderable: false
+        "14": ECGResult.accession_number,               # Accession No.
+        # 15-17: PACS/PDF/HL7 — orderable: false
+        # 18: Actions — orderable: false
     }
     sort_col = sort_map.get(order_col, _exam_dt)
 
-    if order_dir == "desc":
+    # Age: reverse direction (ascending age = descending birth_date)
+    effective_dir = order_dir
+    if order_col == "3":
+        effective_dir = "desc" if order_dir == "asc" else "asc"
+
+    if effective_dir == "desc":
         query = query.order_by(sort_col.desc())
     else:
         query = query.order_by(sort_col.asc())
@@ -216,13 +207,22 @@ def api_data():
 
     data = []
     for r in items:
-        physician = ""
         procedure = ""
+        ordering_physician = ""
+        technician = ""
+        patient_source = ""
+        station_name = ""
+        priority = ""
         sex = ""
         age = ""
-        if r.worklist_item:
-            physician = r.worklist_item.performing_physician or r.worklist_item.ordering_physician or ""
-            procedure = r.worklist_item.requested_procedure_desc or ""
+        wl = r.worklist_item
+        if wl:
+            procedure = wl.requested_procedure_desc or ""
+            ordering_physician = wl.ordering_physician or ""
+            technician = wl.performing_physician or ""
+            patient_source = wl.patient_source or ""
+            station_name = wl.scheduled_station_name or ""
+            priority = wl.requested_procedure_priority or ""
         if r.patient:
             sex = r.patient.sex or ""
             if r.patient.birth_date and len(r.patient.birth_date) == 8:
@@ -242,7 +242,11 @@ def api_data():
             "procedure": procedure,
             "received_at": (r.study_datetime or r.received_at).strftime("%d/%m/%Y %H:%M") if (r.study_datetime or r.received_at) else "-",
             "status": r.status,
-            "physician": physician,
+            "ordering_physician": ordering_physician,
+            "technician": technician,
+            "patient_source": patient_source,
+            "station_name": station_name,
+            "priority": priority,
             "diagnosis": r.diagnosis or "",
             # Assignment & lock info
             "assigned_to": r.assigned_to.display_name if r.assigned_to else None,
@@ -278,15 +282,9 @@ def my_worklist():
 def detail(result_id):
     result = ECGResult.query.get_or_404(result_id)
 
-    # Visibility guard: doctors can only open cases assigned specifically to them
-    if current_user.role == "doctor":
-        if result.assigned_to_id != current_user.id:
-            flash("This case is not assigned to you, or has expired and returned to the central queue. | เคสนี้ไม่ได้ถูกมอบหมายให้คุณ หรือหมดเวลาและถูกคืนกลับสู่คิวส่วนกลางแล้ว", "warning")
-            return redirect(url_for("results.my_worklist"))
-
-    # Concurrency lock: try to acquire when assigned doctor opens the case
+    # Concurrency lock: try to acquire when assigned doctor/cardio opens their case
     lock_status = {"success": True, "locked_by": None}
-    is_assigned_doctor = (current_user.role == "doctor" and result.assigned_to_id == current_user.id)
+    is_assigned_doctor = (current_user.can_diagnose and result.assigned_to_id == current_user.id)
     if is_assigned_doctor:
         if result.locked_by_id and result.locked_by_id != current_user.id:
             locker = result.locked_by
@@ -333,8 +331,15 @@ def detail(result_id):
         if ecg_data:
             ecg_json = ecg_data_to_json(ecg_data)
 
+    # Can user edit diagnosis? Must have can_diagnose permission AND be assigned to this case
+    from models import has_permission
+    _can_edit = current_user.can_diagnose and result.assigned_to_id == current_user.id
+    _can_revise = _can_edit and result.status == "APPROVED"
+    _can_reopen = has_permission(current_user.role, "can_reopen") and result.status == "FINALIZED"
+
     return render_template("results/detail.html", result=result, ecg_json=ecg_json,
-                           lock_status=lock_status)
+                           lock_status=lock_status, _can_edit=_can_edit, _can_revise=_can_revise,
+                           _can_reopen=_can_reopen)
 
 
 @results_bp.route("/download/<int:result_id>")
@@ -515,7 +520,7 @@ def save_diagnosis(result_id):
             "force_redirect": True,
         }), 409
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     diagnosis = data.get("diagnosis", "").strip()
     diagnosed_by = data.get("diagnosed_by", "").strip()
     action = data.get("action", "save")  # save, submit, submit_next
@@ -817,13 +822,20 @@ def reset_status(result_id):
 @results_bp.route("/<int:result_id>/finalize", methods=["POST"])
 @login_required
 def finalize_result(result_id):
-    """Finalize an APPROVED case — locks it permanently (nurse/admin only)."""
-    if current_user.role not in ("admin", "it_admin", "nurse"):
+    """Finalize an APPROVED case — locks it permanently (assigned doctor with can_finalize)."""
+    from models import has_permission
+    if not has_permission(current_user.role, "can_finalize"):
         return jsonify({"success": False, "error": "Not authorised | ไม่มีสิทธิ์"}), 403
 
     result = ECGResult.query.get_or_404(result_id)
     if result.is_deleted:
         return jsonify({"success": False, "error": "Result is deleted"}), 400
+
+    if result.assigned_to_id != current_user.id:
+        return jsonify({
+            "success": False,
+            "error": "Only the assigned doctor can finalize | เฉพาะแพทย์เจ้าของเคสเท่านั้น",
+        }), 403
 
     if result.status != "APPROVED":
         return jsonify({
@@ -847,6 +859,40 @@ def finalize_result(result_id):
     return jsonify({
         "success": True,
         "message": f"Result finalized | ผลตรวจ {result.accession_number} ถูก Finalize แล้ว",
+    })
+
+
+@results_bp.route("/<int:result_id>/reopen", methods=["POST"])
+@login_required
+def reopen_result(result_id):
+    """Reopen a FINALIZED case back to APPROVED so the doctor can revise."""
+    from models import has_permission
+    if not has_permission(current_user.role, "can_reopen"):
+        return jsonify({"success": False, "error": "Not authorised | ไม่มีสิทธิ์"}), 403
+
+    result = ECGResult.query.get_or_404(result_id)
+    if result.is_deleted:
+        return jsonify({"success": False, "error": "Result is deleted"}), 400
+
+    if result.status != "FINALIZED":
+        return jsonify({
+            "success": False,
+            "error": "Only FINALIZED results can be reopened | Reopen ได้เฉพาะผลที่ Finalized แล้ว",
+        }), 400
+
+    result.status = "APPROVED"
+
+    db.session.add(AssignmentLog(
+        ecg_result_id=result_id,
+        action="reopened",
+        actor_id=current_user.id,
+        notes=f"Reopened by {current_user.display_name}",
+    ))
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": f"Result reopened | ผลตรวจ {result.accession_number} ถูก Reopen แล้ว",
     })
 
 
@@ -1034,10 +1080,16 @@ def _import_dicom_files(directory: str) -> int:
             db.session.flush()
 
         # Extract study date/time from DICOM tags
+        manufacturer_str = str(getattr(ds, "Manufacturer", "") or "").upper()
         study_dt = None
         acq_dt_str = str(getattr(ds, "AcquisitionDateTime", "") or "").strip()
         sd_str = str(getattr(ds, "StudyDate", "") or "").strip()
         st_str = str(getattr(ds, "StudyTime", "") or "").strip()
+        if "LEPU" in manufacturer_str and (acq_dt_str.startswith("00") or sd_str.startswith("00")):
+            # Lepu stores dates in non-standard format; cannot reliably decode the year.
+            # Leave study_dt = None so the system falls back to received_at.
+            acq_dt_str = ""
+            sd_str = ""
         try:
             if acq_dt_str and len(acq_dt_str) >= 14:
                 study_dt = datetime.strptime(acq_dt_str[:14], "%Y%m%d%H%M%S")

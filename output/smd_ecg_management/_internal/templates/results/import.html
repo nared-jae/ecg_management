@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}นำเข้าไฟล์ DICOM - ECG Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>นำเข้าไฟล์ DICOM</h1>
+    <p>นำเข้าไฟล์ผลตรวจ ECG จากโฟลเดอร์</p>
+</div>
+
+<form method="POST" class="apple-form" style="max-width: 700px;">
+    <div class="form-section">
+        <div class="form-section-title"><i class="bi bi-folder2-open me-2"></i>เลือกโฟลเดอร์</div>
+        <div class="mb-3">
+            <label class="form-label">ที่อยู่โฟลเดอร์ที่มีไฟล์ .dcm</label>
+            <input type="text" class="form-control" name="import_path"
+                   value="{{ default_path }}" required>
+            <div class="form-text" style="color: var(--apple-text-secondary);">
+                ระบบจะค้นหาไฟล์ .dcm ทั้งหมดในโฟลเดอร์นี้ (รวม sub-folder) และนำเข้าอัตโนมัติ
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end mt-2 mb-4">
+        <a href="{{ url_for('results.index') }}" class="btn btn-apple-secondary">
+            <i class="bi bi-x-lg me-1"></i>ยกเลิก
+        </a>
+        <button type="submit" class="btn btn-apple">
+            <i class="bi bi-download me-1"></i>นำเข้า
+        </button>
+    </div>
+</form>
+{% endblock %}

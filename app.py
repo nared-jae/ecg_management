@@ -1,12 +1,16 @@
+import os
 import uuid
 from datetime import date, datetime, timedelta
+
+# PyInstaller hidden imports for SocketIO async driver
+import engineio.async_drivers.threading  # noqa: F401
 
 from flask import Flask
 from flask_login import LoginManager
 
 from config import Config
 from extensions import socketio, scheduler
-from models import db, User, Patient, WorklistItem
+from models import db, User, Patient, WorklistItem, Station
 
 
 def _auto_sync_mwl(flask_app):
@@ -59,6 +63,10 @@ def _check_assignment_timeouts(flask_app):
     from models import ECGResult, AssignmentLog, get_setting
 
     with flask_app.app_context():
+        # Skip if expiry is disabled
+        if get_setting("assignment_expiry_enabled", "true") != "true":
+            return
+
         now = datetime.now()
         timeout_minutes = int(get_setting("assignment_timeout_minutes", 30))
         expired = (
@@ -239,6 +247,13 @@ def _auto_migrate(db):
         db.session.commit()
         print("[Migrate] Added pdf_export_status, hl7_export_status columns to ecg_results")
 
+    # WorklistItem: add completed_manually column
+    wl_cols = [c["name"] for c in inspector.get_columns("worklist_items")]
+    if "completed_manually" not in wl_cols:
+        db.session.execute(sqlalchemy.text("ALTER TABLE worklist_items ADD COLUMN completed_manually BOOLEAN DEFAULT 0"))
+        db.session.commit()
+        print("[Migrate] Added completed_manually column to worklist_items")
+
     # ECG Results: add soft delete columns
     if "is_deleted" not in result_cols:
         db.session.execute(sqlalchemy.text("ALTER TABLE ecg_results ADD COLUMN is_deleted BOOLEAN DEFAULT 0"))
@@ -247,6 +262,19 @@ def _auto_migrate(db):
         db.session.execute(sqlalchemy.text("ALTER TABLE ecg_results ADD COLUMN original_file_path VARCHAR(500)"))
         db.session.commit()
         print("[Migrate] Added soft delete columns to ecg_results")
+
+    # Station table (new)
+    if "stations" not in inspector.get_table_names():
+        from models import Station
+        Station.__table__.create(db.engine)
+        db.session.commit()
+        print("[Migrate] Created stations table")
+    else:
+        st_cols = [c["name"] for c in inspector.get_columns("stations")]
+        if "location" not in st_cols:
+            db.session.execute(sqlalchemy.text("ALTER TABLE stations ADD COLUMN location VARCHAR(100)"))
+            db.session.commit()
+            print("[Migrate] Added location column to stations")
 
 
 def _backfill_study_datetime(db):
@@ -299,11 +327,12 @@ def _seed_default_data(stable_uid_from_text=None):
 
     # Demo role users
     role_seeds = [
-        {"username": "nurse01",   "display_name": "พยาบาล สมใจ",    "role": "nurse",    "password": "nurse123"},
-        {"username": "doctor01",  "display_name": "นพ. วิชัย ใจดี", "role": "doctor",   "password": "doctor123"},
-        {"username": "doctor02",  "display_name": "นพ. สมชาย เก่ง", "role": "doctor",   "password": "doctor123"},
-        {"username": "viewer01",  "display_name": "Viewer User",     "role": "viewer",   "password": "viewer123"},
-        {"username": "itadmin01", "display_name": "IT Admin",        "role": "it_admin", "password": "itadmin123"},
+        {"username": "nurse01",   "display_name": "พยาบาล สมใจ",       "role": "nurse",    "password": "nurse123"},
+        {"username": "doctor01",  "display_name": "นพ. วิชัย ใจดี",    "role": "doctor",   "password": "doctor123"},
+        {"username": "doctor02",  "display_name": "นพ. สมชาย เก่ง",    "role": "doctor",   "password": "doctor123"},
+        {"username": "cardio01",  "display_name": "นพ. หัวใจ รักษ์ดี",  "role": "cardio",   "password": "cardio123"},
+        {"username": "viewer01",  "display_name": "Viewer User",        "role": "viewer",   "password": "viewer123"},
+        {"username": "itadmin01", "display_name": "IT Admin",           "role": "it_admin", "password": "itadmin123"},
     ]
     for seed in role_seeds:
         if not User.query.filter_by(username=seed["username"]).first():
@@ -311,6 +340,24 @@ def _seed_default_data(stable_uid_from_text=None):
             u.set_password(seed["password"])
             db.session.add(u)
     db.session.commit()
+
+    # Display all user accounts on startup
+    all_users = User.query.order_by(User.role, User.username).all()
+    print("\n" + "=" * 70)
+    print("  USER ACCOUNTS")
+    print("=" * 70)
+    print(f"  {'USERNAME':<15} {'ROLE':<15} {'DISPLAY NAME':<25} {'STATUS'}")
+    print("-" * 70)
+    for u in all_users:
+        status = "Active" if u.is_active_user else "Disabled"
+        print(f"  {u.username:<15} {u.role:<15} {u.display_name:<25} {status}")
+    print("=" * 70 + "\n")
+
+    # Default stations
+    if Station.query.count() == 0:
+        db.session.add(Station(ae_title="CP150", name="ECG-ROOM1", description="Default ECG Station"))
+        db.session.commit()
+        print("[Seed] Created default station (CP150 / ECG-ROOM1)")
 
     # Sample patients and worklist items
     if Patient.query.count() == 0 and stable_uid_from_text:
@@ -442,6 +489,8 @@ def _seed_default_data(stable_uid_from_text=None):
         {"key": "scp_store_ae_title", "value": "ECG_STORE", "label": "Store SCP AE Title", "description": "AE Title for the local Store SCP server (requires restart)"},
         {"key": "scp_store_port", "value": "6702", "label": "Store SCP Port", "description": "Port for the local Store SCP server (requires restart)"},
         {"key": "scp_storage_dir", "value": "", "label": "DICOM Storage Directory", "description": "Directory for storing received DICOM files (requires restart)"},
+        # Assignment expiry toggle
+        {"key": "assignment_expiry_enabled", "value": "true", "label": "Assignment Expiry", "description": "เปิด/ปิด countdown timer สำหรับเคสที่ถูก assign (ถ้าปิด เคสจะเปลี่ยนเป็น IN_REVIEW ทันทีเมื่อ assign)"},
         # Export to Folder
         {"key": "export_pdf_path", "value": "", "label": "Export PDF Path", "description": "โฟลเดอร์สำหรับส่งไฟล์ PDF (เช่น D:\\ecg_export\\pdf หรือ \\\\server\\share\\pdf)"},
         {"key": "export_hl7_path", "value": "", "label": "Export HL7 Path", "description": "โฟลเดอร์สำหรับส่งไฟล์ HL7 XML (เช่น D:\\ecg_export\\hl7 หรือ \\\\server\\share\\hl7)"},
@@ -497,6 +546,7 @@ def start_dicom_servers(app):
 if __name__ == "__main__":
     app = create_app()
     start_dicom_servers(app)
+    debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
 
     print("\n" + "=" * 60)
     print("  ECG Management System")
@@ -504,8 +554,9 @@ if __name__ == "__main__":
     print(f"  MWL SCP:  Port {app.config['MWL_PORT']} (AE: {app.config['MWL_AE_TITLE']})")
     print(f"  Store SCP: Port {app.config['STORE_PORT']} (AE: {app.config['STORE_AE_TITLE']})")
     print(f"  Storage:  {app.config['DICOM_STORAGE_DIR']}")
-    print("  Login: admin/admin123  |  nurse01/nurse123")
-    print("         doctor01/doctor123  |  doctor02/doctor123")
+    if debug_mode:
+        print("  Login: admin/admin123  |  nurse01/nurse123")
+        print("         doctor01/doctor123  |  doctor02/doctor123")
     print("=" * 60 + "\n")
 
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True, use_reloader=False, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=debug_mode, use_reloader=False, allow_unsafe_werkzeug=True)

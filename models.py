@@ -15,7 +15,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     display_name = db.Column(db.String(120), nullable=False)
     display_name_en = db.Column(db.String(120), nullable=True)  # English name for DICOM/MWL
-    role = db.Column(db.String(20), default="user")  # admin, doctor, nurse, it_admin, viewer, user
+    role = db.Column(db.String(20), default="user")  # admin, doctor, cardio, nurse, it_admin, viewer, user
     is_active_user = db.Column(db.Boolean, default=True)
     can_be_assigned = db.Column(db.Boolean, default=False)  # Show in Assign Case dropdown
     created_at = db.Column(db.DateTime, default=datetime.now)
@@ -32,13 +32,13 @@ class User(UserMixin, db.Model):
 
     @property
     def can_assign(self):
-        """Nurses and admins can assign cases to doctors."""
-        return self.role in ("nurse", "admin")
+        """Check if user can assign cases (configurable via settings)."""
+        return has_permission(self.role, "can_assign")
 
     @property
     def can_diagnose(self):
-        """Doctors and admins can submit diagnoses."""
-        return self.role in ("doctor", "admin")
+        """Check if user can write/submit diagnoses (configurable via settings)."""
+        return has_permission(self.role, "can_diagnose")
 
 
 class Patient(db.Model):
@@ -89,6 +89,7 @@ class WorklistItem(db.Model):
     clinical_info = db.Column(db.String(500))        # ข้อมูลทางคลินิก
 
     source = db.Column(db.String(20), default="MANUAL")  # MANUAL | EXTERNAL
+    completed_manually = db.Column(db.Boolean, default=False)  # True = manual completion via UI
 
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
@@ -196,6 +197,20 @@ class SystemSetting(db.Model):
     updated_by = db.relationship("User", foreign_keys=[updated_by_id])
 
 
+class Station(db.Model):
+    """ECG station/machine registry."""
+    __tablename__ = "stations"
+
+    id          = db.Column(db.Integer, primary_key=True)
+    ae_title    = db.Column(db.String(16))                        # Optional DICOM AE Title
+    name        = db.Column(db.String(50), nullable=False, unique=True)
+    location    = db.Column(db.String(100))                       # Current room/department
+    description = db.Column(db.String(200))
+    is_active   = db.Column(db.Boolean, default=True)
+    created_at  = db.Column(db.DateTime, default=datetime.now)
+    updated_at  = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 class AuditLog(db.Model):
     """General audit trail for destructive or sensitive actions (no FK to deleted records)."""
     __tablename__ = "audit_logs"
@@ -213,3 +228,43 @@ def get_setting(key: str, default=None):
     """Read a system setting from DB; return default if not found."""
     s = SystemSetting.query.filter_by(key=key).first()
     return s.value if s else default
+
+
+# --------------- Role Permission System ---------------
+
+ALL_ROLES = ["admin", "cardio", "doctor", "nurse", "it_admin", "viewer"]
+ALL_PERMISSIONS = ["can_diagnose", "can_assign", "can_finalize", "can_reopen", "can_delete", "can_view_all"]
+
+_DEFAULT_PERMS = {
+    # admin: full permissions
+    "perm_admin_can_diagnose": "true",  "perm_admin_can_assign": "true",
+    "perm_admin_can_finalize": "true",  "perm_admin_can_reopen": "true",
+    "perm_admin_can_delete": "true",    "perm_admin_can_view_all": "true",
+    # cardio: diagnose + finalize own cases + reopen
+    "perm_cardio_can_diagnose": "true", "perm_cardio_can_assign": "false",
+    "perm_cardio_can_finalize": "true", "perm_cardio_can_reopen": "true",
+    "perm_cardio_can_delete": "false",  "perm_cardio_can_view_all": "true",
+    # doctor: view only (no edit diagnosis by default)
+    "perm_doctor_can_diagnose": "false", "perm_doctor_can_assign": "false",
+    "perm_doctor_can_finalize": "false", "perm_doctor_can_reopen": "false",
+    "perm_doctor_can_delete": "false",   "perm_doctor_can_view_all": "true",
+    # nurse: assign + delete
+    "perm_nurse_can_diagnose": "false", "perm_nurse_can_assign": "true",
+    "perm_nurse_can_finalize": "false", "perm_nurse_can_reopen": "false",
+    "perm_nurse_can_delete": "true",    "perm_nurse_can_view_all": "true",
+    # it_admin: view only
+    "perm_it_admin_can_diagnose": "false", "perm_it_admin_can_assign": "false",
+    "perm_it_admin_can_finalize": "false", "perm_it_admin_can_reopen": "false",
+    "perm_it_admin_can_delete": "false",   "perm_it_admin_can_view_all": "true",
+    # viewer: view only
+    "perm_viewer_can_diagnose": "false", "perm_viewer_can_assign": "false",
+    "perm_viewer_can_finalize": "false", "perm_viewer_can_reopen": "false",
+    "perm_viewer_can_delete": "false",   "perm_viewer_can_view_all": "true",
+}
+
+
+def has_permission(role: str, permission: str) -> bool:
+    """Check if a role has a specific permission (reads from SystemSetting, falls back to defaults)."""
+    key = f"perm_{role}_{permission}"
+    default = _DEFAULT_PERMS.get(key, "false")
+    return get_setting(key, default) == "true"

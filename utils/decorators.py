@@ -22,4 +22,4 @@ def nurse_required(f):
 
 
 def doctor_required(f):
-    return roles_required("doctor", "admin")(f)
+    return roles_required("doctor", "cardio", "admin")(f)

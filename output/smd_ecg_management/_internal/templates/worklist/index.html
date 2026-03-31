@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Worklist - SMD ECG Management{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1>Worklist</h1>
+        <p data-i18n="wl_subtitle">ECG Examination Worklist Management</p>
+    </div>
+    <a href="{{ url_for('worklist.add') }}" class="btn btn-apple">
+        <i class="bi bi-plus-lg me-1"></i><span data-i18n="wl_add">Add Item</span>
+    </a>
+</div>
+
+<div class="apple-table-wrapper">
+    <table id="worklistTable" class="table" style="width: 100%;">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>HN</th>
+                <th data-i18n="wl_th_patient">Patient Name</th>
+                <th>Accession No.</th>
+                <th data-i18n="wl_th_procedure">Procedure</th>
+                <th data-i18n="wl_th_date">Scheduled Date</th>
+                <th data-i18n="wl_th_time">Time</th>
+                <th>Priority</th>
+                <th data-i18n="wl_th_status">Status</th>
+                <th data-i18n="wl_th_actions">Actions</th>
+            </tr>
+        </thead>
+    </table>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--apple-radius); border: none;">
+            <div class="modal-body text-center p-4">
+                <div style="width:56px;height:56px;border-radius:50%;background:#fff0f0;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">
+                    <i class="bi bi-trash3" style="font-size:1.5rem;color:var(--apple-red);"></i>
+                </div>
+                <h5 style="font-weight:500;" data-i18n="wl_confirm_delete">Confirm Delete</h5>
+                <p style="color:var(--apple-text-secondary);font-size:0.9rem;" data-i18n="wl_delete_msg">Are you sure you want to delete this item? This action cannot be undone.</p>
+                <div class="d-flex gap-2 justify-content-center mt-3">
+                    <button type="button" class="btn btn-apple-secondary" data-bs-dismiss="modal" data-i18n="wl_cancel">Cancel</button>
+                    <button type="button" class="btn btn-apple-danger" id="confirmDelete" data-i18n="wl_delete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var WL_I18N = {
+    en: {
+        wl_subtitle: 'ECG Examination Worklist Management',
+        wl_add: 'Add Item',
+        wl_th_patient: 'Patient Name',
+        wl_th_procedure: 'Procedure',
+        wl_th_date: 'Scheduled Date',
+        wl_th_time: 'Time',
+        wl_th_status: 'Status',
+        wl_th_actions: 'Actions',
+        wl_confirm_delete: 'Confirm Delete',
+        wl_delete_msg: 'Are you sure you want to delete this item? This action cannot be undone.',
+        wl_cancel: 'Cancel',
+        wl_delete: 'Delete',
+        dt_search: 'Search:',
+        dt_lengthMenu: 'Show _MENU_ entries',
+        dt_info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+        dt_infoEmpty: 'No data available',
+        dt_infoFiltered: '(filtered from _MAX_ entries)',
+        dt_zeroRecords: 'No matching records found',
+        dt_first: 'First', dt_last: 'Last', dt_next: 'Next', dt_previous: 'Previous',
+        dt_processing: 'Loading...',
+        btn_edit: 'Edit',
+        btn_delete: 'Delete',
+        err_delete: 'Error deleting item'
+    },
+    th: {
+        wl_subtitle: 'จัดการรายการตรวจคลื่นไฟฟ้าหัวใจ',
+        wl_add: 'เพิ่มรายการ',
+        wl_th_patient: 'ชื่อผู้ป่วย',
+        wl_th_procedure: 'รายการ',
+        wl_th_date: 'วันที่นัด',
+        wl_th_time: 'เวลา',
+        wl_th_status: 'สถานะ',
+        wl_th_actions: 'จัดการ',
+        wl_confirm_delete: 'ยืนยันการลบ',
+        wl_delete_msg: 'คุณต้องการลบรายการนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
+        wl_cancel: 'ยกเลิก',
+        wl_delete: 'ลบรายการ',
+        dt_search: 'ค้นหา:',
+        dt_lengthMenu: 'แสดง _MENU_ รายการ',
+        dt_info: 'แสดง _START_ ถึง _END_ จาก _TOTAL_ รายการ',
+        dt_infoEmpty: 'ไม่มีข้อมูล',
+        dt_infoFiltered: '(กรองจาก _MAX_ รายการ)',
+        dt_zeroRecords: 'ไม่พบข้อมูลที่ค้นหา',
+        dt_first: 'หน้าแรก', dt_last: 'หน้าสุดท้าย', dt_next: 'ถัดไป', dt_previous: 'ก่อนหน้า',
+        dt_processing: 'กำลังโหลด...',
+        btn_edit: 'แก้ไข',
+        btn_delete: 'ลบ',
+        err_delete: 'เกิดข้อผิดพลาดในการลบ'
+    }
+};
+
+var currentLang = localStorage.getItem('ecg_lang') || 'en';
+
+function getLang(key) {
+    return (WL_I18N[currentLang] && WL_I18N[currentLang][key]) || (WL_I18N.en[key]) || key;
+}
+
+function setLanguage(lang) {
+    currentLang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (WL_I18N[lang] && WL_I18N[lang][key]) {
+            el.textContent = WL_I18N[lang][key];
+        }
+    });
+    // Reinitialize DataTable language
+    if (typeof table !== 'undefined' && table) {
+        table.destroy();
+        initTable();
+    }
+}
+
+var table = null;
+
+function initTable() {
+    table = $('#worklistTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: '{{ url_for("worklist.api_data") }}',
+        columns: [
+            { data: 'id', width: '50px' },
+            { data: 'patient_id' },
+            { data: 'patient_name' },
+            { data: 'accession_number' },
+            { data: 'procedure_desc' },
+            { data: 'scheduled_date' },
+            { data: 'scheduled_time', width: '70px' },
+            {
+                data: 'priority',
+                render: function(data) {
+                    var cls = data === 'URGENT' ? 'badge-urgent' : 'badge-routine';
+                    return '<span class="badge badge-apple ' + cls + '">' + data + '</span>';
+                }
+            },
+            {
+                data: 'status',
+                render: function(data) {
+                    var cls = 'badge-' + data.toLowerCase().replace('_', '-');
+                    return '<span class="badge badge-apple ' + cls + '">' + data + '</span>';
+                }
+            },
+            {
+                data: 'id',
+                orderable: false,
+                render: function(data) {
+                    return '<div class="d-flex gap-1">' +
+                        '<a href="/worklist/edit/' + data + '" class="btn btn-apple-secondary btn-apple-sm" title="' + getLang('btn_edit') + '"><i class="bi bi-pencil"></i></a>' +
+                        '<button class="btn btn-apple-danger btn-apple-sm btn-delete" data-id="' + data + '" title="' + getLang('btn_delete') + '"><i class="bi bi-trash3"></i></button>' +
+                        '</div>';
+                }
+            }
+        ],
+        order: [[0, 'desc']],
+        language: {
+            search: getLang('dt_search'),
+            lengthMenu: getLang('dt_lengthMenu'),
+            info: getLang('dt_info'),
+            infoEmpty: getLang('dt_infoEmpty'),
+            infoFiltered: getLang('dt_infoFiltered'),
+            zeroRecords: getLang('dt_zeroRecords'),
+            paginate: { first: getLang('dt_first'), last: getLang('dt_last'), next: getLang('dt_next'), previous: getLang('dt_previous') },
+            processing: getLang('dt_processing')
+        },
+        pageLength: 25,
+        dom: '<"d-flex justify-content-between align-items-center mb-3"lf>rtip'
+    });
+}
+
+$(document).ready(function() {
+    initTable();
+
+    var deleteId = null;
+    $(document).on('click', '.btn-delete', function() {
+        deleteId = $(this).data('id');
+        $('#deleteModal').modal('show');
+    });
+
+    $('#confirmDelete').click(function() {
+        if (deleteId) {
+            $.post('/worklist/delete/' + deleteId, {}, function() {
+                $('#deleteModal').modal('hide');
+                table.ajax.reload();
+            }).fail(function() {
+                alert(getLang('err_delete'));
+                $('#deleteModal').modal('hide');
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

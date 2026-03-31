@@ -314,9 +314,13 @@
         <!-- Date Filter -->
         <div class="filter-card">
             <div class="filter-title"><i class="bi bi-calendar3"></i> <span data-i18n="et_filter_date">Test Date</span></div>
-            <input type="date" class="form-control" id="filterDate"
+            <label class="filter-check-label" style="font-size:0.8rem;color:var(--apple-text-secondary);margin-bottom:2px;" data-i18n="et_filter_from">From</label>
+            <input type="date" class="form-control form-control-sm mb-2" id="filterDateFrom"
                    onchange="applyFilters()" style="font-size:0.88rem;">
-            <button class="btn btn-apple-secondary btn-apple-sm w-100 mt-2" onclick="clearDateFilter()">
+            <label class="filter-check-label" style="font-size:0.8rem;color:var(--apple-text-secondary);margin-bottom:2px;" data-i18n="et_filter_to">To</label>
+            <input type="date" class="form-control form-control-sm mb-2" id="filterDateTo"
+                   onchange="applyFilters()" style="font-size:0.88rem;">
+            <button class="btn btn-apple-secondary btn-apple-sm w-100 mt-1" onclick="clearDateFilter()">
                 <i class="bi bi-x-lg me-1"></i><span data-i18n="et_show_all">Show All</span>
             </button>
         </div>
@@ -354,6 +358,18 @@
                 <input type="checkbox" value="CANCELLED" class="status-filter" onchange="applyFilters()"> <span data-i18n="et_cancelled">Cancelled</span>
             </label>
         </div>
+
+        <!-- Station Filter -->
+        {% if stations %}
+        <div class="filter-card">
+            <div class="filter-title"><i class="bi bi-display"></i> <span data-i18n="et_filter_station">Station</span></div>
+            {% for st in stations %}
+            <label class="filter-check">
+                <input type="checkbox" value="{{ st.name }}" class="station-filter" onchange="applyFilters()"> {{ st.name }}
+            </label>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 
     <!-- Main Panel -->
@@ -366,7 +382,7 @@
             </button>
             <button class="filter-toggle-btn primary" onclick="openNewTestModal()">
                 <i class="bi bi-plus-lg"></i>
-                <span data-i18n="et_new_test">New Test</span>
+                <span data-i18n="et_new_order">New Order</span>
             </button>
             <button class="filter-toggle-btn" onclick="syncWorklist()" id="btnSyncMwl" title="Sync from external Worklist Server">
                 <i class="bi bi-cloud-download"></i>
@@ -409,7 +425,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" style="font-weight:500;">
-                    <i class="bi bi-plus-circle me-2" style="color:var(--apple-blue);"></i><span id="modalTitleText" data-i18n="et_modal_title">Create New Test</span>
+                    <i class="bi bi-plus-circle me-2" style="color:var(--apple-blue);"></i><span id="modalTitleText" data-i18n="et_modal_title">Create New Order</span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -549,13 +565,18 @@
                             <i class="bi bi-cpu"></i> <span data-i18n="et_sec_station">Station Information</span>
                         </div>
                         <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label" data-i18n="et_lbl_station_ae">Station AE</label>
-                                <input type="text" class="form-control" name="station_ae" value="CP150">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label" data-i18n="et_lbl_station_name">Station Name</label>
-                                <input type="text" class="form-control" name="station_name" value="ECG-ROOM1">
+                            <div class="col-md-6">
+                                <label class="form-label" data-i18n="et_lbl_station">Station</label>
+                                <select class="form-select" name="station_name" id="selectStation" onchange="onStationSelect()">
+                                    {% for st in stations %}
+                                    <option value="{{ st.name }}" data-ae="{{ st.ae_title or '' }}"
+                                            {% if loop.first %}selected{% endif %}>
+                                        {{ st.name }}{% if st.ae_title %} ({{ st.ae_title }}){% endif %}{% if st.location %} - {{ st.location }}{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <input type="hidden" name="station_ae" id="hiddenStationAE"
+                                       value="{{ stations[0].ae_title if stations and stations[0].ae_title else '' }}">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label" data-i18n="et_lbl_sched_date">Scheduled Date</label>
@@ -563,7 +584,12 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label" data-i18n="et_lbl_sched_time">Scheduled Time</label>
-                                <input type="time" class="form-control" name="scheduled_time" id="inputSchedTime">
+                                <div class="d-flex align-items-center gap-1">
+                                    <select class="form-select" id="selectSchedHour" onchange="updateSchedTime()" style="width:5rem;text-align:center;"></select>
+                                    <span class="fw-bold fs-5">:</span>
+                                    <select class="form-select" id="selectSchedMinute" onchange="updateSchedTime()" style="width:5rem;text-align:center;"></select>
+                                </div>
+                                <input type="hidden" name="scheduled_time" id="inputSchedTime">
                             </div>
                         </div>
                     </div>
@@ -573,7 +599,7 @@
                         <i class="bi bi-x-lg me-1"></i><span data-i18n="et_btn_cancel">Cancel</span>
                     </button>
                     <button type="submit" class="btn btn-apple" id="btnSubmitTest">
-                        <i class="bi bi-check-lg me-1"></i><span data-i18n="et_btn_create">Create Test</span>
+                        <i class="bi bi-check-lg me-1"></i><span data-i18n="et_btn_create">Create Order</span>
                     </button>
                 </div>
             </form>
@@ -631,7 +657,12 @@ var ET_I18N = {
         et_th_status: 'Status',
         et_th_type: 'Type',
         et_th_physician: 'Physician',
-        et_modal_title: 'Create New Test',
+        et_th_ordering_physician: 'Physician',
+        et_th_technician: 'Technician',
+        et_th_sched_date: 'Scheduled Date',
+        et_th_station: 'Station',
+        et_filter_station: 'Station',
+        et_modal_title: 'Create New Order',
         et_sec_patient: 'Patient Information',
         et_ph_hn: 'HN Number',
         et_lbl_name: 'Full Name',
@@ -656,7 +687,7 @@ var ET_I18N = {
         et_lbl_sched_date: 'Scheduled Date',
         et_lbl_sched_time: 'Scheduled Time',
         et_btn_cancel: 'Cancel',
-        et_btn_create: 'Create Test',
+        et_btn_create: 'Create Order',
         et_btn_saving: 'Saving...',
         et_patient_found: 'Patient found in system',
         et_new_patient: 'New patient',
@@ -664,16 +695,16 @@ var ET_I18N = {
         et_routine_marked: 'Marked as ROUTINE',
         et_status_updated: 'Status updated successfully',
         et_error: 'An error occurred',
-        et_modal_edit_title: 'Edit Test',
+        et_modal_edit_title: 'Edit Order',
         et_btn_save: 'Save Changes',
         et_btn_delete: 'Delete',
         et_confirm_delete: 'Confirm Delete',
-        et_delete_msg: 'Are you sure you want to delete this test? This action cannot be undone.',
+        et_delete_msg: 'Are you sure you want to delete this order? This action cannot be undone.',
         et_th_hn: 'HN',
         et_th_accession: 'Accession No.',
         et_th_urgent: 'Urgent',
         et_th_actions: 'Actions',
-        et_new_test: 'New Test',
+        et_new_order: 'New Order',
         et_view_report: 'View Report',
         et_urgent_btn: 'Urgent',
         et_select_status: '-- Select --',
@@ -685,13 +716,14 @@ var ET_I18N = {
         et_opt_urgent: 'Urgent',
         et_lbl_accession: 'Accession Number',
         et_lbl_priority: 'Priority',
-        et_lbl_station_ae: 'Station AE',
-        et_lbl_station_name: 'Station Name',
+        et_lbl_station: 'Station',
+        et_filter_from: 'From',
+        et_filter_to: 'To',
         et_sex_male: 'Male',
         et_sex_female: 'Female',
         et_sex_other: 'Other',
-        et_deleted: 'Test deleted successfully',
-        et_updated: 'Test updated successfully',
+        et_deleted: 'Order deleted successfully',
+        et_updated: 'Order updated successfully',
         // DataTable
         dt_search: 'Search:',
         dt_lengthMenu: 'Show _MENU_ entries',
@@ -705,6 +737,7 @@ var ET_I18N = {
         status_SCHEDULED: 'SCHEDULED',
         status_IN_PROGRESS: 'IN PROGRESS',
         status_COMPLETED: 'COMPLETED',
+        status_COMPLETED_MANUAL: 'COMPLETED (Manual)',
         status_CANCELLED: 'CANCELLED',
         // Source labels for table
         src_Outpatient: 'Outpatient',
@@ -746,7 +779,12 @@ var ET_I18N = {
         et_th_status: 'สถานะ',
         et_th_type: 'ประเภท',
         et_th_physician: 'ผู้ตรวจ',
-        et_modal_title: 'สร้างรายการตรวจใหม่',
+        et_th_ordering_physician: 'แพทย์',
+        et_th_technician: 'เจ้าหน้าที่ทำ ECG',
+        et_th_sched_date: 'วันที่นัด',
+        et_th_station: 'เครื่อง/สถานี',
+        et_filter_station: 'เครื่อง/สถานี',
+        et_modal_title: 'สร้าง Order ใหม่',
         et_sec_patient: 'ข้อมูลผู้ป่วย',
         et_ph_hn: 'เลข HN',
         et_lbl_name: 'ชื่อ-นามสกุล',
@@ -771,7 +809,7 @@ var ET_I18N = {
         et_lbl_sched_date: 'วันที่นัด',
         et_lbl_sched_time: 'เวลานัด',
         et_btn_cancel: 'ยกเลิก',
-        et_btn_create: 'สร้างรายการตรวจ',
+        et_btn_create: 'สร้าง Order',
         et_btn_saving: 'กำลังบันทึก...',
         et_patient_found: 'พบข้อมูลผู้ป่วยในระบบ',
         et_new_patient: 'ผู้ป่วยรายใหม่',
@@ -779,16 +817,16 @@ var ET_I18N = {
         et_routine_marked: 'เปลี่ยนเป็น ROUTINE',
         et_status_updated: 'อัพเดทสถานะเรียบร้อย',
         et_error: 'เกิดข้อผิดพลาด',
-        et_modal_edit_title: 'แก้ไขรายการตรวจ',
+        et_modal_edit_title: 'แก้ไข Order',
         et_btn_save: 'บันทึกการเปลี่ยนแปลง',
         et_btn_delete: 'ลบ',
         et_confirm_delete: 'ยืนยันการลบ',
-        et_delete_msg: 'คุณต้องการลบรายการตรวจนี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
+        et_delete_msg: 'คุณต้องการลบ Order นี้หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
         et_th_hn: 'HN',
         et_th_accession: 'เลขที่ Accession',
         et_th_urgent: 'เร่งด่วน',
         et_th_actions: 'จัดการ',
-        et_new_test: 'สร้างรายการตรวจ',
+        et_new_order: 'สร้าง Order',
         et_view_report: 'ดูผลตรวจ',
         et_urgent_btn: 'เร่งด่วน',
         et_select_status: '-- เลือก --',
@@ -800,13 +838,14 @@ var ET_I18N = {
         et_opt_urgent: 'เร่งด่วน',
         et_lbl_accession: 'เลขที่ Accession',
         et_lbl_priority: 'ความเร่งด่วน',
-        et_lbl_station_ae: 'Station AE',
-        et_lbl_station_name: 'ชื่อ Station',
+        et_lbl_station: 'เครื่องตรวจ',
+        et_filter_from: 'จาก',
+        et_filter_to: 'ถึง',
         et_sex_male: 'ชาย',
         et_sex_female: 'หญิง',
         et_sex_other: 'อื่นๆ',
-        et_deleted: 'ลบรายการตรวจเรียบร้อย',
-        et_updated: 'อัพเดทรายการตรวจเรียบร้อย',
+        et_deleted: 'ลบ Order เรียบร้อย',
+        et_updated: 'อัพเดท Order เรียบร้อย',
         // DataTable
         dt_search: 'ค้นหา:',
         dt_lengthMenu: 'แสดง _MENU_ รายการ',
@@ -820,6 +859,7 @@ var ET_I18N = {
         status_SCHEDULED: 'รอตรวจ',
         status_IN_PROGRESS: 'กำลังตรวจ',
         status_COMPLETED: 'เสร็จสิ้น',
+        status_COMPLETED_MANUAL: 'เสร็จสิ้น (Manual)',
         status_CANCELLED: 'ยกเลิก',
         // Source labels for table
         src_Outpatient: 'ผู้ป่วยนอก',
@@ -874,6 +914,24 @@ var selectedRowId = null;
 var selectedRowData = null;
 var testsTable = null;
 
+// Populate 24-hour time selects
+(function() {
+    var hSel = document.getElementById('selectSchedHour');
+    var mSel = document.getElementById('selectSchedMinute');
+    for (var h = 0; h < 24; h++) {
+        hSel.add(new Option(String(h).padStart(2, '0'), String(h).padStart(2, '0')));
+    }
+    for (var m = 0; m < 60; m++) {
+        mSel.add(new Option(String(m).padStart(2, '0'), String(m).padStart(2, '0')));
+    }
+})();
+
+function updateSchedTime() {
+    var h = $('#selectSchedHour').val();
+    var m = $('#selectSchedMinute').val();
+    $('#inputSchedTime').val(h + ':' + m);
+}
+
 function initTestsTable() {
     testsTable = $('#testsTable').DataTable({
         processing: true,
@@ -883,7 +941,9 @@ function initTestsTable() {
             data: function(d) {
                 d.status = getCheckedValues('status-filter');
                 d.source = getCheckedValues('source-filter');
-                d.date = $('#filterDate').val();
+                d.station = getCheckedValues('station-filter');
+                d.date_from = $('#filterDateFrom').val();
+                d.date_to = $('#filterDateTo').val();
             }
         },
         columns: [
@@ -902,18 +962,37 @@ function initTestsTable() {
             },
             // 3: Age
             { data: 'age', title: getLang('et_th_age'), width: '50px', className: 'text-center' },
-            // 4: Procedure
+            // 4: Scheduled Date
+            {
+                data: 'scheduled_date', title: getLang('et_th_sched_date'),
+                render: function(data, type, row) {
+                    var d = data || '';
+                    var t = row.scheduled_time || '';
+                    if (type === 'sort' || type === 'type') {
+                        // DD/MM/YYYY -> YYYYMMDD, HH:MM -> HHMM for proper sorting
+                        var ds = d.length === 10 ? (d.slice(6,10) + d.slice(3,5) + d.slice(0,2)) : d;
+                        var ts = t ? t.replace(':', '') : '0000';
+                        return ds + ts;
+                    }
+                    if (d && t) return d + ' ' + t;
+                    return d || t || '';
+                }
+            },
+            // 5: Procedure
             { data: 'procedure_desc', title: getLang('et_th_procedure') },
-            // 5: Status
+            // 6: Status
             {
                 data: 'status', title: getLang('et_th_status'),
-                render: function(data) {
-                    var cls = 'badge-' + data.toLowerCase().replace('_', '-');
+                render: function(data, type, row) {
                     var label = getLang('status_' + data) || data;
+                    if (data === 'COMPLETED' && row.completed_manually) {
+                        return '<span class="badge badge-apple badge-completed-manual">' + label + '</span>';
+                    }
+                    var cls = 'badge-' + data.toLowerCase().replace('_', '-');
                     return '<span class="badge badge-apple ' + cls + '">' + label + '</span>';
                 }
             },
-            // 6: Urgent
+            // 7: Urgent
             {
                 data: 'priority', title: getLang('et_th_urgent'), width: '50px',
                 className: 'text-center', orderable: false,
@@ -924,7 +1003,7 @@ function initTestsTable() {
                     return '';
                 }
             },
-            // 7: Type
+            // 8: Type
             {
                 data: 'patient_source', title: getLang('et_th_type'),
                 render: function(data) {
@@ -932,11 +1011,11 @@ function initTestsTable() {
                     return getLang(key) || data;
                 }
             },
-            // 8: Physician
-            { data: 'performing_physician', title: getLang('et_th_physician') },
-            // 9: Accession No.
+            // 9: Ordering Physician
+            { data: 'ordering_physician', title: getLang('et_th_ordering_physician') },
+            // 10: Accession No.
             { data: 'accession_number', title: getLang('et_th_accession') },
-            // 10: Source
+            // 11: Source
             {
                 data: 'source', title: getLang('et_th_source'), width: '80px',
                 render: function(data) {
@@ -944,7 +1023,11 @@ function initTestsTable() {
                     return '<span class="badge" style="background:var(--apple-bg-secondary);color:var(--apple-text-secondary);font-weight:500;">Manual</span>';
                 }
             },
-            // 11: Actions
+            // 12: Technician
+            { data: 'performing_physician', title: getLang('et_th_technician') },
+            // 13: Station
+            { data: 'station_name', title: getLang('et_th_station') },
+            // 14: Actions
             {
                 data: 'id', title: getLang('et_th_actions'), orderable: false, width: '80px',
                 render: function(data) {
@@ -955,7 +1038,7 @@ function initTestsTable() {
                 }
             }
         ],
-        order: [[0, 'asc']],
+        order: [[4, 'desc']],
         language: {
             search: getLang('dt_search'),
             lengthMenu: getLang('dt_lengthMenu'),
@@ -998,7 +1081,8 @@ $(document).ready(function() {
 
     // Default filter to today + SCHEDULED/IN_PROGRESS
     var _today = _localDateStr(new Date());
-    $('#filterDate').val(_today);
+    $('#filterDateFrom').val(_today);
+    $('#filterDateTo').val(_today);
     $('.status-filter[value="SCHEDULED"]').prop('checked', true);
     $('.status-filter[value="IN_PROGRESS"]').prop('checked', true);
     initTestsTable();
@@ -1025,7 +1109,8 @@ $(document).ready(function() {
     var _prefillHN = new URLSearchParams(window.location.search).get('prefill_hn');
     if (_prefillHN) {
         // Clear date filter so table shows all
-        $('#filterDate').val('');
+        $('#filterDateFrom').val('');
+        $('#filterDateTo').val('');
         applyFilters();
         // Open modal and lookup patient
         openNewTestModal();
@@ -1073,8 +1158,15 @@ function refreshStats() {
 }
 
 function clearDateFilter() {
-    $('#filterDate').val('');
+    $('#filterDateFrom').val('');
+    $('#filterDateTo').val('');
     applyFilters();
+}
+
+function onStationSelect() {
+    var sel = document.getElementById('selectStation');
+    var opt = sel.options[sel.selectedIndex];
+    document.getElementById('hiddenStationAE').value = opt ? opt.getAttribute('data-ae') || '' : '';
 }
 
 // ---- Column Visibility ----
@@ -1083,32 +1175,36 @@ var COL_VIS_NAMES = [
     { idx: 1, key: 'et_th_patient' },
     { idx: 2, key: 'et_th_sex' },
     { idx: 3, key: 'et_th_age' },
-    { idx: 4, key: 'et_th_procedure' },
-    { idx: 5, key: 'et_th_status' },
-    { idx: 6, key: 'et_th_urgent' },
-    { idx: 7, key: 'et_th_type' },
-    { idx: 8, key: 'et_th_physician' },
-    { idx: 9, key: 'et_th_accession' },
-    { idx: 10, key: 'et_th_source' },
-    { idx: 11, key: 'et_th_actions' }
+    { idx: 4, key: 'et_th_sched_date' },
+    { idx: 5, key: 'et_th_procedure', defaultHidden: true },
+    { idx: 6, key: 'et_th_status' },
+    { idx: 7, key: 'et_th_urgent' },
+    { idx: 8, key: 'et_th_type' },
+    { idx: 9, key: 'et_th_ordering_physician' },
+    { idx: 10, key: 'et_th_accession', defaultHidden: true },
+    { idx: 11, key: 'et_th_source', defaultHidden: true },
+    { idx: 12, key: 'et_th_technician', defaultHidden: true },
+    { idx: 13, key: 'et_th_station', defaultHidden: true },
+    { idx: 14, key: 'et_th_actions' }
 ];
 
 function buildColVisDropdown() {
     var container = document.getElementById('colVisDropdown');
-    var saved = JSON.parse(localStorage.getItem('ecg_col_vis') || '{}');
+    var saved = JSON.parse(localStorage.getItem('ecg_col_vis_v2') || '{}');
     var html = '';
     COL_VIS_NAMES.forEach(function(col) {
         var label = getLang(col.key);
-        if (label === col.key) label = col.key; // fallback to raw key
-        var checked = saved[col.idx] !== false; // default visible
+        if (label === col.key) label = col.key;
+        var isVisible = saved.hasOwnProperty(col.idx) ? saved[col.idx] !== false : !col.defaultHidden;
         html += '<label><input type="checkbox" data-col-idx="' + col.idx + '"' +
-                (checked ? ' checked' : '') + '> ' + label + '</label>';
+                (isVisible ? ' checked' : '') + '> ' + label + '</label>';
     });
     container.innerHTML = html;
 
-    // Apply saved visibility
+    // Apply visibility (saved or default)
     COL_VIS_NAMES.forEach(function(col) {
-        if (saved[col.idx] === false) {
+        var isVisible = saved.hasOwnProperty(col.idx) ? saved[col.idx] !== false : !col.defaultHidden;
+        if (!isVisible) {
             testsTable.column(col.idx).visible(false);
         }
     });
@@ -1119,13 +1215,13 @@ function buildColVisDropdown() {
             var idx = parseInt(this.getAttribute('data-col-idx'));
             testsTable.column(idx).visible(this.checked);
             // Save to localStorage
-            var state = JSON.parse(localStorage.getItem('ecg_col_vis') || '{}');
+            var state = JSON.parse(localStorage.getItem('ecg_col_vis_v2') || '{}');
             if (this.checked) {
                 delete state[idx]; // default is visible, remove entry
             } else {
                 state[idx] = false;
             }
-            localStorage.setItem('ecg_col_vis', JSON.stringify(state));
+            localStorage.setItem('ecg_col_vis_v2', JSON.stringify(state));
         });
     });
 }
@@ -1170,7 +1266,9 @@ function openNewTestModal() {
     $('#inputSchedDate').val(_localDateStr(now));
     var hh = String(now.getHours()).padStart(2, '0');
     var mm = String(now.getMinutes()).padStart(2, '0');
-    $('#inputSchedTime').val(hh + ':' + mm);
+    $('#selectSchedHour').val(hh);
+    $('#selectSchedMinute').val(mm);
+    updateSchedTime();
     $('#inputPhysicianOther').addClass('d-none').val('');
 
     getTestModal().show();
@@ -1194,10 +1292,23 @@ function editTest(id) {
         $('[name="accession_number"]').val(data.accession_number);
         $('[name="procedure_desc"]').val(data.procedure_desc);
         $('[name="priority"]').val(data.priority);
-        $('[name="station_ae"]').val(data.station_ae);
-        $('[name="station_name"]').val(data.station_name);
+        // Set station dropdown
+        $('#selectStation').val(data.station_name);
+        $('#hiddenStationAE').val(data.station_ae);
+        // If station not in dropdown (legacy data), add temporary option
+        if ($('#selectStation').val() !== data.station_name) {
+            var tempOpt = new Option(data.station_name + ' (' + data.station_ae + ')', data.station_name);
+            tempOpt.setAttribute('data-ae', data.station_ae);
+            $('#selectStation').append(tempOpt);
+            $('#selectStation').val(data.station_name);
+        }
         $('#inputSchedDate').val(data.scheduled_date);
-        $('#inputSchedTime').val(data.scheduled_time);
+        if (data.scheduled_time && data.scheduled_time.indexOf(':') > -1) {
+            var tp = data.scheduled_time.split(':');
+            $('#selectSchedHour').val(tp[0]);
+            $('#selectSchedMinute').val(tp[1]);
+        }
+        updateSchedTime();
         $('[name="ordering_department"]').val(data.ordering_department);
         // Set physician dropdown or "Other" if not in list
         var phySel = $('#selectPhysician');
@@ -1278,7 +1389,8 @@ function submitNewTest(e) {
         if (resp.success) {
             getTestModal().hide();
             // Reset date filter to today so newly created test is visible
-            $('#filterDate').val(_localDateStr(new Date()));
+            $('#filterDateFrom').val(_localDateStr(new Date()));
+            $('#filterDateTo').val(_localDateStr(new Date()));
             testsTable.ajax.reload();
             refreshStats();
             showToast('success', resp.message);

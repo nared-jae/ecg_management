@@ -1,11 +1,31 @@
+import socket
 from datetime import datetime, timedelta
 
-from flask import Blueprint, render_template, redirect, url_for, jsonify
+from flask import Blueprint, render_template, redirect, url_for, jsonify, current_app
 from flask_login import login_required, current_user
 
 from models import db, WorklistItem, ECGResult, Patient, AssignmentLog
 
 dashboard_bp = Blueprint("dashboard", __name__)
+
+
+def _check_port(port):
+    """Quick check if a TCP port is listening on localhost."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.5)
+            s.connect(("127.0.0.1", int(port)))
+            return True
+    except (ConnectionRefusedError, OSError, TimeoutError):
+        return False
+
+
+def _get_dicom_status():
+    """Return dict with MWL and Store SCP online status."""
+    return {
+        "mwl": _check_port(current_app.config.get("MWL_PORT", 6701)),
+        "store": _check_port(current_app.config.get("STORE_PORT", 6702)),
+    }
 
 
 @dashboard_bp.route("/")
@@ -40,11 +60,14 @@ def index():
         .all()
     )
 
+    dicom_status = _get_dicom_status()
+
     return render_template(
         "dashboard.html",
         stats=stats,
         recent_worklist=recent_worklist,
         recent_results=recent_results,
+        dicom_status=dicom_status,
     )
 
 
@@ -87,11 +110,12 @@ def api_data():
             "status": w.status or "",
         } for w in recent_worklist],
         "recent_results": [{
-            "accession_number": r.accession_number or "-",
+            "patient_id": r.patient.patient_id if r.patient else "-",
             "patient_name": r.patient.patient_name if r.patient else "-",
             "received_at": r.received_at.strftime("%d/%m/%Y %H:%M") if r.received_at else "-",
             "status": r.status or "",
         } for r in recent_results],
+        "dicom_status": _get_dicom_status(),
     })
 
 

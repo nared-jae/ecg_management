@@ -3,7 +3,7 @@ from datetime import datetime, date
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from flask_login import login_required, current_user
 
-from models import db, WorklistItem, Patient, ECGResult, User
+from models import db, WorklistItem, Patient, ECGResult, User, Station
 from services.dicom_helpers import stable_uid_from_text
 from utils.decorators import roles_required
 
@@ -30,7 +30,8 @@ def index():
         .all()
     )
 
-    return render_template("ecg_tests/index.html", stats=stats, doctors=doctors)
+    stations = Station.query.filter_by(is_active=True).order_by(Station.name).all()
+    return render_template("ecg_tests/index.html", stats=stats, doctors=doctors, stations=stations)
 
 
 @ecg_tests_bp.route("/api/stats")
@@ -58,7 +59,9 @@ def api_data():
     # Custom filters
     status_filter = request.args.get("status", "").strip()
     source_filter = request.args.get("source", "").strip()
-    date_filter = request.args.get("date", "").strip()
+    date_from = request.args.get("date_from", "").strip()
+    date_to = request.args.get("date_to", "").strip()
+    station_filter = request.args.get("station", "").strip()
 
     query = WorklistItem.query.join(Patient)
 
@@ -73,8 +76,15 @@ def api_data():
         if sources:
             query = query.filter(WorklistItem.patient_source.in_(sources))
 
-    if date_filter:
-        query = query.filter(WorklistItem.scheduled_date == date_filter.replace("-", ""))
+    if date_from:
+        query = query.filter(WorklistItem.scheduled_date >= date_from.replace("-", ""))
+    if date_to:
+        query = query.filter(WorklistItem.scheduled_date <= date_to.replace("-", ""))
+
+    if station_filter:
+        stations = [s.strip() for s in station_filter.split(",") if s.strip()]
+        if stations:
+            query = query.filter(WorklistItem.scheduled_station_name.in_(stations))
 
     # Search
     if search_value:
@@ -97,20 +107,46 @@ def api_data():
     order_col = request.args.get("order[0][column]", "0", type=int)
     order_dir = request.args.get("order[0][dir]", "desc")
 
+    # Status workflow order (not alphabetical)
+    from sqlalchemy import case as sa_case
+    status_order = sa_case(
+        (WorklistItem.status == "SCHEDULED",   1),
+        (WorklistItem.status == "IN_PROGRESS", 2),
+        (WorklistItem.status == "COMPLETED",   3),
+        (WorklistItem.status == "CANCELLED",   4),
+        else_=0
+    )
+
     col_map = {
         0: Patient.patient_id,                       # HN
         1: Patient.patient_name,                     # Patient Name
         2: Patient.sex,                              # Sex
-        3: Patient.birth_date,                       # Age (sort by DOB)
-        4: WorklistItem.requested_procedure_desc,    # Procedure
-        5: WorklistItem.status,                      # Status
-        # 6: priority — orderable: false, skip
-        7: WorklistItem.patient_source,              # Type
-        8: WorklistItem.performing_physician,        # Physician
-        9: WorklistItem.accession_number,            # Accession No.
+        3: Patient.birth_date,                       # Age (sort by DOB — direction reversed)
+        4: WorklistItem.scheduled_date,              # Scheduled Date
+        5: WorklistItem.requested_procedure_desc,    # Procedure
+        6: status_order,                             # Status (workflow order)
+        # 7: priority (Urgent) — orderable: false
+        8: WorklistItem.patient_source,              # Type
+        9: WorklistItem.ordering_physician,          # Physician
+        10: WorklistItem.accession_number,           # Accession No.
+        11: WorklistItem.source,                     # Source (MANUAL/EXTERNAL)
+        12: WorklistItem.performing_physician,       # Technician
+        13: WorklistItem.scheduled_station_name,     # Station
     }
     order_column = col_map.get(order_col, WorklistItem.id)
-    if order_dir == "desc":
+
+    # Age: reverse direction (ascending age = descending birth_date)
+    effective_dir = order_dir
+    if order_col == 3:
+        effective_dir = "desc" if order_dir == "asc" else "asc"
+
+    if order_col == 4:
+        # Scheduled Date: sort by date + time combined
+        if order_dir == "desc":
+            query = query.order_by(WorklistItem.scheduled_date.desc(), WorklistItem.scheduled_time.desc())
+        else:
+            query = query.order_by(WorklistItem.scheduled_date.asc(), WorklistItem.scheduled_time.asc())
+    elif effective_dir == "desc":
         query = query.order_by(order_column.desc())
     else:
         query = query.order_by(order_column.asc())
@@ -144,7 +180,10 @@ def api_data():
             "scheduled_date": _format_date(item.scheduled_date),
             "scheduled_time": _format_time(item.scheduled_time),
             "has_result": has_result,
+            "station_name": item.scheduled_station_name or "",
+            "station_ae": item.scheduled_station_ae or "",
             "source": getattr(item, 'source', None) or "MANUAL",
+            "completed_manually": bool(getattr(item, 'completed_manually', False)),
         })
 
     return jsonify({
@@ -265,6 +304,10 @@ def update_status(item_id):
         return jsonify({"success": False, "error": "Invalid status"}), 400
 
     item.status = new_status
+    if new_status == "COMPLETED":
+        item.completed_manually = True
+    elif new_status in ("SCHEDULED", "IN_PROGRESS"):
+        item.completed_manually = False
     db.session.commit()
 
     return jsonify({"success": True, "status": new_status})

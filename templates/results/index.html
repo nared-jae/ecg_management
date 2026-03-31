@@ -104,16 +104,21 @@
                 <span data-i18n="rs_trash">Trash</span>
             </button>
             {% endif %}
-            {% if current_user.role in ['doctor', 'admin'] %}
             <div class="d-flex gap-2" id="viewFilterTabs">
+                {% if can_view_all %}
                 <button class="btn btn-apple-secondary btn-apple-sm view-tab" data-view="all" onclick="setView('all')">
-                    <i class="bi bi-grid me-1"></i><span data-i18n="rs_view_all">All My Cases</span>
+                    <i class="bi bi-grid me-1"></i><span data-i18n="rs_view_all">All Cases</span>
                 </button>
+                {% endif %}
+                {% if can_diagnose %}
                 <button class="btn btn-apple-secondary btn-apple-sm view-tab" data-view="mine" onclick="setView('mine')">
-                    <i class="bi bi-person-check me-1"></i><span data-i18n="rs_view_mine">My Cases (Pending)</span>
+                    <i class="bi bi-folder-check me-1"></i><span data-i18n="rs_view_mine">My Cases</span>
                 </button>
+                <button class="btn btn-apple-secondary btn-apple-sm view-tab" data-view="my_pending" onclick="setView('my_pending')">
+                    <i class="bi bi-person-check me-1"></i><span data-i18n="rs_view_pending">My Pending</span>
+                </button>
+                {% endif %}
             </div>
-            {% endif %}
             <div class="col-vis-wrapper ms-auto">
                 <button class="btn btn-apple-secondary btn-apple-sm" onclick="toggleColVisDropdown()" type="button">
                     <i class="bi bi-layout-three-columns me-1"></i><span data-i18n="rs_columns">Columns</span>
@@ -382,6 +387,11 @@
 {% block extra_js %}
 <script>
 var USER_ROLE = '{{ current_user.role }}';
+var USER_ID = {{ current_user.id }};
+var CAN_FINALIZE = {{ 'true' if can_finalize else 'false' }};
+var CAN_REOPEN = {{ 'true' if can_reopen else 'false' }};
+var CAN_VIEW_ALL = {{ 'true' if can_view_all else 'false' }};
+var EXPIRY_ENABLED = {{ 'true' if expiry_enabled else 'false' }};
 var RS_I18N = {
     en: {
         rs_title: 'ECG Results',
@@ -394,11 +404,19 @@ var RS_I18N = {
         rs_th_age: 'Age',
         rs_th_procedure: 'Procedure',
         rs_th_received: 'Exam Date',
-        rs_th_physician: 'Physician',
         rs_th_status: 'Status',
+        rs_th_urgent: 'Urgent',
+        rs_th_type: 'Type',
+        rs_th_ordering_physician: 'Physician',
+        rs_th_technician: 'Technician',
+        rs_th_station: 'Station',
         rs_th_assigned: 'Assigned To',
         rs_th_expires: 'Expires In',
         rs_th_accession: 'Accession No.',
+        rs_src_Outpatient: 'Outpatient',
+        rs_src_Inpatient: 'Inpatient',
+        rs_src_Emergency: 'Emergency',
+        rs_src_Health_Check: 'Health Check',
         rs_th_actions: 'Actions',
         rs_view: 'View Details',
         rs_assign: 'Assign to Doctor',
@@ -423,8 +441,9 @@ var RS_I18N = {
         rs_delete_title: 'Delete Result',
         rs_delete_msg: 'Are you sure you want to delete result {accession}? This action cannot be undone.',
         rs_delete_pacs_warn: 'This result was already sent to PACS. The PACS copy will not be removed.',
-        rs_view_all: 'All My Cases',
-        rs_view_mine: 'My Cases (Pending)',
+        rs_view_all: 'All Cases',
+        rs_view_mine: 'My Cases',
+        rs_view_pending: 'My Pending',
         rs_view_unassigned: 'Unassigned Pool',
         rs_filters: 'Filters',
         rs_stat_unassigned: 'Unassigned', rs_stat_pending: 'Pending',
@@ -504,11 +523,19 @@ var RS_I18N = {
         rs_th_age: 'อายุ',
         rs_th_procedure: 'รายการตรวจ',
         rs_th_received: 'วันที่ตรวจ',
-        rs_th_physician: 'แพทย์ผู้ตรวจ',
         rs_th_status: 'สถานะ',
+        rs_th_urgent: 'เร่งด่วน',
+        rs_th_type: 'ประเภท',
+        rs_th_ordering_physician: 'แพทย์',
+        rs_th_technician: 'เจ้าหน้าที่ทำ ECG',
+        rs_th_station: 'เครื่อง/สถานี',
         rs_th_assigned: 'มอบหมายให้',
         rs_th_expires: 'หมดเวลาใน',
         rs_th_accession: 'เลขที่ Accession',
+        rs_src_Outpatient: 'ผู้ป่วยนอก',
+        rs_src_Inpatient: 'ผู้ป่วยใน',
+        rs_src_Emergency: 'ฉุกเฉิน',
+        rs_src_Health_Check: 'ตรวจสุขภาพ',
         rs_th_actions: 'จัดการ',
         rs_view: 'ดูรายละเอียด',
         rs_assign: 'มอบหมายให้แพทย์',
@@ -533,8 +560,9 @@ var RS_I18N = {
         rs_delete_title: 'ลบผลตรวจ',
         rs_delete_msg: 'คุณต้องการลบผลตรวจ {accession} หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
         rs_delete_pacs_warn: 'ผลตรวจนี้ถูกส่งไปยัง PACS แล้ว สำเนาใน PACS จะไม่ถูกลบ',
-        rs_view_all: 'ทั้งหมด (ของฉัน)',
-        rs_view_mine: 'รอวินิจฉัย',
+        rs_view_all: 'เคสทั้งหมด',
+        rs_view_mine: 'เคสของฉัน',
+        rs_view_pending: 'รอดำเนินการ',
         rs_view_unassigned: 'คิวรอมอบหมาย',
         rs_filters: 'ตัวกรอง',
         rs_stat_unassigned: 'ยังไม่มอบหมาย', rs_stat_pending: 'รอดำเนินการ',
@@ -624,27 +652,31 @@ function setLanguage(lang) {
 }
 
 // ===== Column visibility =====
-// colIdx: 0=HN,1=Name,2=Sex,3=Age,4=Procedure,5=Received,6=Physician,7=Status,8=Assigned,9=Expires,10=Accession,11=Actions
+// colIdx: 0=HN,1=Name,2=Sex,3=Age,4=Procedure,5=Received,6=Status,7=Urgent,8=Type,9=Physician,10=Tech,11=Station,12=Assigned,13=Expires,14=Accession,15=PACS,16=PDF,17=HL7,18=Actions(always visible)
 var COL_VIS_NAMES = [
     { idx: 0,  key: 'rs_th_hn' },
     { idx: 1,  key: 'rs_th_patient' },
     { idx: 2,  key: 'rs_th_sex' },
     { idx: 3,  key: 'rs_th_age' },
-    { idx: 4,  key: 'rs_th_procedure' },
+    { idx: 4,  key: 'rs_th_procedure', defaultOff: true },
     { idx: 5,  key: 'rs_th_received' },
-    { idx: 6,  key: 'rs_th_physician' },
-    { idx: 7,  key: 'rs_th_status' },
-    { idx: 8,  key: 'rs_th_assigned' },
-    { idx: 9,  key: 'rs_th_expires' },
-    { idx: 10, key: 'rs_th_accession', defaultOff: true },
-    { idx: 11, key: 'rs_th_pacs' },
-    { idx: 12, key: 'rs_th_pdf' },
-    { idx: 13, key: 'rs_th_hl7' },
+    { idx: 6,  key: 'rs_th_status' },
+    { idx: 7,  key: 'rs_th_urgent', defaultOff: true },
+    { idx: 8,  key: 'rs_th_type', defaultOff: true },
+    { idx: 9,  key: 'rs_th_ordering_physician' },
+    { idx: 10, key: 'rs_th_technician', defaultOff: true },
+    { idx: 11, key: 'rs_th_station', defaultOff: true },
+    { idx: 12, key: 'rs_th_assigned' },
+    { idx: 13, key: 'rs_th_expires' },
+    { idx: 14, key: 'rs_th_accession', defaultOff: true },
+    { idx: 15, key: 'rs_th_pacs', defaultOff: true },
+    { idx: 16, key: 'rs_th_pdf', defaultOff: true },
+    { idx: 17, key: 'rs_th_hl7', defaultOff: true },
 ];
 
 function buildColVisDropdown() {
     var container = document.getElementById('colVisDropdown');
-    var saved = JSON.parse(localStorage.getItem('rs_col_vis') || '{}');
+    var saved = JSON.parse(localStorage.getItem('rs_col_vis_v2') || '{}');
     var html = '';
     COL_VIS_NAMES.forEach(function(col) {
         var label = getLang(col.key);
@@ -664,13 +696,13 @@ function buildColVisDropdown() {
         cb.addEventListener('change', function() {
             var idx = parseInt(this.getAttribute('data-col-idx'));
             resultsTable.column(idx).visible(this.checked);
-            var state = JSON.parse(localStorage.getItem('rs_col_vis') || '{}');
+            var state = JSON.parse(localStorage.getItem('rs_col_vis_v2') || '{}');
             if (this.checked) {
                 delete state[idx];
             } else {
                 state[idx] = false;
             }
-            localStorage.setItem('rs_col_vis', JSON.stringify(state));
+            localStorage.setItem('rs_col_vis_v2', JSON.stringify(state));
         });
     });
 }
@@ -704,6 +736,7 @@ function formatCountdown(isoStr, status) {
 var _countdownTimer = null;
 var _tableReloadScheduled = false;
 function startCountdownTicker() {
+    if (!EXPIRY_ENABLED) return;
     if (_countdownTimer) clearInterval(_countdownTimer);
     _countdownTimer = setInterval(function() {
         var hasExpired = false;
@@ -735,7 +768,8 @@ var _assigningResultId = null;
 var _assignModal = null;
 
 // ===== View Filter Tabs =====
-var _currentView = (new URLSearchParams(window.location.search)).get('view') || 'all';
+var _defaultView = CAN_VIEW_ALL ? 'all' : 'mine';
+var _currentView = (new URLSearchParams(window.location.search)).get('view') || _defaultView;
 
 function setView(view) {
     _currentView = view;
@@ -822,9 +856,7 @@ function initResultsTable() {
             { data: 'procedure', title: getLang('rs_th_procedure') },
             // 5: Exam Date
             { data: 'received_at', title: getLang('rs_th_received') },
-            // 6: Physician
-            { data: 'physician', title: getLang('rs_th_physician') },
-            // 7: Status
+            // 6: Status
             {
                 data: 'status', title: getLang('rs_th_status'),
                 render: function(data) {
@@ -832,7 +864,33 @@ function initResultsTable() {
                     return '<span class="badge badge-apple badge-' + data.toLowerCase() + '">' + label + '</span>';
                 }
             },
-            // 8: Assigned To
+            // 7: Urgent
+            {
+                data: 'priority', title: getLang('rs_th_urgent'), width: '50px',
+                className: 'text-center', orderable: false,
+                render: function(data) {
+                    if (data === 'URGENT') {
+                        return '<i class="bi bi-exclamation-circle-fill text-danger" style="font-size:1.1rem;" title="URGENT"></i>';
+                    }
+                    return '';
+                }
+            },
+            // 8: Type (Patient Source)
+            {
+                data: 'patient_source', title: getLang('rs_th_type'),
+                render: function(data) {
+                    if (!data) return '';
+                    var key = 'rs_src_' + data.replace(' ', '_');
+                    return getLang(key) || data;
+                }
+            },
+            // 9: Ordering Physician
+            { data: 'ordering_physician', title: getLang('rs_th_ordering_physician') },
+            // 10: Technician
+            { data: 'technician', title: getLang('rs_th_technician') },
+            // 11: Station
+            { data: 'station_name', title: getLang('rs_th_station') },
+            // 12: Assigned To
             {
                 data: 'assigned_to', title: getLang('rs_th_assigned'),
                 render: function(data, type, row) {
@@ -842,16 +900,17 @@ function initResultsTable() {
                     return '<span class="badge badge-unassigned" style="font-size:0.7rem;">—</span>';
                 }
             },
-            // 9: Expires In
+            // 13: Expires In (hidden if expiry disabled)
             {
                 data: 'assignment_expires_at_iso', title: getLang('rs_th_expires'), orderable: false,
+                visible: EXPIRY_ENABLED,
                 render: function(data, type, row) { return formatCountdown(data, row.status); }
             },
-            // 10: Accession No.
+            // 14: Accession No.
             { data: 'accession_number', title: getLang('rs_th_accession') },
-            // 11: PACS Status
+            // 15: PACS Status
             {
-                data: 'pacs_send_status', title: getLang('rs_th_pacs'), width: '80px',
+                data: 'pacs_send_status', title: getLang('rs_th_pacs'), width: '80px', orderable: false,
                 render: function(data, type, row) {
                     var btnStyle = 'border:none;font-size:0.75rem;padding:0.25rem 0.6rem;border-radius:6px;';
                     if (data === 'SENT') return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#e6f4ea;color:#1a7f37;" title="' + (row.pacs_sent_at || '') + '" onclick="sendToPacs(' + row.id + ',this)"><i class="bi bi-check-circle me-1"></i>Sent</button>';
@@ -861,9 +920,9 @@ function initResultsTable() {
                     return '<span style="color:var(--apple-text-secondary);font-size:0.78rem;">—</span>';
                 }
             },
-            // 12: PDF Export Status
+            // 16: PDF Export Status
             {
-                data: 'pdf_export_status', title: getLang('rs_th_pdf'), width: '70px',
+                data: 'pdf_export_status', title: getLang('rs_th_pdf'), width: '70px', orderable: false,
                 render: function(data, type, row) {
                     var btnStyle = 'border:none;font-size:0.75rem;padding:0.25rem 0.6rem;border-radius:6px;';
                     if (data === 'SENT') return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#e6f4ea;color:#1a7f37;" onclick="sendPdfExport(' + row.id + ',this)"><i class="bi bi-check-circle me-1"></i>Sent</button>';
@@ -873,9 +932,9 @@ function initResultsTable() {
                     return '<span style="color:var(--apple-text-secondary);font-size:0.78rem;">—</span>';
                 }
             },
-            // 13: HL7 Export Status
+            // 17: HL7 Export Status
             {
-                data: 'hl7_export_status', title: getLang('rs_th_hl7'), width: '70px',
+                data: 'hl7_export_status', title: getLang('rs_th_hl7'), width: '70px', orderable: false,
                 render: function(data, type, row) {
                     var btnStyle = 'border:none;font-size:0.75rem;padding:0.25rem 0.6rem;border-radius:6px;';
                     if (data === 'SENT') return '<button class="btn btn-apple-sm" style="' + btnStyle + 'background:#e6f4ea;color:#1a7f37;" onclick="sendHl7Export(' + row.id + ',this)"><i class="bi bi-check-circle me-1"></i>Sent</button>';
@@ -885,7 +944,7 @@ function initResultsTable() {
                     return '<span style="color:var(--apple-text-secondary);font-size:0.78rem;">—</span>';
                 }
             },
-            // 14: Actions (always visible, not in picker)
+            // 18: Actions (always visible, not in picker)
             {
                 data: 'id', title: getLang('rs_th_actions'), orderable: false, width: '110px', className: 'text-start',
                 render: function(data, type, row) {
@@ -937,12 +996,19 @@ function initResultsTable() {
                               + '<i class="bi bi-x-circle"></i></button>';
                     }
 
-                    // Finalize button: nurse/admin on APPROVED only
-                    if ((USER_ROLE === 'admin' || USER_ROLE === 'it_admin' || USER_ROLE === 'nurse')
+                    // Finalize button: assigned doctor with can_finalize permission on APPROVED only
+                    if (CAN_FINALIZE && row.assigned_to_id === USER_ID
                         && (row.status || '').toUpperCase() === 'APPROVED') {
                         html += ' <button class="btn btn-apple-sm" style="background:#fff8e0;color:#b45309;border:none;" '
                               + 'onclick="finalizeFromList(' + data + ',\'' + (row.accession_number || '-').replace(/'/g, "\\'") + '\')" title="Finalize">'
                               + '<i class="bi bi-lock"></i></button>';
+                    }
+
+                    // Reopen button: user with can_reopen permission on FINALIZED cases
+                    if (CAN_REOPEN && (row.status || '').toUpperCase() === 'FINALIZED') {
+                        html += ' <button class="btn btn-apple-sm" style="background:#fff3e0;color:#e65100;border:none;" '
+                              + 'onclick="reopenFromList(' + data + ',\'' + (row.accession_number || '-').replace(/'/g, "\\'") + '\')" title="Reopen">'
+                              + '<i class="bi bi-unlock"></i></button>';
                     }
 
                     // Delete button: admin/it_admin = all, nurse = RECEIVED only
@@ -1157,6 +1223,30 @@ function finalizeFromList(resultId, accession) {
     if (!confirm(msg)) return;
 
     fetch('/results/' + resultId + '/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            resultsTable.ajax.reload(null, false);
+            refreshStats();
+            showToast('success', data.message);
+        } else {
+            showToast('error', data.error);
+        }
+    });
+}
+
+// ===== Reopen from List =====
+function reopenFromList(resultId, accession) {
+    var lang = localStorage.getItem('app_language') || 'en';
+    var msg = lang === 'th'
+        ? 'ยืนยันการ Reopen เคส ' + accession + '?\nเคสจะกลับเป็นสถานะ Approved แพทย์จะสามารถแก้ไขผลวินิจฉัยได้อีกครั้ง'
+        : 'Confirm Reopen case ' + accession + '?\nThe case will return to Approved status and the doctor can revise the diagnosis.';
+    if (!confirm(msg)) return;
+
+    fetch('/results/' + resultId + '/reopen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
     })
@@ -1523,6 +1613,14 @@ function showToast(type, message) {
 
 $(document).ready(function() {
     setView(_currentView);
+
+    // Default date filter to today
+    var today = new Date().toISOString().slice(0, 10);
+    var elFrom = document.getElementById('filterDateFrom');
+    var elTo   = document.getElementById('filterDateTo');
+    if (elFrom && !elFrom.value) elFrom.value = today;
+    if (elTo   && !elTo.value)   elTo.value   = today;
+
     initResultsTable();
 
     // Apply search param from URL (e.g. from Patients page "View Results")

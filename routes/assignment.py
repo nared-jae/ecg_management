@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
 
-from models import db, ECGResult, User, AssignmentLog, get_setting
+from models import db, ECGResult, User, AssignmentLog, get_setting, has_permission
 from routes.notifications import push_notification, push_case_unassigned
 from utils.decorators import nurse_required, doctor_required
 
@@ -37,17 +37,24 @@ def assign(result_id):
         return jsonify({"success": False, "error": "doctor_id required"}), 400
 
     doctor = User.query.get(doctor_id)
-    if not doctor or doctor.role not in ("doctor", "admin"):
+    if not doctor or not has_permission(doctor.role, "can_diagnose"):
         return jsonify({"success": False, "error": "Invalid doctor"}), 400
 
     if result.assigned_to_id and result.assigned_to_id != doctor_id:
         return jsonify({"success": False, "error": "Case already assigned to another doctor"}), 409
 
-    timeout = int(get_setting("assignment_timeout_minutes", 30))
+    expiry_enabled = get_setting("assignment_expiry_enabled", "true") == "true"
     now = datetime.now()
-    result.assigned_to_id        = doctor_id
-    result.assigned_at           = now
-    result.assignment_expires_at = now + timedelta(minutes=timeout)
+    result.assigned_to_id = doctor_id
+    result.assigned_at    = now
+
+    if expiry_enabled:
+        timeout = int(get_setting("assignment_timeout_minutes", 30))
+        result.assignment_expires_at = now + timedelta(minutes=timeout)
+    else:
+        result.assignment_expires_at = None
+        if result.status == "RECEIVED":
+            result.status = "IN_REVIEW"
 
     db.session.add(AssignmentLog(
         ecg_result_id=result_id,
@@ -65,10 +72,11 @@ def assign(result_id):
         result_id=result_id,
     )
 
+    expires_str = result.assignment_expires_at.strftime("%d/%m/%Y %H:%M") if result.assignment_expires_at else None
     return jsonify({
         "success": True,
         "assigned_to": doctor.display_name,
-        "expires_at": result.assignment_expires_at.strftime("%d/%m/%Y %H:%M"),
+        "expires_at": expires_str,
     })
 
 
@@ -85,20 +93,27 @@ def reassign(result_id):
         return jsonify({"success": False, "error": "doctor_id required"}), 400
 
     new_doctor = User.query.get(new_doctor_id)
-    if not new_doctor or new_doctor.role not in ("doctor", "admin"):
+    if not new_doctor or not has_permission(new_doctor.role, "can_diagnose"):
         return jsonify({"success": False, "error": "Invalid doctor"}), 400
 
     old_doctor_id = result.assigned_to_id
 
-    timeout = int(get_setting("assignment_timeout_minutes", 30))
+    expiry_enabled = get_setting("assignment_expiry_enabled", "true") == "true"
     now = datetime.now()
-    result.assigned_to_id        = new_doctor_id
-    result.assigned_at           = now
-    result.assignment_expires_at = now + timedelta(minutes=timeout)
-    result.locked_by_id          = None
-    result.locked_at             = None
-    if result.status == "IN_REVIEW":
-        result.status = "RECEIVED"
+    result.assigned_to_id = new_doctor_id
+    result.assigned_at    = now
+    result.locked_by_id   = None
+    result.locked_at      = None
+
+    if expiry_enabled:
+        timeout = int(get_setting("assignment_timeout_minutes", 30))
+        result.assignment_expires_at = now + timedelta(minutes=timeout)
+        if result.status == "IN_REVIEW":
+            result.status = "RECEIVED"
+    else:
+        result.assignment_expires_at = None
+        if result.status == "RECEIVED":
+            result.status = "IN_REVIEW"
 
     if old_doctor_id:
         db.session.add(AssignmentLog(
@@ -139,10 +154,11 @@ def reassign(result_id):
         result_id=result_id,
     )
 
+    expires_str = result.assignment_expires_at.strftime("%d/%m/%Y %H:%M") if result.assignment_expires_at else None
     return jsonify({
         "success": True,
         "assigned_to": new_doctor.display_name,
-        "expires_at": result.assignment_expires_at.strftime("%d/%m/%Y %H:%M"),
+        "expires_at": expires_str,
     })
 
 

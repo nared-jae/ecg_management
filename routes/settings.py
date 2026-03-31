@@ -8,7 +8,9 @@ from flask import (
 )
 from flask_login import login_required, current_user
 
-from models import db, SystemSetting, User, AssignmentLog, ECGResult, Notification, get_setting
+from models import (db, SystemSetting, User, AssignmentLog, ECGResult, Notification,
+                     Station, WorklistItem,
+                     get_setting, ALL_ROLES, ALL_PERMISSIONS, _DEFAULT_PERMS, has_permission)
 from utils.decorators import roles_required
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
@@ -48,7 +50,8 @@ def index():
         "export_pdf_path", "export_hl7_path",
     }
     all_settings = SystemSetting.query.order_by(SystemSetting.key).all()
-    general_settings = [s for s in all_settings if s.key not in _excluded_keys]
+    general_settings = [s for s in all_settings
+                        if s.key not in _excluded_keys and not s.key.startswith("perm_")]
 
     dicom_config = {
         "MWL_AE_TITLE": current_app.config.get("MWL_AE_TITLE", "MWL"),
@@ -58,7 +61,7 @@ def index():
         "DICOM_STORAGE_DIR": current_app.config.get("DICOM_STORAGE_DIR", ""),
     }
 
-    all_roles = ["admin", "doctor", "nurse", "it_admin", "viewer"]
+    all_roles = ["admin", "cardio", "doctor", "nurse", "it_admin", "viewer"]
 
     # DICOM settings for tab forms (SCP + SCU)
     dicom_keys = [
@@ -182,7 +185,7 @@ def create_user():
     if len(password) < 4:
         return jsonify({"success": False, "error": "Password must be at least 4 characters | รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร"}), 400
 
-    valid_roles = ["admin", "doctor", "nurse", "it_admin", "viewer", "user"]
+    valid_roles = ["admin", "cardio", "doctor", "nurse", "it_admin", "viewer", "user"]
     if role not in valid_roles:
         return jsonify({"success": False, "error": "Invalid role"}), 400
 
@@ -215,7 +218,7 @@ def edit_user(user_id):
     if user.id == current_user.id and role and role != user.role:
         return jsonify({"success": False, "error": "Cannot change your own role | ไม่สามารถเปลี่ยน role ของตัวเองได้"}), 400
 
-    valid_roles = ["admin", "doctor", "nurse", "it_admin", "viewer", "user"]
+    valid_roles = ["admin", "cardio", "doctor", "nurse", "it_admin", "viewer", "user"]
     if role and role not in valid_roles:
         return jsonify({"success": False, "error": "Invalid role"}), 400
 
@@ -380,6 +383,25 @@ def api_audit():
 
 
 # ---------------------------------------------------------------------------
+# Assignment Expiry Check API
+# ---------------------------------------------------------------------------
+@settings_bp.route("/api/active-expiry-count")
+@login_required
+@roles_required("admin", "it_admin", "nurse")
+def active_expiry_count():
+    """Return number of cases with an active expiry countdown."""
+    now = datetime.now()
+    count = ECGResult.query.filter(
+        ECGResult.assigned_to_id.isnot(None),
+        ECGResult.assignment_expires_at.isnot(None),
+        ECGResult.assignment_expires_at > now,
+        ECGResult.is_deleted == False,
+        ECGResult.status.notin_(["APPROVED", "FINALIZED"]),
+    ).count()
+    return jsonify({"count": count})
+
+
+# ---------------------------------------------------------------------------
 # DICOM Integration API (MWL SCU + PACS Store SCU)
 # ---------------------------------------------------------------------------
 @settings_bp.route("/api/dicom/test-mwl", methods=["POST"])
@@ -389,7 +411,10 @@ def test_mwl():
     """Test connection to external MWL server."""
     data = request.get_json(silent=True) or {}
     host = data.get("host", "").strip()
-    port = int(data.get("port", 104))
+    try:
+        port = int(data.get("port", 104))
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "message": "Invalid port number"}), 400
     remote_ae = data.get("remote_ae", "MWL").strip()
     local_ae = data.get("local_ae", "ECG_SCU").strip()
 
@@ -405,7 +430,10 @@ def test_pacs():
     """Test connection to PACS server via C-ECHO."""
     data = request.get_json(silent=True) or {}
     host = data.get("host", "").strip()
-    port = int(data.get("port", 104))
+    try:
+        port = int(data.get("port", 104))
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "message": "Invalid port number"}), 400
     remote_ae = data.get("remote_ae", "PACS").strip()
     local_ae = data.get("local_ae", "ECG_SCU").strip()
 
@@ -485,3 +513,173 @@ def view_mwl_log():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+
+# ── Role Permissions API ──────────────────────────────────────
+
+@settings_bp.route("/api/permissions")
+@login_required
+@roles_required("admin", "it_admin")
+def get_permissions():
+    """Return current role-permission matrix."""
+    result = {}
+    for role in ALL_ROLES:
+        result[role] = {}
+        for perm in ALL_PERMISSIONS:
+            result[role][perm] = has_permission(role, perm)
+    return jsonify(result)
+
+
+@settings_bp.route("/api/permissions", methods=["POST"])
+@login_required
+@roles_required("admin", "it_admin")
+def save_permissions():
+    """Save role-permission matrix from the settings UI."""
+    data = request.get_json(silent=True) or {}
+    now = datetime.now()
+
+    for role in ALL_ROLES:
+        role_perms = data.get(role, {})
+        for perm in ALL_PERMISSIONS:
+            key = f"perm_{role}_{perm}"
+            value = "true" if role_perms.get(perm, False) else "false"
+            s = SystemSetting.query.filter_by(key=key).first()
+            if s:
+                s.value = value
+                s.updated_at = now
+                s.updated_by_id = current_user.id
+            else:
+                db.session.add(SystemSetting(
+                    key=key, value=value,
+                    label=f"{role}.{perm}",
+                    description=f"Permission: {perm} for role {role}",
+                    updated_by_id=current_user.id,
+                ))
+    db.session.commit()
+    return jsonify({"success": True, "message": "Permissions saved | บันทึกสิทธิ์เรียบร้อยแล้ว"})
+
+
+# ---------------------------------------------------------------------------
+# Station Management API
+# ---------------------------------------------------------------------------
+@settings_bp.route("/api/stations")
+@login_required
+@roles_required("admin", "it_admin", "nurse")
+def api_stations():
+    """JSON list of all stations."""
+    stations = Station.query.order_by(Station.name).all()
+    data = [{
+        "id": s.id,
+        "ae_title": s.ae_title or "",
+        "name": s.name,
+        "location": s.location or "",
+        "description": s.description or "",
+        "is_active": s.is_active,
+    } for s in stations]
+    return jsonify({"success": True, "data": data})
+
+
+@settings_bp.route("/api/stations/active")
+@login_required
+def api_active_stations():
+    """Return active stations only (for dropdowns)."""
+    stations = Station.query.filter_by(is_active=True).order_by(Station.name).all()
+    data = [{"ae_title": s.ae_title or "", "name": s.name, "location": s.location or ""} for s in stations]
+    return jsonify({"success": True, "data": data})
+
+
+@settings_bp.route("/api/station/<int:station_id>")
+@login_required
+@roles_required("admin", "it_admin", "nurse")
+def get_station(station_id):
+    """Single station JSON for edit modal."""
+    s = Station.query.get_or_404(station_id)
+    return jsonify({
+        "id": s.id,
+        "ae_title": s.ae_title or "",
+        "name": s.name,
+        "location": s.location or "",
+        "description": s.description or "",
+        "is_active": s.is_active,
+    })
+
+
+@settings_bp.route("/stations/create", methods=["POST"])
+@login_required
+@roles_required("admin", "it_admin")
+def create_station():
+    """Create a new station."""
+    ae_title = request.form.get("ae_title", "").strip()
+    name = request.form.get("name", "").strip()
+    location = request.form.get("location", "").strip()
+    description = request.form.get("description", "").strip()
+
+    if not name:
+        return jsonify({"success": False, "error": "Station Name is required | กรุณากรอกชื่อเครื่อง"}), 400
+
+    if Station.query.filter_by(name=name).first():
+        return jsonify({"success": False, "error": "Station name already exists | ชื่อ Station นี้มีอยู่แล้ว"}), 409
+
+    s = Station(ae_title=ae_title, name=name, location=location, description=description)
+    db.session.add(s)
+    db.session.commit()
+    return jsonify({"success": True, "message": f"Station {name} created | สร้าง Station {name} สำเร็จ"})
+
+
+@settings_bp.route("/stations/<int:station_id>/edit", methods=["POST"])
+@login_required
+@roles_required("admin", "it_admin")
+def edit_station(station_id):
+    """Edit an existing station."""
+    s = Station.query.get_or_404(station_id)
+    ae_title = request.form.get("ae_title", "").strip()
+    name = request.form.get("name", "").strip()
+    location = request.form.get("location", "").strip()
+    description = request.form.get("description", "").strip()
+
+    if not name:
+        return jsonify({"success": False, "error": "Station Name is required | กรุณากรอกชื่อเครื่อง"}), 400
+
+    existing = Station.query.filter(Station.name == name, Station.id != station_id).first()
+    if existing:
+        return jsonify({"success": False, "error": "Station name already exists | ชื่อ Station นี้มีอยู่แล้ว"}), 409
+
+    s.ae_title = ae_title
+    s.name = name
+    s.location = location
+    s.description = description
+    db.session.commit()
+    return jsonify({"success": True, "message": f"Station {name} updated | อัปเดต Station {name} สำเร็จ"})
+
+
+@settings_bp.route("/stations/<int:station_id>/toggle-active", methods=["POST"])
+@login_required
+@roles_required("admin", "it_admin")
+def toggle_station_active(station_id):
+    """Toggle station active status."""
+    s = Station.query.get_or_404(station_id)
+    s.is_active = not s.is_active
+    db.session.commit()
+    return jsonify({"success": True, "is_active": s.is_active})
+
+
+@settings_bp.route("/stations/<int:station_id>/delete", methods=["POST"])
+@login_required
+@roles_required("admin", "it_admin")
+def delete_station(station_id):
+    """Delete a station (deactivate if in use)."""
+    s = Station.query.get_or_404(station_id)
+
+    in_use = WorklistItem.query.filter_by(scheduled_station_name=s.name).first()
+    if in_use:
+        s.is_active = False
+        db.session.commit()
+        return jsonify({
+            "success": True,
+            "message": f"Station {s.name} deactivated (in use) | ปิดใช้งาน Station {s.name} แล้ว (มีข้อมูลอ้างอิง)",
+            "soft_delete": True,
+        })
+
+    db.session.delete(s)
+    db.session.commit()
+    return jsonify({"success": True, "message": f"Station {s.name} deleted | ลบ Station {s.name} สำเร็จ"})

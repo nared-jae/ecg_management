@@ -119,7 +119,7 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th data-i18n="th_accession">Accession</th>
+                        <th data-i18n="th_hn">HN</th>
                         <th data-i18n="th_patient">Patient</th>
                         <th data-i18n="th_received_date">Received Date</th>
                         <th data-i18n="th_status">Status</th>
@@ -128,7 +128,7 @@
                 <tbody id="tbody-results">
                     {% for result in recent_results %}
                     <tr>
-                        <td>{{ result.accession_number or '-' }}</td>
+                        <td>{{ result.patient.patient_id if result.patient else '-' }}</td>
                         <td>{{ result.patient.patient_name if result.patient else '-' }}</td>
                         <td>{{ result.received_at.strftime('%d/%m/%Y %H:%M') if result.received_at else '-' }}</td>
                         <td>
@@ -156,17 +156,27 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="d-flex align-items-center mb-2">
-                        <span class="status-dot online"></span>
+                        <span class="status-dot {{ 'online' if dicom_status.mwl else 'offline' }}" id="mwlStatusDot"></span>
                         <span style="font-size: 0.9rem;">
                             <strong>MWL Server</strong> &mdash; AE: {{ config.MWL_AE_TITLE }}, Port: {{ config.MWL_PORT }}
+                            {% if not dicom_status.mwl %}
+                            <span id="mwlStatusText" class="ms-1" style="font-size:0.8rem;color:var(--apple-red);">offline</span>
+                            {% else %}
+                            <span id="mwlStatusText" class="ms-1" style="font-size:0.8rem;"></span>
+                            {% endif %}
                         </span>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="d-flex align-items-center mb-2">
-                        <span class="status-dot online"></span>
+                        <span class="status-dot {{ 'online' if dicom_status.store else 'offline' }}" id="storeStatusDot"></span>
                         <span style="font-size: 0.9rem;">
                             <strong>Store SCP</strong> &mdash; AE: {{ config.STORE_AE_TITLE }}, Port: {{ config.STORE_PORT }}
+                            {% if not dicom_status.store %}
+                            <span id="storeStatusText" class="ms-1" style="font-size:0.8rem;color:var(--apple-red);">offline</span>
+                            {% else %}
+                            <span id="storeStatusText" class="ms-1" style="font-size:0.8rem;"></span>
+                            {% endif %}
                         </span>
                     </div>
                 </div>
@@ -316,13 +326,29 @@ function refreshDashboard() {
                 var rsHtml = '';
                 d.recent_results.forEach(function(r) {
                     rsHtml += '<tr>'
-                        + '<td>' + r.accession_number + '</td>'
+                        + '<td>' + r.patient_id + '</td>'
                         + '<td>' + r.patient_name + '</td>'
                         + '<td>' + r.received_at + '</td>'
                         + '<td><span class="' + statusBadgeClass(r.status) + '">' + statusLabel(r.status) + '</span></td>'
                         + '</tr>';
                 });
                 rsBody.innerHTML = rsHtml;
+            }
+
+            // Update DICOM Server Status from same response
+            if (d.dicom_status) {
+                var mwlDot = document.getElementById('mwlStatusDot');
+                var mwlText = document.getElementById('mwlStatusText');
+                var storeDot = document.getElementById('storeStatusDot');
+                var storeText = document.getElementById('storeStatusText');
+
+                mwlDot.className = 'status-dot ' + (d.dicom_status.mwl ? 'online' : 'offline');
+                mwlText.textContent = d.dicom_status.mwl ? '' : 'offline';
+                mwlText.style.color = d.dicom_status.mwl ? '' : 'var(--apple-red)';
+
+                storeDot.className = 'status-dot ' + (d.dicom_status.store ? 'online' : 'offline');
+                storeText.textContent = d.dicom_status.store ? '' : 'offline';
+                storeText.style.color = d.dicom_status.store ? '' : 'var(--apple-red)';
             }
         })
         .catch(function(err) {

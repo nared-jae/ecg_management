@@ -68,10 +68,16 @@ class StoreSCP:
             sex = ""
 
         # Extract study date/time from DICOM tags
+        manufacturer_str = str(getattr(ds, "Manufacturer", "") or "").upper()
         study_dt = None
         acq_dt_str = str(getattr(ds, "AcquisitionDateTime", "") or "").strip()
         study_date_str = str(getattr(ds, "StudyDate", "") or "").strip()
         study_time_str = str(getattr(ds, "StudyTime", "") or "").strip()
+        if "LEPU" in manufacturer_str and (acq_dt_str.startswith("00") or study_date_str.startswith("00")):
+            # Lepu stores dates in non-standard format; cannot reliably decode the year.
+            # Leave study_dt = None so the system falls back to received_at.
+            acq_dt_str = ""
+            study_date_str = ""
         try:
             if acq_dt_str and len(acq_dt_str) >= 14:
                 study_dt = datetime.strptime(acq_dt_str[:14], "%Y%m%d%H%M%S")
@@ -122,16 +128,62 @@ class StoreSCP:
             db.session.commit()
             print(f"[Store SCP] DB record created: ECGResult #{result.id}")
 
-            # Notify nurses/admins that a new ECG result has arrived
+            # Auto-assign if Ordering Physician has can_diagnose permission
+            auto_assigned = False
+            if worklist and worklist.ordering_physician:
+                from models import User, AssignmentLog, has_permission, get_setting
+                from datetime import timedelta
+                phy_name = worklist.ordering_physician.strip()
+                doctor = User.query.filter(
+                    User.is_active_user == True,
+                    db.or_(
+                        User.display_name == phy_name,
+                        User.display_name_en == phy_name,
+                    )
+                ).first()
+                if doctor and has_permission(doctor.role, "can_diagnose"):
+                    now = datetime.now()
+                    result.assigned_to_id = doctor.id
+                    result.assigned_at = now
+
+                    expiry_enabled = get_setting("assignment_expiry_enabled", "true") == "true"
+                    if expiry_enabled:
+                        timeout = int(get_setting("assignment_timeout_minutes", 30))
+                        result.assignment_expires_at = now + timedelta(minutes=timeout)
+                    else:
+                        result.assignment_expires_at = None
+                        result.status = "IN_REVIEW"
+
+                    db.session.add(AssignmentLog(
+                        ecg_result_id=result.id,
+                        action="auto_assigned",
+                        actor_id=doctor.id,
+                        target_id=doctor.id,
+                    ))
+                    db.session.commit()
+                    auto_assigned = True
+                    print(f"[Store SCP] Auto-assigned to {doctor.display_name} (ordering physician has can_diagnose)")
+
+            # Notify
             try:
-                from routes.notifications import push_broadcast_to_roles
-                push_broadcast_to_roles(
-                    roles=["nurse", "admin"],
-                    message=f"New ECG received: {patient_name or patient_id} (Acc: {accession or 'N/A'})",
-                    message_th=f"ผล ECG ใหม่: {patient_name or patient_id} (Acc: {accession or 'N/A'})",
-                    notif_type="new_result",
-                    result_id=result.id,
-                )
+                if auto_assigned:
+                    from routes.notifications import push_notification
+                    push_notification(
+                        user_id=doctor.id,
+                        message=f"ECG {accession or 'N/A'} auto-assigned to you (ordering physician).",
+                        message_th=f"ผล ECG {accession or 'N/A'} ถูกมอบหมายให้คุณอัตโนมัติ (แพทย์ผู้สั่ง)",
+                        notif_type="assignment",
+                        result_id=result.id,
+                    )
+                else:
+                    from routes.notifications import push_broadcast_to_roles
+                    push_broadcast_to_roles(
+                        roles=["nurse", "admin"],
+                        message=f"New ECG received: {patient_name or patient_id} (Acc: {accession or 'N/A'})",
+                        message_th=f"ผล ECG ใหม่: {patient_name or patient_id} (Acc: {accession or 'N/A'})",
+                        notif_type="new_result",
+                        result_id=result.id,
+                    )
             except Exception as e:
                 print(f"[Store SCP] Notification failed: {e}")
 

@@ -1,0 +1,329 @@
+<!-- Report Comparison Fragment - Lead-by-Lead Side-by-Side -->
+<!-- NOTE: ecg-compare-renderer.js is loaded in detail.html -->
+
+<style>
+    /* ---- Record Selector ---- */
+    .cmp-record-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+    }
+    .cmp-record-bar .cmp-label {
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--apple-text-secondary);
+        white-space: nowrap;
+    }
+    .cmp-record-pill {
+        border: 1px solid var(--apple-border);
+        border-radius: 980px;
+        padding: 0.3rem 0.85rem;
+        font-size: 0.78rem;
+        cursor: pointer;
+        background: var(--apple-bg);
+        color: var(--apple-text-secondary);
+        transition: var(--apple-transition);
+        white-space: nowrap;
+    }
+    .cmp-record-pill:hover { border-color: var(--apple-blue); color: var(--apple-blue); }
+    .cmp-record-pill.active {
+        background: var(--apple-blue);
+        color: #fff;
+        border-color: var(--apple-blue);
+    }
+    .cmp-record-pill.current {
+        background: var(--apple-green);
+        color: #fff;
+        border-color: var(--apple-green);
+        cursor: default;
+    }
+
+    /* ---- Lead Selector ---- */
+    .cmp-lead-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+    .cmp-lead-btn {
+        border: 1px solid var(--apple-border);
+        border-radius: 8px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.78rem;
+        font-weight: 500;
+        cursor: pointer;
+        background: var(--apple-bg);
+        color: var(--apple-text-secondary);
+        transition: var(--apple-transition);
+    }
+    .cmp-lead-btn:hover { border-color: var(--apple-blue); color: var(--apple-blue); }
+    .cmp-lead-btn.active {
+        background: var(--apple-blue);
+        color: #fff;
+        border-color: var(--apple-blue);
+    }
+    .cmp-lead-btn.all-btn {
+        font-weight: 600;
+        padding: 0.2rem 0.75rem;
+    }
+
+    /* ---- Side-by-Side Layout ---- */
+    .cmp-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .cmp-column {
+        min-width: 0;
+    }
+    .cmp-col-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        background: var(--apple-bg-secondary);
+        border-radius: var(--apple-radius-sm) var(--apple-radius-sm) 0 0;
+        border: 1px solid var(--apple-border);
+        border-bottom: none;
+    }
+    .cmp-col-title {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .cmp-col-badge {
+        font-size: 0.72rem;
+    }
+    .cmp-canvas-wrap {
+        border: 1px solid var(--apple-border);
+        border-top: none;
+        overflow-x: auto;
+        background: #fff;
+    }
+    .cmp-canvas-wrap canvas {
+        display: block;
+    }
+
+    /* ---- Info Card (shared by Measurements & Diagnosis) ---- */
+    .cmp-info-card {
+        border: 1px solid var(--apple-border);
+        border-radius: var(--apple-radius-sm, 8px);
+        background: var(--apple-bg, #fff);
+        margin-top: 0.6rem;
+        overflow: hidden;
+    }
+    .cmp-info-card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.75rem;
+        background: var(--apple-bg-secondary, #f5f5f7);
+        border-bottom: 1px solid var(--apple-border);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--apple-text-secondary);
+    }
+    .cmp-info-card-body {
+        padding: 0.6rem 0.75rem;
+    }
+
+    /* ---- Measurements ---- */
+    .cmp-section-title {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--apple-text-secondary);
+        padding: 0.6rem 0 0.4rem;
+        border-bottom: 1px solid var(--apple-bg-secondary);
+        margin-bottom: 0.4rem;
+    }
+    .cmp-meas-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.25rem 0.5rem;
+    }
+    .cmp-meas-item {
+        display: flex;
+        align-items: baseline;
+        gap: 0.3rem;
+        padding: 0.15rem 0;
+    }
+    .cmp-meas-label {
+        font-size: 0.72rem;
+        font-weight: 500;
+        color: var(--apple-text-secondary);
+    }
+    .cmp-meas-value {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--apple-text);
+    }
+    .cmp-meas-unit {
+        font-size: 0.68rem;
+        color: var(--apple-text-secondary);
+    }
+
+    /* ---- Diagnosis ---- */
+    .cmp-diagnosis-text {
+        font-size: 0.82rem;
+        color: var(--apple-text);
+        line-height: 1.5;
+    }
+    .cmp-diagnosis-text.interpretation {
+        color: var(--apple-text-secondary);
+        font-style: italic;
+    }
+    .cmp-diagnosis-by {
+        font-size: 0.72rem;
+        color: var(--apple-text-secondary);
+        margin-top: 0.25rem;
+    }
+
+    /* ---- No data placeholder ---- */
+    .cmp-no-data {
+        text-align: center;
+        padding: 2rem;
+        color: var(--apple-text-secondary);
+    }
+
+    @media (max-width: 768px) {
+        .cmp-columns { grid-template-columns: 1fr; }
+    }
+</style>
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div style="font-weight:500;font-size:1.05rem;">
+        <i class="bi bi-person me-1"></i>
+        {{ patient.patient_name if patient else '-' }}
+        <span style="font-size:0.82rem;color:var(--apple-text-secondary);margin-left:0.5rem;">
+            HN: {{ patient.patient_id if patient else '-' }}
+            {% if patient and patient.sex %} | {{ patient.sex }}{% endif %}
+        </span>
+    </div>
+    <span class="badge badge-apple" style="background:var(--apple-bg-secondary);color:var(--apple-text-secondary);font-size:0.78rem;">
+        <i class="bi bi-collection me-1"></i>{{ results|length }} records
+    </span>
+</div>
+
+{% if results|length <= 1 %}
+<div class="apple-card text-center py-5">
+    <i class="bi bi-layout-three-columns" style="font-size:3rem;color:var(--apple-text-secondary);"></i>
+    <h5 style="font-weight:500;margin-top:1rem;">No previous records for comparison</h5>
+    <p style="color:var(--apple-text-secondary);font-size:0.9rem;">
+        This patient has only one ECG result. Comparison requires at least two records.
+    </p>
+</div>
+{% else %}
+
+<!-- Record Selector -->
+<div class="cmp-record-bar">
+    <span class="cmp-label"><i class="bi bi-clock-history me-1"></i>Compare with:</span>
+    {% for item in results %}
+    {% if item.id == current_id %}
+    <span class="cmp-record-pill current" data-id="{{ item.id }}">
+        {{ item.received_at.strftime('%d/%m/%Y %H:%M') if item.received_at else '-' }} (Current)
+    </span>
+    {% else %}
+    <span class="cmp-record-pill{% if loop.index == 2 %} active{% endif %}"
+          data-id="{{ item.id }}" onclick="selectCompareRecord({{ item.id }})">
+        {{ item.received_at.strftime('%d/%m/%Y %H:%M') if item.received_at else '-' }}
+        <span class="badge badge-apple badge-{{ item.status|lower }}" style="font-size:0.65rem;margin-left:0.25rem;">{{ item.status }}</span>
+    </span>
+    {% endif %}
+    {% endfor %}
+</div>
+
+<!-- Lead Selector -->
+<div class="cmp-lead-bar">
+    <span class="cmp-label"><i class="bi bi-activity me-1"></i>Leads:</span>
+    <span class="cmp-lead-btn all-btn active" onclick="toggleAllLeads()">All</span>
+    {% for lead in ['I','II','III','aVR','aVL','aVF','V1','V2','V3','V4','V5','V6'] %}
+    <span class="cmp-lead-btn active" data-lead="{{ lead }}" onclick="toggleLead('{{ lead }}')">{{ lead }}</span>
+    {% endfor %}
+</div>
+
+<!-- Side-by-Side Columns -->
+<div class="cmp-columns" id="cmpColumnsContainer">
+    <!-- Left Column: Current Record -->
+    <div class="cmp-column" id="cmpColLeft">
+        <div class="cmp-col-header">
+            <span class="cmp-col-title" id="cmpLeftTitle">-</span>
+            <span class="badge" style="background:var(--apple-green);color:#fff;font-size:0.7rem;border-radius:980px;">Current</span>
+        </div>
+        <div class="cmp-canvas-wrap">
+            <canvas id="cmpCanvasLeft"></canvas>
+        </div>
+        <div class="cmp-info-card">
+            <div class="cmp-info-card-header">
+                <i class="bi bi-heart-pulse"></i> Measurements
+            </div>
+            <div class="cmp-info-card-body">
+                <div class="cmp-meas-grid" id="cmpMeasLeft"></div>
+            </div>
+        </div>
+        <div class="cmp-info-card">
+            <div class="cmp-info-card-header">
+                <i class="bi bi-clipboard2-pulse"></i> Diagnosis
+            </div>
+            <div class="cmp-info-card-body">
+                <div id="cmpDiagLeft" class="cmp-no-data">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Compare Record -->
+    <div class="cmp-column" id="cmpColRight">
+        <div class="cmp-col-header">
+            <span class="cmp-col-title" id="cmpRightTitle">-</span>
+            <a id="cmpRightLink" href="#" class="btn btn-apple-secondary btn-apple-sm" style="font-size:0.7rem;padding:0.15rem 0.5rem;">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+        </div>
+        <div class="cmp-canvas-wrap">
+            <canvas id="cmpCanvasRight"></canvas>
+        </div>
+        <div class="cmp-info-card">
+            <div class="cmp-info-card-header">
+                <i class="bi bi-heart-pulse"></i> Measurements
+            </div>
+            <div class="cmp-info-card-body">
+                <div class="cmp-meas-grid" id="cmpMeasRight"></div>
+            </div>
+        </div>
+        <div class="cmp-info-card">
+            <div class="cmp-info-card-header">
+                <i class="bi bi-clipboard2-pulse"></i> Diagnosis
+            </div>
+            <div class="cmp-info-card-body">
+                <div id="cmpDiagRight" class="cmp-no-data">-</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden ECG & meta data -->
+{% for item in results %}
+{% if item.ecg_json %}
+<div class="d-none" id="ecg-data-{{ item.id }}">{{ item.ecg_json | tojson }}</div>
+{% endif %}
+<div class="d-none ecg-meta-block"
+     data-id="{{ item.id }}"
+     data-status="{{ item.status }}"
+     data-diagnosis="{{ item.diagnosis or '' }}"
+     data-diagnosed-by="{{ item.diagnosed_by or '' }}"
+     data-diagnosed-at="{{ item.diagnosed_at.strftime('%d/%m/%Y %H:%M') if item.diagnosed_at else '' }}"
+     data-ecg-interpretation="{{ item.ecg_interpretation or '' }}"
+     data-received-date="{{ item.received_at.strftime('%d/%m/%Y') if item.received_at else '-' }}"
+     data-received-time="{{ item.received_at.strftime('%H:%M:%S') if item.received_at else '' }}">
+</div>
+{% endfor %}
+
+<!-- JS logic is in ecg-compare-renderer.js; initCompareView() called from detail.html -->
+
+{% endif %}

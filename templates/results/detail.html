@@ -499,7 +499,7 @@
 {% endif %}
 
 <!-- Assignment Info Banner (for assigned doctor — only on active cases) -->
-{% if current_user.is_authenticated and current_user.can_diagnose and result.assigned_to_id == current_user.id and result.status not in ('APPROVED', 'FINALIZED', 'COMPLETED') %}
+{% if _can_edit and result.status not in ('APPROVED', 'FINALIZED', 'COMPLETED') %}
 <div class="d-flex align-items-center gap-2 mb-3 p-3"
      style="background:#e3f2fd;border-left:4px solid var(--apple-blue);border-radius:var(--apple-radius-sm);">
     <i class="bi bi-person-check" style="color:var(--apple-blue);font-size:1.1rem;"></i>
@@ -578,7 +578,8 @@
             <div class="card-label"><i class="bi bi-cpu me-1"></i><span data-i18n="device">Device</span></div>
             {% if ecg_json %}
             <div style="font-weight:500;font-size:1.05rem;">{{ ecg_json.device.manufacturer }} {{ ecg_json.device.model }}</div>
-            <div style="font-size:0.85rem;color:var(--apple-text-secondary);margin-top:0.25rem;">
+            <div style="font-size:0.85rem;color:var(--apple-text-secondary);margin-top:0.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;"
+                 title="S/N: {{ ecg_json.device.serial }}">
                 S/N: {{ ecg_json.device.serial }}
             </div>
             {% else %}
@@ -720,7 +721,7 @@
             <i class="bi bi-cloud-upload"></i> Send to PACS
             {% endif %}
         </button>
-        {% if result.status == 'APPROVED' and current_user.role in ('admin', 'it_admin', 'nurse') %}
+        {% if result.status == 'APPROVED' and _can_edit %}
         <button class="toolbar-btn" id="btnFinalize" onclick="finalizeResult()" title="Finalize"
                 style="background:#fff8e0;color:#b45309;border-color:#b45309;">
             <i class="bi bi-lock"></i> Finalize
@@ -729,6 +730,12 @@
         <button class="toolbar-btn" disabled style="background:#e6f4ea;color:#1a7f37;border-color:#1a7f37;cursor:default;">
             <i class="bi bi-lock-fill"></i> Finalized
         </button>
+        {% if _can_reopen %}
+        <button class="toolbar-btn" id="btnReopen" onclick="reopenResult()" title="Reopen"
+                style="background:#fff3e0;color:#e65100;border-color:#e65100;">
+            <i class="bi bi-unlock"></i> Reopen
+        </button>
+        {% endif %}
         {% endif %}
         {% endif %}
     </div>
@@ -797,9 +804,8 @@
 </div>
 
 <!-- Diagnosis & Statement Library -->
-{% set _is_owner = current_user.is_authenticated and current_user.can_diagnose and result.assigned_to_id == current_user.id %}
-{% set _can_revise = _is_owner and result.status == 'APPROVED' %}
-{% set _is_locked = result.status in ('FINALIZED', 'COMPLETED') or (result.status == 'APPROVED' and not _is_owner) %}
+{% set _is_owner = _can_edit %}
+{% set _is_locked = not _can_edit or result.status in ('FINALIZED', 'COMPLETED') or (result.status == 'APPROVED' and not _can_revise) %}
 <div class="row g-4 mb-4">
     <!-- Diagnosis Panel -->
     <div class="col-lg-7">
@@ -985,7 +991,7 @@
 var ECG_DATA = {{ ecg_json | tojson }};
 var RESULT_ID = {{ result.id }};
 var RESULT_STATUS = '{{ result.status }}';
-var _CAN_REVISE = {{ 'true' if current_user.is_authenticated and current_user.can_diagnose and result.assigned_to_id == current_user.id and result.status == 'APPROVED' else 'false' }};
+var _CAN_REVISE = {{ 'true' if _can_revise else 'false' }};
 var _IS_READONLY = (['FINALIZED', 'COMPLETED'].indexOf(RESULT_STATUS) >= 0) || (RESULT_STATUS === 'APPROVED' && !_CAN_REVISE);
 
 // ===== Statement Library Data =====
@@ -2596,6 +2602,34 @@ function finalizeResult() {
     })
     .catch(function() {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-lock me-1"></i> Finalize'; }
+    });
+}
+
+function reopenResult() {
+    var lang = localStorage.getItem('app_language') || 'en';
+    var msg = lang === 'th'
+        ? 'ยืนยันการ Reopen? เคสจะกลับเป็นสถานะ Approved แพทย์จะสามารถแก้ไขผลวินิจฉัยได้อีกครั้ง'
+        : 'Confirm Reopen? The case will return to Approved status and the doctor can revise the diagnosis.';
+    if (!confirm(msg)) return;
+
+    var btn = document.getElementById('btnReopen');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Reopening...'; }
+
+    fetch('/results/{{ result.id }}/reopen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            location.reload();
+        } else {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-unlock me-1"></i> Reopen'; }
+            alert(data.error || 'Reopen failed');
+        }
+    })
+    .catch(function() {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-unlock me-1"></i> Reopen'; }
     });
 }
 </script>

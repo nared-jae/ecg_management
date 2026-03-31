@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - SMD ECG Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 data-i18n="dd_title">My Dashboard</h1>
+    <p data-i18n="dd_subtitle">Case overview and activity summary</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <a href="{{ url_for('results.my_worklist') }}" style="text-decoration:none;">
+        <div class="apple-card" style="cursor:pointer;transition:box-shadow 0.15s;" onmouseover="this.style.boxShadow='0 4px 20px rgba(0,122,255,0.15)'" onmouseout="this.style.boxShadow=''">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="card-label" data-i18n="dd_pending">My Pending Cases</div>
+                    <div class="card-value">{{ pending }}</div>
+                </div>
+                <div class="card-icon orange"><i class="bi bi-clock-history"></i></div>
+            </div>
+            <div style="font-size:0.75rem;color:var(--apple-text-secondary);margin-top:0.5rem;" data-i18n="dd_pending_sub">Cases waiting for diagnosis</div>
+        </div>
+    </a>
+
+    <div class="apple-card {% if expiring_soon > 0 %}border border-danger{% endif %}">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="dd_expiring">Expiring Soon</div>
+                <div class="card-value" style="color:{% if expiring_soon > 0 %}var(--apple-red){% else %}inherit{% endif %};">{{ expiring_soon }}</div>
+            </div>
+            <div class="card-icon red"><i class="bi bi-alarm"></i></div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--apple-text-secondary);margin-top:0.5rem;" data-i18n="dd_expiring_sub">Cases expiring within {{ expiring_minutes }} minutes</div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="dd_completed_today">Completed Today</div>
+                <div class="card-value">{{ completed_today }}</div>
+            </div>
+            <div class="card-icon green"><i class="bi bi-check-circle"></i></div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--apple-text-secondary);margin-top:0.5rem;" data-i18n="dd_completed_today_sub">Cases diagnosed today</div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="dd_this_month">This Month</div>
+                <div class="card-value">{{ this_month }}</div>
+            </div>
+            <div class="card-icon blue"><i class="bi bi-calendar-check"></i></div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--apple-text-secondary);margin-top:0.5rem;" data-i18n="dd_this_month_sub">Cases diagnosed this month</div>
+    </div>
+</div>
+
+<!-- Pending Cases Table -->
+<div class="apple-table-wrapper mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 style="font-weight:500;margin:0;" data-i18n="dd_pending_cases">Pending Cases</h5>
+        <a href="{{ url_for('results.my_worklist') }}" class="btn btn-apple-secondary btn-apple-sm" data-i18n="dd_view_all">View All</a>
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th data-i18n="dd_th_hn">HN</th>
+                <th data-i18n="dd_th_patient">Patient Name</th>
+                <th data-i18n="dd_th_procedure">Procedure</th>
+                <th data-i18n="dd_th_received">Received</th>
+                <th data-i18n="dd_th_expires">Expires In</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in recent_pending %}
+            <tr>
+                <td>{{ r.patient.patient_id if r.patient else '—' }}</td>
+                <td>{{ r.patient.patient_name if r.patient else '—' }}</td>
+                <td>{{ r.worklist_item.requested_procedure_desc if r.worklist_item else '—' }}</td>
+                <td>{{ r.received_at.strftime('%d/%m/%Y %H:%M') if r.received_at else '—' }}</td>
+                <td>
+                    {% if r.assignment_expires_at %}
+                        {% set diff = (r.assignment_expires_at - now).total_seconds() | int %}
+                        {% if diff <= 0 %}
+                            <span class="badge" style="background:#ffe0e0;color:var(--apple-red);" data-i18n="dd_expired">Expired</span>
+                        {% elif diff < 300 %}
+                            <span style="color:var(--apple-red);font-weight:600;">{{ (diff // 60) }}:{{ '%02d' % (diff % 60) }}</span>
+                        {% else %}
+                            <span>{{ (diff // 60) }}:{{ '%02d' % (diff % 60) }}</span>
+                        {% endif %}
+                    {% else %}
+                        <span style="color:var(--apple-text-secondary);">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('results.detail', result_id=r.id) }}" class="btn btn-apple btn-apple-sm">
+                        <i class="bi bi-pencil-square me-1"></i><span data-i18n="dd_diagnose">Diagnose</span>
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center" style="color:var(--apple-text-secondary);padding:2rem 0;">
+                    <i class="bi bi-inbox me-2"></i><span data-i18n="dd_no_cases">No pending cases</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var DD_I18N = {
+    en: {
+        dd_title: 'My Dashboard',
+        dd_subtitle: 'Case overview and activity summary',
+        dd_pending: 'My Pending Cases',
+        dd_pending_sub: 'Cases waiting for diagnosis',
+        dd_expiring: 'Expiring Soon',
+        dd_expiring_sub: 'Cases expiring within {{ expiring_minutes }} minutes',
+        dd_completed_today: 'Completed Today',
+        dd_completed_today_sub: 'Cases diagnosed today',
+        dd_this_month: 'This Month',
+        dd_this_month_sub: 'Cases diagnosed this month',
+        dd_pending_cases: 'Pending Cases',
+        dd_view_all: 'View All',
+        dd_th_hn: 'HN',
+        dd_th_patient: 'Patient Name',
+        dd_th_procedure: 'Procedure',
+        dd_th_received: 'Received',
+        dd_th_expires: 'Expires In',
+        dd_expired: 'Expired',
+        dd_diagnose: 'Diagnose',
+        dd_no_cases: 'No pending cases'
+    },
+    th: {
+        dd_title: 'แดชบอร์ดของฉัน',
+        dd_subtitle: 'ภาพรวมเคสและกิจกรรมการวินิจฉัย',
+        dd_pending: 'เคสที่รอวินิจฉัย',
+        dd_pending_sub: 'เคสที่มอบหมายให้ฉันและรอดำเนินการ',
+        dd_expiring: 'ใกล้หมดเวลา',
+        dd_expiring_sub: 'เคสที่จะหมดเวลาใน {{ expiring_minutes }} นาที',
+        dd_completed_today: 'วินิจฉัยวันนี้',
+        dd_completed_today_sub: 'เคสที่วินิจฉัยเสร็จแล้ววันนี้',
+        dd_this_month: 'เดือนนี้',
+        dd_this_month_sub: 'เคสที่วินิจฉัยเสร็จเดือนนี้',
+        dd_pending_cases: 'เคสที่รอวินิจฉัย',
+        dd_view_all: 'ดูทั้งหมด',
+        dd_th_hn: 'HN',
+        dd_th_patient: 'ชื่อผู้ป่วย',
+        dd_th_procedure: 'รายการตรวจ',
+        dd_th_received: 'วันที่รับ',
+        dd_th_expires: 'หมดเวลาใน',
+        dd_expired: 'หมดเวลาแล้ว',
+        dd_diagnose: 'วินิจฉัย',
+        dd_no_cases: 'ไม่มีเคสที่รอวินิจฉัย'
+    }
+};
+
+function setLanguage(lang) {
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (DD_I18N[lang] && DD_I18N[lang][key]) el.textContent = DD_I18N[lang][key];
+    });
+}
+</script>
+{% endblock %}

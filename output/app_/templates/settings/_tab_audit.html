@@ -1,0 +1,41 @@
+<div class="apple-table-wrapper" style="padding:1.5rem;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 style="font-weight:500;margin:0;" data-i18n="at_title">Activity Log</h6>
+        <button class="btn btn-apple-secondary btn-apple-sm" onclick="toggleAuditFilters()">
+            <i class="bi bi-funnel me-1"></i><span data-i18n="at_btn_filter">Filters</span>
+        </button>
+    </div>
+
+    <!-- Filter Row -->
+    <div id="auditFilters" class="row g-2 mb-3" style="display:none;">
+        <div class="col-auto">
+            <select id="auditFilterAction" class="form-select form-select-sm" style="min-width:140px;">
+                <option value="" data-i18n="at_filter_all">All Actions</option>
+                <option value="assigned">Assigned</option>
+                <option value="unassigned">Unassigned</option>
+                <option value="timeout">Timeout</option>
+                <option value="locked">Locked</option>
+                <option value="unlocked">Unlocked</option>
+                <option value="diagnosed">Diagnosed</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <input type="date" id="auditDateFrom" class="form-control form-control-sm"
+                   placeholder="From" title="From">
+        </div>
+        <div class="col-auto">
+            <input type="date" id="auditDateTo" class="form-control form-control-sm"
+                   placeholder="To" title="To">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-apple-secondary btn-apple-sm" onclick="applyAuditFilters()">
+                <i class="bi bi-search me-1"></i><span data-i18n="at_btn_apply">Apply</span>
+            </button>
+            <button class="btn btn-apple-secondary btn-apple-sm" onclick="clearAuditFilters()">
+                <i class="bi bi-x-lg me-1"></i><span data-i18n="at_btn_clear">Clear</span>
+            </button>
+        </div>
+    </div>
+
+    <table id="auditTable" class="table" style="width:100%"></table>
+</div>

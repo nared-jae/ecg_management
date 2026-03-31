@@ -17,15 +17,51 @@ from pydicom.dataset import Dataset
 STANDARD_LEADS = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
 
 LEAD_NAME_MAP = {
+    # --- Mindray (e.g. BeneHeart R series) ---
+    # Uses "Lead X" prefix format
     "Lead I": "I", "Lead II": "II", "Lead III": "III",
     "Lead aVR": "aVR", "Lead aVL": "aVL", "Lead aVF": "aVF",
     "Lead V1": "V1", "Lead V2": "V2", "Lead V3": "V3",
     "Lead V4": "V4", "Lead V5": "V5", "Lead V6": "V6",
+
+    # --- Generic / DICOM standard short form ---
     "I": "I", "II": "II", "III": "III",
     "aVR": "aVR", "aVL": "aVL", "aVF": "aVF",
     "V1": "V1", "V2": "V2", "V3": "V3",
     "V4": "V4", "V5": "V5", "V6": "V6",
+
+    # --- Lepu Medical (e.g. T180) ---
+    # Uses ALL-CAPS augmented lead names: AVR / AVL / AVF
+    "AVR": "aVR", "AVL": "aVL", "AVF": "aVF",
 }
+
+
+def _normalize_lead_name(code_meaning: str, manufacturer: str = "") -> str:
+    """Normalize DICOM channel CodeMeaning to standard lead name.
+
+    Handles vendor-specific naming differences:
+    - Mindray (BeneHeart): 'Lead I', 'Lead aVR', etc.
+    - Lepu Medical (T180):  'I', 'II', 'AVR', 'AVL', 'AVF', 'V1', etc.
+    - Generic DICOM:        'I', 'aVR', etc.
+    """
+    # Exact match first (covers Mindray, generic, and Lepu ALL-CAPS augmented)
+    mapped = LEAD_NAME_MAP.get(code_meaning)
+    if mapped:
+        return mapped
+
+    # Case-insensitive fallback for any other uppercase/lowercase variants
+    upper = code_meaning.upper().strip()
+    _UPPER_MAP = {
+        "I": "I", "II": "II", "III": "III",
+        "AVR": "aVR", "AVL": "aVL", "AVF": "aVF",
+        "V1": "V1", "V2": "V2", "V3": "V3",
+        "V4": "V4", "V5": "V5", "V6": "V6",
+    }
+    if upper in _UPPER_MAP:
+        return _UPPER_MAP[upper]
+
+    # Return as-is if unrecognized
+    return code_meaning
 
 
 @dataclass
@@ -108,10 +144,15 @@ def parse_dicom_ecg(filepath: str) -> Optional[ECGData]:
     ecg.software_version = str(getattr(ds, "SoftwareVersions", ""))
     ecg.institution = str(getattr(ds, "InstitutionName", ""))
 
-    # Parse waveform sequences
+    # Normalize Lepu Medical non-standard date format
+    if "LEPU" in ecg.manufacturer.upper():
+        ecg.study_date = _normalize_lepu_datetime(ecg.study_date)
+        ecg.acquisition_datetime = _normalize_lepu_datetime(ecg.acquisition_datetime)
+
+    # Parse waveform sequences (pass manufacturer for vendor-specific normalization)
     if hasattr(ds, "WaveformSequence"):
         for wf_seq in ds.WaveformSequence:
-            waveform = _parse_waveform_sequence(wf_seq)
+            waveform = _parse_waveform_sequence(wf_seq, manufacturer=ecg.manufacturer)
             if waveform:
                 ecg.waveforms.append(waveform)
 
@@ -122,7 +163,7 @@ def parse_dicom_ecg(filepath: str) -> Optional[ECGData]:
     return ecg
 
 
-def _parse_waveform_sequence(wf: Dataset) -> Optional[ECGWaveform]:
+def _parse_waveform_sequence(wf: Dataset, manufacturer: str = "") -> Optional[ECGWaveform]:
     """Parse a single WaveformSequence item."""
     num_channels = int(getattr(wf, "NumberOfWaveformChannels", 0))
     num_samples = int(getattr(wf, "NumberOfWaveformSamples", 0))
@@ -166,17 +207,30 @@ def _parse_waveform_sequence(wf: Dataset) -> Optional[ECGWaveform]:
             src_seq = getattr(ch_def, "ChannelSourceSequence", None)
             if src_seq and len(src_seq) > 0:
                 code_meaning = str(getattr(src_seq[0], "CodeMeaning", ""))
-                name = LEAD_NAME_MAP.get(code_meaning, code_meaning)
+                name = _normalize_lead_name(code_meaning, manufacturer)
 
-        # Get sensitivity and correction
+        # Get sensitivity, correction, and unit
         sensitivity = float(getattr(ch_def, "ChannelSensitivity", 1.0)) if ch_def else 1.0
         correction = float(getattr(ch_def, "ChannelSensitivityCorrectionFactor", 1.0)) if ch_def else 1.0
         baseline = float(getattr(ch_def, "ChannelBaseline", 0.0)) if ch_def else 0.0
 
-        # Convert to physical units (millivolts)
-        # Formula: physical = (raw + baseline) * sensitivity * correction / 1000
+        # Determine unit to set correct scale factor (→ millivolts)
+        # Mindray & Lepu Medical both use microvolt (μV/LSB) → divide by 1000
+        # If a device uses millivolt (mV/LSB) → no divide needed
+        unit_str = ""
+        if ch_def:
+            units_seq = getattr(ch_def, "ChannelSensitivityUnitsSequence", None)
+            if units_seq and len(units_seq) > 0:
+                unit_str = str(getattr(units_seq[0], "CodeMeaning", "")).lower()
+
+        if "millivolt" in unit_str or unit_str == "mv":
+            scale = sensitivity * correction          # mV/LSB → already in mV
+        else:
+            scale = sensitivity * correction / 1000.0  # μV/LSB → convert to mV
+
+        # Convert raw samples to millivolts
         ch_raw = raw[:, ch_idx].astype(np.float64)
-        ch_physical = (ch_raw + baseline) * sensitivity * correction / 1000.0  # to mV
+        ch_physical = (ch_raw + baseline) * scale
 
         channels.append(ECGChannel(
             name=name,
@@ -196,12 +250,56 @@ def _parse_waveform_sequence(wf: Dataset) -> Optional[ECGWaveform]:
     return waveform
 
 
+def _normalize_lepu_datetime(dt_str: str) -> str:
+    """Normalize Lepu Medical non-standard date/datetime strings.
+
+    Lepu stores dates as '00DDMMYY' (8 chars) instead of YYYYMMDD,
+    and datetimes as '00DDMMYYHHMMSS' (14 chars) instead of YYYYMMDDHHMMSS.
+
+    Examples:
+      '00230120'       -> '20200123'  (Jan 23 2020)
+      '00230120135947' -> '20200123135947'
+    """
+    if not dt_str or not dt_str.startswith("00") or len(dt_str) < 8:
+        return dt_str
+    dd = dt_str[2:4]
+    mm = dt_str[4:6]
+    yy = dt_str[6:8]
+    time_part = dt_str[8:] if len(dt_str) > 8 else ""
+    return "20" + yy + mm + dd + time_part
+
+
+def _parse_lepu_json_diagnosis(text: str) -> List[str]:
+    """Parse Lepu Medical JSON interpretation format.
+
+    Lepu stores auto-interpretation as:
+      JSON:{"diagnosis":[{"code":"STAT_...","title":"Sinus rhythm",...}, ...]}
+
+    Returns list of human-readable title strings.
+    Lepu format: text starts with 'JSON:'
+    """
+    import json
+    try:
+        json_str = text[len("JSON:"):]
+        data = json.loads(json_str)
+        diagnoses = data.get("diagnosis", [])
+        return [d["title"].strip() for d in diagnoses if d.get("title", "").strip()]
+    except Exception:
+        return [text]  # fallback: show raw text if JSON parsing fails
+
+
 def _parse_annotations(ann_seq) -> tuple:
     """Parse WaveformAnnotationSequence for diagnostic info.
 
     Returns (annotations, interpretation_texts) where:
     - annotations: list of dicts with numeric measurements (concept/value/unit)
     - interpretation_texts: list of strings from tag (0070,0006) UnformattedTextValue
+
+    Vendor-specific handling:
+    - Mindray: plain text UnformattedTextValue lines
+    - Lepu Medical: two special entries —
+        * "lepu"       → manufacturer tag, skip
+        * "JSON:{...}" → JSON diagnosis, parse and extract title fields
     """
     annotations = []
     interpretation_texts = []
@@ -216,17 +314,26 @@ def _parse_annotations(ann_seq) -> tuple:
         if has_text:
             text = str(ann.UnformattedTextValue).strip()
             if text:
-                entry["text"] = text
-                # Collect ALL UnformattedTextValue as interpretation text
-                interpretation_texts.append(text)
+                if text.lower() == "lepu":
+                    # Lepu Medical manufacturer tag — skip, not a diagnosis line
+                    pass
+                elif text.startswith("JSON:"):
+                    # Lepu Medical JSON diagnosis — parse and extract titles
+                    titles = _parse_lepu_json_diagnosis(text)
+                    interpretation_texts.extend(titles)
+                    entry["text"] = "\n".join(titles)
+                else:
+                    # Mindray / generic: plain text interpretation line
+                    entry["text"] = text
+                    interpretation_texts.append(text)
 
         # Concept name
         if hasattr(ann, "ConceptNameCodeSequence") and len(ann.ConceptNameCodeSequence) > 0:
             concept = ann.ConceptNameCodeSequence[0]
             entry["concept"] = str(getattr(concept, "CodeMeaning", ""))
 
-        # Numeric value
-        if has_numeric:
+        # Numeric value (skip if None — Lepu sets NumericValue=None on text annotations)
+        if has_numeric and ann.NumericValue is not None:
             entry["value"] = str(ann.NumericValue)
 
         # Measurement units
@@ -428,8 +535,13 @@ def embed_diagnosis_in_dicom(filepath: str, diagnosis: str,
         # ConceptNameCodeSequence), remove text-only interpretation items
         kept = []
         for ann in ds.WaveformAnnotationSequence:
+            # Remove interpretation text entries (no real numeric value, no concept)
+            # Note: Lepu Medical sets NumericValue attribute but leaves it None —
+            # treat None NumericValue same as missing for this check.
+            numeric_val = getattr(ann, 'NumericValue', None)
+            has_real_numeric = numeric_val is not None
             has_text_only = (hasattr(ann, 'UnformattedTextValue')
-                             and not hasattr(ann, 'NumericValue')
+                             and not has_real_numeric
                              and not hasattr(ann, 'ConceptNameCodeSequence'))
             if not has_text_only:
                 kept.append(ann)

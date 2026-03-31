@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - SMD ECG Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 data-i18n="page_title">Dashboard</h1>
+    <p data-i18n="page_subtitle">ECG Management System Overview</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="total_patients">Total Patients</div>
+                <div class="card-value" id="stat-total-patients">{{ stats.total_patients }}</div>
+            </div>
+            <div class="card-icon blue"><i class="bi bi-people"></i></div>
+        </div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="today_worklist">Today's Worklist</div>
+                <div class="card-value" id="stat-today-worklist">{{ stats.today_worklist }}</div>
+            </div>
+            <div class="card-icon purple"><i class="bi bi-list-check"></i></div>
+        </div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="pending">Pending</div>
+                <div class="card-value" id="stat-pending">{{ stats.pending_worklist }}</div>
+            </div>
+            <div class="card-icon orange"><i class="bi bi-clock"></i></div>
+        </div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="completed_today">Completed Today</div>
+                <div class="card-value" id="stat-completed-today">{{ stats.completed_today }}</div>
+            </div>
+            <div class="card-icon green"><i class="bi bi-check-circle"></i></div>
+        </div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="total_results">Total Results</div>
+                <div class="card-value" id="stat-total-results">{{ stats.total_results }}</div>
+            </div>
+            <div class="card-icon teal"><i class="bi bi-file-earmark-medical"></i></div>
+        </div>
+    </div>
+
+    <div class="apple-card">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div class="card-label" data-i18n="pending_review">Pending Review</div>
+                <div class="card-value" id="stat-pending-review">{{ stats.pending_review }}</div>
+            </div>
+            <div class="card-icon red"><i class="bi bi-exclamation-circle"></i></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Recent Worklist -->
+    <div class="col-lg-6">
+        <div class="apple-table-wrapper">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 style="font-weight: 500; margin: 0;" data-i18n="recent_worklist">Recent Worklist</h5>
+                <a href="{{ url_for('ecg_tests.index') }}" class="btn btn-apple-secondary btn-apple-sm" data-i18n="view_all">View All</a>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th data-i18n="th_hn">HN</th>
+                        <th data-i18n="th_patient_name">Patient Name</th>
+                        <th data-i18n="th_procedure">Procedure</th>
+                        <th data-i18n="th_status">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-worklist">
+                    {% for item in recent_worklist %}
+                    <tr>
+                        <td>{{ item.patient.patient_id }}</td>
+                        <td>{{ item.patient.patient_name }}</td>
+                        <td>{{ item.requested_procedure_desc }}</td>
+                        <td>
+                            <span class="badge badge-apple badge-{{ item.status|lower|replace('_', '-') }}" data-i18n="status_{{ item.status }}">
+                                {{ item.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center" style="color: var(--apple-text-secondary);" data-i18n="no_data">No data available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Results -->
+    <div class="col-lg-6">
+        <div class="apple-table-wrapper">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 style="font-weight: 500; margin: 0;" data-i18n="recent_results">Recent Results</h5>
+                <a href="{{ url_for('results.index') }}" class="btn btn-apple-secondary btn-apple-sm" data-i18n="view_all">View All</a>
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th data-i18n="th_accession">Accession</th>
+                        <th data-i18n="th_patient">Patient</th>
+                        <th data-i18n="th_received_date">Received Date</th>
+                        <th data-i18n="th_status">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-results">
+                    {% for result in recent_results %}
+                    <tr>
+                        <td>{{ result.accession_number or '-' }}</td>
+                        <td>{{ result.patient.patient_name if result.patient else '-' }}</td>
+                        <td>{{ result.received_at.strftime('%d/%m/%Y %H:%M') if result.received_at else '-' }}</td>
+                        <td>
+                            <span class="badge badge-apple badge-{{ result.status|lower }}" data-i18n="status_{{ result.status }}">
+                                {{ result.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center" style="color: var(--apple-text-secondary);" data-i18n="no_results">No results available</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- DICOM Server Status -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="apple-card">
+            <h5 style="font-weight: 500; margin-bottom: 1rem;" data-i18n="dicom_server_status">DICOM Server Status</h5>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="status-dot online"></span>
+                        <span style="font-size: 0.9rem;">
+                            <strong>MWL Server</strong> &mdash; AE: {{ config.MWL_AE_TITLE }}, Port: {{ config.MWL_PORT }}
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="status-dot online"></span>
+                        <span style="font-size: 0.9rem;">
+                            <strong>Store SCP</strong> &mdash; AE: {{ config.STORE_AE_TITLE }}, Port: {{ config.STORE_PORT }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var DASH_I18N = {
+    en: {
+        page_title: 'Dashboard',
+        page_subtitle: 'ECG Management System Overview',
+        total_patients: 'Total Patients',
+        today_worklist: "Today's Worklist",
+        pending: 'Pending',
+        completed_today: 'Completed Today',
+        total_results: 'Total Results',
+        pending_review: 'Pending Review',
+        recent_worklist: 'Recent Worklist',
+        recent_results: 'Recent Results',
+        view_all: 'View All',
+        th_hn: 'HN',
+        th_patient_name: 'Patient Name',
+        th_procedure: 'Procedure',
+        th_status: 'Status',
+        th_accession: 'Accession',
+        th_patient: 'Patient',
+        th_received_date: 'Received Date',
+        no_data: 'No data available',
+        no_results: 'No results available',
+        dicom_server_status: 'DICOM Server Status',
+        // Worklist statuses
+        status_SCHEDULED: 'SCHEDULED',
+        status_IN_PROGRESS: 'IN PROGRESS',
+        status_COMPLETED: 'COMPLETED',
+        status_CANCELLED: 'CANCELLED',
+        // Result statuses
+        status_RECEIVED: 'RECEIVED',
+        status_IN_REVIEW: 'IN REVIEW',
+        status_REVIEWED: 'REVIEWED',
+        status_APPROVED: 'APPROVED',
+        status_FINALIZED: 'FINALIZED'
+    },
+    th: {
+        page_title: 'แดชบอร์ด',
+        page_subtitle: 'ภาพรวมระบบจัดการ ECG',
+        total_patients: 'ผู้ป่วยทั้งหมด',
+        today_worklist: 'รายการตรวจวันนี้',
+        pending: 'รอดำเนินการ',
+        completed_today: 'เสร็จสิ้นวันนี้',
+        total_results: 'ผลตรวจทั้งหมด',
+        pending_review: 'รอตรวจสอบ',
+        recent_worklist: 'รายการตรวจล่าสุด',
+        recent_results: 'ผลตรวจล่าสุด',
+        view_all: 'ดูทั้งหมด',
+        th_hn: 'HN',
+        th_patient_name: 'ชื่อผู้ป่วย',
+        th_procedure: 'รายการตรวจ',
+        th_status: 'สถานะ',
+        th_accession: 'เลขที่ Accession',
+        th_patient: 'ผู้ป่วย',
+        th_received_date: 'วันที่รับ',
+        no_data: 'ยังไม่มีข้อมูล',
+        no_results: 'ยังไม่มีผลตรวจ',
+        dicom_server_status: 'สถานะเซิร์ฟเวอร์ DICOM',
+        // Worklist statuses
+        status_SCHEDULED: 'รอตรวจ',
+        status_IN_PROGRESS: 'กำลังตรวจ',
+        status_COMPLETED: 'เสร็จสิ้น',
+        status_CANCELLED: 'ยกเลิก',
+        // Result statuses
+        status_RECEIVED: 'รับแล้ว',
+        status_IN_REVIEW: 'กำลังวินิจฉัย',
+        status_REVIEWED: 'ตรวจแล้ว',
+        status_APPROVED: 'อนุมัติแล้ว',
+        status_FINALIZED: 'สรุปแล้ว'
+    }
+};
+
+function setLanguage(lang) {
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (DASH_I18N[lang] && DASH_I18N[lang][key]) {
+            el.textContent = DASH_I18N[lang][key];
+        }
+    });
+}
+
+/* --- Auto-refresh every 30 seconds --- */
+var REFRESH_INTERVAL = 30000;
+var _refreshTimer = null;
+
+function getLang() {
+    return (localStorage.getItem('app_language') || 'en');
+}
+
+function statusBadgeClass(status) {
+    return 'badge badge-apple badge-' + status.toLowerCase().replace('_', '-');
+}
+
+function statusLabel(status) {
+    var lang = getLang();
+    var key = 'status_' + status;
+    return (DASH_I18N[lang] && DASH_I18N[lang][key]) ? DASH_I18N[lang][key] : status;
+}
+
+function refreshDashboard() {
+    fetch('/api/data')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            // Update stats cards
+            document.getElementById('stat-total-patients').textContent  = d.stats.total_patients;
+            document.getElementById('stat-today-worklist').textContent  = d.stats.today_worklist;
+            document.getElementById('stat-pending').textContent         = d.stats.pending_worklist;
+            document.getElementById('stat-completed-today').textContent = d.stats.completed_today;
+            document.getElementById('stat-total-results').textContent   = d.stats.total_results;
+            document.getElementById('stat-pending-review').textContent  = d.stats.pending_review;
+
+            // Update Recent Worklist table
+            var lang = getLang();
+            var wlBody = document.getElementById('tbody-worklist');
+            if (d.recent_worklist.length === 0) {
+                var noDataText = (DASH_I18N[lang] && DASH_I18N[lang].no_data) || 'No data available';
+                wlBody.innerHTML = '<tr><td colspan="4" class="text-center" style="color:var(--apple-text-secondary);">' + noDataText + '</td></tr>';
+            } else {
+                var wlHtml = '';
+                d.recent_worklist.forEach(function(w) {
+                    wlHtml += '<tr>'
+                        + '<td>' + w.patient_id + '</td>'
+                        + '<td>' + w.patient_name + '</td>'
+                        + '<td>' + w.procedure + '</td>'
+                        + '<td><span class="' + statusBadgeClass(w.status) + '">' + statusLabel(w.status) + '</span></td>'
+                        + '</tr>';
+                });
+                wlBody.innerHTML = wlHtml;
+            }
+
+            // Update Recent Results table
+            var rsBody = document.getElementById('tbody-results');
+            if (d.recent_results.length === 0) {
+                var noResText = (DASH_I18N[lang] && DASH_I18N[lang].no_results) || 'No results available';
+                rsBody.innerHTML = '<tr><td colspan="4" class="text-center" style="color:var(--apple-text-secondary);">' + noResText + '</td></tr>';
+            } else {
+                var rsHtml = '';
+                d.recent_results.forEach(function(r) {
+                    rsHtml += '<tr>'
+                        + '<td>' + r.accession_number + '</td>'
+                        + '<td>' + r.patient_name + '</td>'
+                        + '<td>' + r.received_at + '</td>'
+                        + '<td><span class="' + statusBadgeClass(r.status) + '">' + statusLabel(r.status) + '</span></td>'
+                        + '</tr>';
+                });
+                rsBody.innerHTML = rsHtml;
+            }
+        })
+        .catch(function(err) {
+            console.warn('[Dashboard] Auto-refresh failed:', err);
+        });
+}
+
+_refreshTimer = setInterval(refreshDashboard, REFRESH_INTERVAL);
+
+// Pause when tab is hidden, resume when visible
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        clearInterval(_refreshTimer);
+        _refreshTimer = null;
+    } else {
+        refreshDashboard();
+        _refreshTimer = setInterval(refreshDashboard, REFRESH_INTERVAL);
+    }
+});
+</script>
+{% endblock %}
